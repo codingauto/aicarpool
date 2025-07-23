@@ -59,7 +59,24 @@
 - MySQL 8.0+
 - Redis 6+
 
-### 快速开始
+### 一键安装（推荐）
+
+**通用安装脚本（自动检测系统）：**
+```bash
+curl -fsSL https://raw.githubusercontent.com/codingauto/aicarpool/main/scripts/install.sh | bash
+```
+
+**Ubuntu/Debian 系统：**
+```bash
+curl -fsSL https://raw.githubusercontent.com/codingauto/aicarpool/main/scripts/deploy-ubuntu.sh | bash
+```
+
+**CentOS/RHEL 系统：**
+```bash
+curl -fsSL https://raw.githubusercontent.com/codingauto/aicarpool/main/scripts/deploy-centos.sh | bash
+```
+
+### 手动安装
 
 ```bash
 # 1. 克隆项目
@@ -172,27 +189,421 @@ aicarpool/
 
 ## 🔧 部署指南
 
-### Docker部署（推荐）
+### 环境要求
+
+**硬件要求（最低配置）：**
+- **CPU**: 2核心
+- **内存**: 4GB（建议8GB）
+- **硬盘**: 50GB可用空间
+- **网络**: 稳定的网络连接
+
+**技术栈：**
+- **Node.js** 18+
+- **MySQL** 8.0+
+- **Redis** 6+
+- **Docker** (可选)
+
+### 手动部署
+
+#### 第一步：环境准备
+
+**Ubuntu/Debian用户：**
+```bash
+# 安装Node.js
+curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+sudo apt-get install -y nodejs
+
+# 安装MySQL
+sudo apt update
+sudo apt install mysql-server
+sudo systemctl start mysql
+sudo systemctl enable mysql
+
+# 安装Redis
+sudo apt install redis-server
+sudo systemctl start redis-server
+sudo systemctl enable redis-server
+```
+
+**CentOS/RHEL用户：**
+```bash
+# 安装Node.js
+curl -fsSL https://rpm.nodesource.com/setup_18.x | sudo bash -
+sudo yum install -y nodejs
+
+# 安装MySQL
+sudo yum install mysql-server
+sudo systemctl start mysqld
+sudo systemctl enable mysqld
+
+# 安装Redis
+sudo yum install redis
+sudo systemctl start redis
+sudo systemctl enable redis
+```
+
+#### 第二步：下载和配置
 
 ```bash
-# 1. 构建镜像
-docker build -t aicarpool .
+# 下载项目
+git clone https://github.com/codingauto/aicarpool.git
+cd aicarpool
 
-# 2. 运行容器
-docker run -d \
-  --name aicarpool \
-  -p 3000:3000 \
-  -e DATABASE_URL="mysql://user:password@host:3306/aicarpool" \
-  -e REDIS_URL="redis://host:6379" \
-  aicarpool
+# 安装依赖
+npm install
+
+# 复制环境配置文件
+cp .env.example .env.local
+```
+
+#### 第三步：配置环境变量
+
+编辑 `.env.local` 文件：
+```bash
+# 数据库配置
+DATABASE_URL="mysql://username:password@localhost:3306/aicarpool"
+
+# Redis配置
+REDIS_URL="redis://localhost:6379"
+
+# JWT密钥（随机生成32字符以上）
+NEXTAUTH_SECRET="your_random_secret_key_here"
+
+# 应用配置
+NEXTAUTH_URL="http://localhost:3000"
+NODE_ENV="production"
+
+# 邮件配置（可选）
+SMTP_HOST="smtp.gmail.com"
+SMTP_PORT="587"
+SMTP_USER="your_email@gmail.com"
+SMTP_PASSWORD="your_app_password"
+
+# AI服务配置（根据需要配置）
+CLAUDE_API_KEY="your_claude_api_key"
+OPENAI_API_KEY="your_openai_api_key"
+```
+
+#### 第四步：数据库初始化
+
+```bash
+# 创建数据库
+mysql -u root -p -e "CREATE DATABASE aicarpool;"
+
+# 生成Prisma客户端
+npx prisma generate
+
+# 运行数据库迁移
+npx prisma migrate deploy
+
+# 初始化种子数据
+npm run seed
+```
+
+#### 第五步：构建和启动
+
+```bash
+# 构建项目
+npm run build
+
+# 启动生产服务器
+npm start
+
+# 或使用PM2管理进程（推荐）
+npm install -g pm2
+pm2 start npm --name "aicarpool" -- start
+pm2 save
+pm2 startup
+```
+
+### Docker部署（推荐）
+
+#### 使用Docker Compose（最简单）
+
+创建 `docker-compose.yml` 文件：
+```yaml
+version: '3.8'
+services:
+  aicarpool:
+    build: .
+    container_name: aicarpool-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=mysql://aicarpool:password@mysql:3306/aicarpool
+      - REDIS_URL=redis://redis:6379
+      - NEXTAUTH_SECRET=your_random_secret_key_here
+      - NEXTAUTH_URL=http://localhost:3000
+      - NODE_ENV=production
+    depends_on:
+      - mysql
+      - redis
+    volumes:
+      - ./logs:/app/logs
+
+  mysql:
+    image: mysql:8.0
+    container_name: aicarpool-mysql
+    restart: unless-stopped
+    environment:
+      - MYSQL_ROOT_PASSWORD=rootpassword
+      - MYSQL_DATABASE=aicarpool
+      - MYSQL_USER=aicarpool
+      - MYSQL_PASSWORD=password
+    volumes:
+      - mysql_data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+
+  redis:
+    image: redis:7-alpine
+    container_name: aicarpool-redis
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+
+  # 可选：添加nginx反向代理
+  nginx:
+    image: nginx:alpine
+    container_name: aicarpool-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./ssl:/etc/ssl
+    depends_on:
+      - aicarpool
+
+volumes:
+  mysql_data:
+  redis_data:
+```
+
+#### 启动服务
+
+```bash
+# 启动所有服务
+docker-compose up -d
+
+# 查看服务状态
+docker-compose ps
+
+# 查看日志
+docker-compose logs -f aicarpool
+
+# 进入容器执行数据库迁移
+docker-compose exec aicarpool npx prisma migrate deploy
 ```
 
 ### 生产环境配置
-1. 配置反向代理（Nginx/Caddy）
-2. 设置SSL证书
-3. 配置环境变量
-4. 数据库备份策略
-5. 监控和日志收集
+
+#### 1. 反向代理配置（Nginx）
+
+创建 `nginx.conf` 文件：
+```nginx
+events {
+    worker_connections 1024;
+}
+
+http {
+    upstream aicarpool {
+        server aicarpool:3000;
+    }
+
+    server {
+        listen 80;
+        server_name your-domain.com;
+        
+        # 重定向到HTTPS
+        return 301 https://$server_name$request_uri;
+    }
+
+    server {
+        listen 443 ssl http2;
+        server_name your-domain.com;
+        
+        # SSL配置
+        ssl_certificate /etc/ssl/your-domain.crt;
+        ssl_certificate_key /etc/ssl/your-domain.key;
+        ssl_protocols TLSv1.2 TLSv1.3;
+        ssl_ciphers HIGH:!aNULL:!MD5;
+        
+        # 安全头
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+        add_header X-Frame-Options "DENY" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        
+        location / {
+            proxy_pass http://aicarpool;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection 'upgrade';
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_cache_bypass $http_upgrade;
+            
+            # 支持长连接
+            proxy_read_timeout 300s;
+            proxy_connect_timeout 75s;
+        }
+    }
+}
+```
+
+#### 2. SSL证书配置
+
+**使用Let's Encrypt（免费）：**
+```bash
+# 安装certbot
+sudo apt install certbot python3-certbot-nginx
+
+# 申请证书
+sudo certbot --nginx -d your-domain.com
+
+# 自动续期
+sudo crontab -e
+# 添加：0 12 * * * /usr/bin/certbot renew --quiet
+```
+
+#### 3. 监控和日志
+
+**使用PM2监控：**
+```bash
+# 安装PM2
+npm install -g pm2
+
+# 创建PM2配置文件 ecosystem.config.js
+module.exports = {
+  apps: [{
+    name: 'aicarpool',
+    script: 'npm',
+    args: 'start',
+    cwd: '/path/to/aicarpool',
+    env: {
+      NODE_ENV: 'production',
+      PORT: 3000
+    },
+    log_file: './logs/combined.log',
+    out_file: './logs/out.log',
+    error_file: './logs/error.log',
+    log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+    merge_logs: true,
+    max_memory_restart: '1G'
+  }]
+};
+
+# 启动应用
+pm2 start ecosystem.config.js
+pm2 save
+pm2 startup
+```
+
+#### 4. 数据库备份策略
+
+```bash
+# 创建备份脚本 backup.sh
+#!/bin/bash
+DATE=$(date +"%Y%m%d_%H%M%S")
+BACKUP_DIR="/backup/mysql"
+mkdir -p $BACKUP_DIR
+
+# 备份数据库
+mysqldump -u aicarpool -p aicarpool > $BACKUP_DIR/aicarpool_$DATE.sql
+
+# 保留最近30天的备份
+find $BACKUP_DIR -name "aicarpool_*.sql" -mtime +30 -delete
+
+# 添加到crontab每日备份
+# 0 2 * * * /path/to/backup.sh
+```
+
+### 脚本管理
+
+**升级应用：**
+```bash
+# 进入应用目录
+cd /opt/aicarpool
+
+# 拉取最新代码
+git pull origin main
+
+# 安装新依赖
+npm install
+
+# 运行数据库迁移
+npx prisma migrate deploy
+
+# 重新构建
+npm run build
+
+# 重启服务
+pm2 restart aicarpool
+```
+
+**完全卸载：**
+```bash
+# 下载并运行卸载脚本
+curl -fsSL https://raw.githubusercontent.com/codingauto/aicarpool/main/scripts/uninstall.sh | bash
+
+# 或本地运行
+bash /opt/aicarpool/scripts/uninstall.sh
+```
+
+**一键更新（推荐）：**
+```bash
+# 使用更新脚本（自动备份配置、更新代码、重启服务）
+bash /opt/aicarpool/scripts/update.sh
+
+# 或者从网络下载最新的更新脚本
+curl -fsSL https://raw.githubusercontent.com/codingauto/aicarpool/main/scripts/update.sh | bash
+```
+
+**服务管理：**
+```bash
+# 查看服务状态
+pm2 status
+
+# 查看应用日志
+pm2 logs aicarpool
+
+# 重启应用
+pm2 restart aicarpool
+
+# 停止应用
+pm2 stop aicarpool
+
+# 查看资源使用
+pm2 monit
+
+# 查看当前版本
+cd /opt/aicarpool && git log --oneline -5
+```
+
+**Git相关操作：**
+```bash
+# 查看当前版本信息
+bash /opt/aicarpool/scripts/update.sh --version
+
+# 检查是否有新版本
+cd /opt/aicarpool
+git fetch origin
+git log --oneline HEAD..origin/main
+
+# 手动更新代码（不推荐，建议使用update.sh）
+cd /opt/aicarpool
+git stash  # 备份本地修改
+git pull origin main  # 更新代码
+npm install  # 更新依赖
+npm run build  # 重新构建
+pm2 restart aicarpool  # 重启服务
+```
 
 ---
 
@@ -203,22 +614,69 @@ docker run -d \
 **数据库连接失败**
 ```bash
 # 检查MySQL服务
-systemctl status mysql
+systemctl status mysql  # Ubuntu/Debian
+systemctl status mysqld # CentOS/RHEL
 mysql -u root -p -e "SHOW DATABASES;"
 ```
 
 **Redis连接失败**
 ```bash
 # 检查Redis服务
-systemctl status redis
+systemctl status redis-server  # Ubuntu/Debian
+systemctl status redis         # CentOS/RHEL
 redis-cli ping
+```
+
+**Git相关问题**
+```bash
+# Git克隆失败（网络问题）
+# 配置代理（如果需要）
+git config --global http.proxy http://proxy-server:port
+git config --global https.proxy https://proxy-server:port
+
+# 清除代理配置
+git config --global --unset http.proxy
+git config --global --unset https.proxy
+
+# 检查Git配置
+git config --global --list
+```
+
+**更新失败**
+```bash
+# 重置本地修改
+cd /opt/aicarpool
+git stash  # 或者 git reset --hard HEAD
+git pull origin main
+
+# 强制更新到最新版本
+git fetch origin
+git reset --hard origin/main
 ```
 
 **构建失败**
 ```bash
 # 清除缓存重新安装
-rm -rf node_modules package-lock.json
+cd /opt/aicarpool
+rm -rf node_modules package-lock.json .next
 npm install
+npm run build
+```
+
+**服务启动失败**
+```bash
+# 检查端口占用
+ss -tlnp | grep 3000
+# 或者
+netstat -tlnp | grep 3000
+
+# 检查PM2状态
+pm2 status
+pm2 logs aicarpool
+
+# 重启服务
+pm2 delete aicarpool
+bash /opt/aicarpool/scripts/update.sh
 ```
 
 ---
