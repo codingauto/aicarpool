@@ -67,7 +67,7 @@ export function withAuth(
 }
 
 // 序列化函数，处理BigInt类型
-function serializeBigInt(obj: any): any {
+export function serializeBigInt(obj: any): any {
   if (obj === null || obj === undefined) return obj;
   
   if (typeof obj === 'bigint') {

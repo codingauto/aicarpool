@@ -12,6 +12,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { AppHeader } from '@/components/layout/AppHeader';
+import { EnhancedAiServiceConfig } from '@/components/groups/EnhancedAiServiceConfig';
+import { DeploymentModeConfig } from '@/components/groups/DeploymentModeConfig';
 import { 
   Users, 
   Key, 
@@ -26,7 +29,11 @@ import {
   Clock,
   Shield,
   Copy,
-  CheckCircle
+  CheckCircle,
+  Globe,
+  Server,
+  AlertTriangle,
+  TrendingUp
 } from 'lucide-react';
 
 interface GroupDetail {
@@ -130,17 +137,7 @@ export default function GroupDetailPage() {
   const [createKeyLoading, setCreateKeyLoading] = useState(false);
   const [createKeyError, setCreateKeyError] = useState('');
 
-  // 添加AI服务相关状态
-  const [showAddAiServiceDialog, setShowAddAiServiceDialog] = useState(false);
-  const [availableAiServices, setAvailableAiServices] = useState<any[]>([]);
-  const [selectedServiceId, setSelectedServiceId] = useState('');
-  const [serviceApiKey, setServiceApiKey] = useState('');
-  const [dailyLimit, setDailyLimit] = useState('');
-  const [monthlyLimit, setMonthlyLimit] = useState('');
-  const [addServiceLoading, setAddServiceLoading] = useState(false);
-  const [addServiceError, setAddServiceError] = useState('');
-  const [generatedApiKey, setGeneratedApiKey] = useState('');
-  const [showGeneratedKey, setShowGeneratedKey] = useState(false);
+  // AI服务相关状态已移至EnhancedAiServiceConfig组件
 
   // Tab状态管理
   const [activeTab, setActiveTab] = useState('members');
@@ -186,28 +183,6 @@ export default function GroupDetailPage() {
     }
   };
 
-  // 获取可用的AI服务
-  const fetchAvailableAiServices = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) return;
-
-      const response = await fetch(`/api/groups/${groupId}/ai-services`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        // 过滤出未配置的AI服务
-        const unconfiguredServices = data.data.filter((service: any) => !service.isConfigured);
-        setAvailableAiServices(unconfiguredServices);
-      }
-    } catch (error) {
-      console.error('获取AI服务失败:', error);
-    }
-  };
 
   // 添加AI服务
   const handleAddAiService = async (e: React.FormEvent) => {
@@ -460,36 +435,7 @@ export default function GroupDetailPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center space-x-6">
-              <h1 className="text-2xl font-bold text-gray-900">AiCarpool</h1>
-              <nav className="flex space-x-4">
-                <Button variant="ghost" onClick={() => router.push('/dashboard')}>
-                  仪表盘
-                </Button>
-                <Button variant="ghost" onClick={() => router.push('/groups')}>
-                  拼车组
-                </Button>
-              </nav>
-            </div>
-            <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-600">
-                欢迎，{currentUser?.name}
-              </span>
-              <Button variant="outline" onClick={() => {
-                localStorage.removeItem('token');
-                localStorage.removeItem('user');
-                router.push('/');
-              }}>
-                退出登录
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
+      <AppHeader title={group.name} />
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -573,10 +519,13 @@ export default function GroupDetailPage() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-8">
             <TabsTrigger value="members">成员管理</TabsTrigger>
             <TabsTrigger value="services">AI服务</TabsTrigger>
             <TabsTrigger value="api-keys">API密钥</TabsTrigger>
+            <TabsTrigger value="deployment">部署模式</TabsTrigger>
+            <TabsTrigger value="ip-proxy">IP代理</TabsTrigger>
+            <TabsTrigger value="edge-nodes">边缘节点</TabsTrigger>
             <TabsTrigger value="invitations">邀请管理</TabsTrigger>
             <TabsTrigger value="usage">使用统计</TabsTrigger>
           </TabsList>
@@ -707,189 +656,19 @@ export default function GroupDetailPage() {
 
           {/* AI服务 */}
           <TabsContent value="services" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>AI服务配置</CardTitle>
-                <CardDescription>
-                  管理拼车组可用的AI服务
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {group.aiServices.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {group.aiServices.map((service) => (
-                      <Card key={service.id} className="border">
-                        <CardHeader className="pb-3">
-                          <div className="flex items-center justify-between">
-                            <CardTitle className="text-lg">{service.aiService.displayName}</CardTitle>
-                            <Badge variant={service.isEnabled ? 'default' : 'secondary'}>
-                              {service.isEnabled ? '启用' : '禁用'}
-                            </Badge>
-                          </div>
-                          {service.aiService.description && (
-                            <CardDescription className="text-sm">
-                              {service.aiService.description}
-                            </CardDescription>
-                          )}
-                        </CardHeader>
-                        <CardContent>
-                          <div className="flex items-center justify-between">
-                            <div className="text-sm text-gray-600">
-                              服务类型: {service.aiService.serviceName}
-                            </div>
-                            {isAdmin && (
-                              <Button
-                                variant={service.isEnabled ? "outline" : "default"}
-                                size="sm"
-                                onClick={() => toggleAiServiceStatus(service.aiService.id, service.isEnabled)}
-                              >
-                                {service.isEnabled ? '禁用' : '启用'}
-                              </Button>
-                            )}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <div className="text-gray-500 mb-4">还没有配置AI服务</div>
-                    {isAdmin && (
-                      <Dialog open={showAddAiServiceDialog} onOpenChange={(open) => {
-                        if (!open) closeAiServiceDialog();
-                      }}>
-                        <DialogTrigger asChild>
-                          <Button onClick={fetchAvailableAiServices}>
-                            <Plus className="w-4 h-4 mr-2" />
-                            添加AI服务
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="sm:max-w-[600px]">
-                          <DialogHeader>
-                            <DialogTitle>
-                              {showGeneratedKey ? 'AI服务配置成功' : '添加AI服务'}
-                            </DialogTitle>
-                            <DialogDescription>
-                              {showGeneratedKey 
-                                ? '您的API密钥已生成，请妥善保存。此密钥只会显示一次。'
-                                : '为拼车组配置AI服务，系统将自动生成API密钥'
-                              }
-                            </DialogDescription>
-                          </DialogHeader>
-                          
-                          {showGeneratedKey ? (
-                            <div className="space-y-4">
-                              <div className="flex items-center space-x-2 text-green-600">
-                                <CheckCircle className="w-5 h-5" />
-                                <span className="font-medium">AI服务配置成功！</span>
-                              </div>
-                              
-                              <div className="space-y-2">
-                                <Label>生成的API密钥</Label>
-                                <div className="flex items-center space-x-2">
-                                  <Input
-                                    value={generatedApiKey}
-                                    readOnly
-                                    className="font-mono text-sm"
-                                  />
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={copyApiKey}
-                                  >
-                                    <Copy className="w-4 h-4" />
-                                  </Button>
-                                </div>
-                                <p className="text-sm text-gray-600">
-                                  请将此密钥保存到安全的地方，它将用于访问AI服务。
-                                </p>
-                              </div>
-                              
-                              <div className="flex justify-end">
-                                <Button onClick={closeAiServiceDialog}>
-                                  完成
-                                </Button>
-                              </div>
-                            </div>
-                          ) : (
-                            <form onSubmit={handleAddAiService} className="space-y-4">
-                            <div className="space-y-2">
-                              <Label htmlFor="aiService">选择AI服务</Label>
-                              <Select value={selectedServiceId} onValueChange={setSelectedServiceId}>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="请选择AI服务" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {availableAiServices.map((service) => (
-                                    <SelectItem key={service.aiService.id} value={service.aiService.id}>
-                                      {service.aiService.displayName} ({service.aiService.serviceName})
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
+            <EnhancedAiServiceConfig
+              groupId={groupId}
+              isAdmin={isAdmin}
+              onRefresh={fetchGroupDetail}
+            />
+          </TabsContent>
 
-                            <div className="space-y-2">
-                              <Label htmlFor="keyName">密钥名称</Label>
-                              <Input
-                                id="keyName"
-                                type="text"
-                                value={serviceApiKey}
-                                onChange={(e) => setServiceApiKey(e.target.value)}
-                                placeholder="为此AI服务密钥命名"
-                                required
-                              />
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                              <div className="space-y-2">
-                                <Label htmlFor="dailyLimit">每日限额（可选）</Label>
-                                <Input
-                                  id="dailyLimit"
-                                  type="number"
-                                  value={dailyLimit}
-                                  onChange={(e) => setDailyLimit(e.target.value)}
-                                  placeholder="请输入每日限额"
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <Label htmlFor="monthlyLimit">每月限额（可选）</Label>
-                                <Input
-                                  id="monthlyLimit"
-                                  type="number"
-                                  value={monthlyLimit}
-                                  onChange={(e) => setMonthlyLimit(e.target.value)}
-                                  placeholder="请输入每月限额"
-                                />
-                              </div>
-                            </div>
-
-                            {addServiceError && (
-                              <div className="text-red-500 text-sm">{addServiceError}</div>
-                            )}
-
-                            <div className="flex justify-end space-x-2">
-                              <Button
-                                type="button"
-                                variant="outline"
-                                onClick={closeAiServiceDialog}
-                              >
-                                取消
-                              </Button>
-                              <Button type="submit" disabled={addServiceLoading || !selectedServiceId || !serviceApiKey}>
-                                {addServiceLoading ? '创建中...' : '创建密钥'}
-                              </Button>
-                            </div>
-                            </form>
-                          )}
-                        </DialogContent>
-                      </Dialog>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+          {/* 部署模式 */}
+          <TabsContent value="deployment" className="space-y-6">
+            <DeploymentModeConfig
+              groupId={groupId}
+              isAdmin={isAdmin}
+            />
           </TabsContent>
 
           {/* API密钥 */}
@@ -1049,6 +828,112 @@ export default function GroupDetailPage() {
                     <div className="text-gray-500 mb-4">还没有创建API密钥</div>
                   </div>
                 )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* IP代理管理 */}
+          <TabsContent value="ip-proxy" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>IP代理管理</CardTitle>
+                    <CardDescription>
+                      管理拼车组的IP代理套餐和配置
+                    </CardDescription>
+                  </div>
+                  {isAdmin && (
+                    <Button onClick={() => router.push('/ip-packages')}>
+                      <Globe className="w-4 h-4 mr-2" />
+                      浏览套餐
+                    </Button>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-8">
+                  <Globe className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                    IP代理功能开发中
+                  </h3>
+                  <p className="text-gray-500 mb-4">
+                    将显示拼车组订阅的IP代理套餐、使用统计和配置管理
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+                    <div className="bg-blue-50 p-4 rounded-lg">
+                      <div className="text-blue-600 font-medium mb-2">套餐管理</div>
+                      <div className="text-sm text-gray-600">
+                        查看和管理订阅的IP代理套餐
+                      </div>
+                    </div>
+                    <div className="bg-green-50 p-4 rounded-lg">
+                      <div className="text-green-600 font-medium mb-2">使用统计</div>
+                      <div className="text-sm text-gray-600">
+                        监控流量使用和连接状态
+                      </div>
+                    </div>
+                    <div className="bg-purple-50 p-4 rounded-lg">
+                      <div className="text-purple-600 font-medium mb-2">配置同步</div>
+                      <div className="text-sm text-gray-600">
+                        同步代理配置到拼车组成员
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* 边缘节点管理 */}
+          <TabsContent value="edge-nodes" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>边缘节点管理</CardTitle>
+                    <CardDescription>
+                      管理拼车组绑定的边缘节点和负载调度
+                    </CardDescription>
+                  </div>
+                  {isAdmin && (
+                    <Button>
+                      <Server className="w-4 h-4 mr-2" />
+                      绑定节点
+                    </Button>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-8">
+                  <Server className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                    边缘节点功能开发中
+                  </h3>
+                  <p className="text-gray-500 mb-4">
+                    将显示拼车组绑定的边缘节点、健康状态和负载调度配置
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+                    <div className="bg-blue-50 p-4 rounded-lg">
+                      <div className="text-blue-600 font-medium mb-2">节点管理</div>
+                      <div className="text-sm text-gray-600">
+                        绑定和管理边缘节点
+                      </div>
+                    </div>
+                    <div className="bg-green-50 p-4 rounded-lg">
+                      <div className="text-green-600 font-medium mb-2">健康监控</div>
+                      <div className="text-sm text-gray-600">
+                        实时监控节点健康状态
+                      </div>
+                    </div>
+                    <div className="bg-orange-50 p-4 rounded-lg">
+                      <div className="text-orange-600 font-medium mb-2">负载调度</div>
+                      <div className="text-sm text-gray-600">
+                        配置智能负载调度策略
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
