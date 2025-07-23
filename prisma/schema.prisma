@@ -1,0 +1,200 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String        @id @default(cuid())
+  email         String        @unique
+  name          String
+  password      String
+  avatar        String?
+  role          String        @default("user")
+  status        String        @default("active")
+  emailVerified Boolean       @default(false)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  apiKeys       ApiKey[]
+  groups        GroupMember[]
+  createdGroups Group[]       @relation("GroupCreator")
+  invitations   Invitation[]
+  usageStats    UsageStat[]
+
+  @@map("users")
+}
+
+model AiService {
+  id            String           @id @default(cuid())
+  serviceName   String           @unique
+  displayName   String
+  description   String?
+  baseUrl       String
+  isEnabled     Boolean          @default(true)
+  rateLimits    Json?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  apiKeys       ApiKey[]
+  groupServices GroupAiService[]
+  usageStats    UsageStat[]
+
+  @@map("ai_services")
+}
+
+model Group {
+  id            String           @id @default(cuid())
+  name          String
+  description   String?
+  maxMembers    Int              @default(5)
+  status        String           @default("active")
+  settings      Json?
+  createdById   String
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  apiKeys       ApiKey[]
+  aiServices    GroupAiService[]
+  members       GroupMember[]
+  createdBy     User             @relation("GroupCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  invitations   Invitation[]
+  proxyBindings ProxyBinding[]
+  usageStats    UsageStat[]
+
+  @@index([createdById], map: "groups_createdById_fkey")
+  @@map("groups")
+}
+
+model GroupMember {
+  id       String   @id @default(cuid())
+  groupId  String
+  userId   String
+  role     String   @default("member")
+  status   String   @default("active")
+  joinedAt DateTime @default(now())
+  group    Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@index([userId], map: "group_members_userId_fkey")
+  @@map("group_members")
+}
+
+model GroupAiService {
+  id            String    @id @default(cuid())
+  groupId       String
+  aiServiceId   String
+  isEnabled     Boolean   @default(true)
+  quota         Json?
+  authConfig    Json?
+  proxySettings Json?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  aiService     AiService @relation(fields: [aiServiceId], references: [id], onDelete: Cascade)
+  group         Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, aiServiceId])
+  @@index([aiServiceId], map: "group_ai_services_aiServiceId_fkey")
+  @@map("group_ai_services")
+}
+
+model Invitation {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  email     String
+  groupId   String
+  inviterId String
+  status    String   @default("pending")
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  inviter   User     @relation(fields: [inviterId], references: [id], onDelete: Cascade)
+
+  @@index([groupId], map: "invitations_groupId_fkey")
+  @@index([inviterId], map: "invitations_inviterId_fkey")
+  @@map("invitations")
+}
+
+model ApiKey {
+  id          String    @id @default(cuid())
+  key         String    @unique
+  name        String
+  description String?
+  groupId     String
+  userId      String
+  aiServiceId String
+  quotaLimit  BigInt?
+  quotaUsed   BigInt    @default(0)
+  status      String    @default("active")
+  expiresAt   DateTime?
+  lastUsedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  aiService   AiService @relation(fields: [aiServiceId], references: [id], onDelete: Cascade)
+  group       Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([aiServiceId], map: "api_keys_aiServiceId_fkey")
+  @@index([groupId], map: "api_keys_groupId_fkey")
+  @@index([userId], map: "api_keys_userId_fkey")
+  @@map("api_keys")
+}
+
+model ProxyResource {
+  id           String         @id @default(cuid())
+  type         String
+  host         String
+  port         Int
+  username     String?
+  password     String?
+  location     String?
+  provider     String?
+  status       String         @default("active")
+  lastChecked  DateTime?
+  responseTime Int?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  bindings     ProxyBinding[]
+
+  @@map("proxy_resources")
+}
+
+model ProxyBinding {
+  id              String        @id @default(cuid())
+  groupId         String
+  proxyResourceId String
+  aiServiceId     String?
+  priority        Int           @default(1)
+  isEnabled       Boolean       @default(true)
+  createdAt       DateTime      @default(now())
+  group           Group         @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  proxyResource   ProxyResource @relation(fields: [proxyResourceId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, proxyResourceId])
+  @@index([proxyResourceId], map: "proxy_bindings_proxyResourceId_fkey")
+  @@map("proxy_bindings")
+}
+
+model UsageStat {
+  id           String    @id @default(cuid())
+  userId       String
+  groupId      String
+  aiServiceId  String
+  requestType  String
+  tokenCount   BigInt
+  cost         Decimal   @db.Decimal(10, 6)
+  requestTime  DateTime
+  responseTime Int?
+  status       String
+  errorCode    String?
+  metadata     Json?
+  aiService    AiService @relation(fields: [aiServiceId], references: [id], onDelete: Cascade)
+  group        Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, requestTime])
+  @@index([groupId, requestTime])
+  @@index([aiServiceId, requestTime])
+  @@map("usage_stats")
+}
