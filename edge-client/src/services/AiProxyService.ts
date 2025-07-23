@@ -6,7 +6,7 @@ import { AiServiceConfig, ProxyRequest, ProxyResponse } from '@/types/index.js';
 import { EdgeClient } from '@/core/EdgeClient.js';
 
 export class AiProxyService {
-  private edgeClient: EdgeClient;
+  protected edgeClient: EdgeClient;
   private httpClient: AxiosInstance;
   private supportedServices: Map<string, AiServiceConfig> = new Map();
 
@@ -338,7 +338,7 @@ export class AiProxyService {
    * 生成请求ID
    */
   private generateRequestId(): string {
-    return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
+    return Date.now().toString(36) + Math.random().toString(36).substring(2, 11);
   }
 
   /**

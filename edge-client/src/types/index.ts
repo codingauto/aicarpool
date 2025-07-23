@@ -175,3 +175,100 @@ export interface EdgeNodeEvent {
   timestamp: Date;
   data?: any;
 }
+
+// Claude Code 专用类型定义
+export interface ClaudeCodeRequest extends ProxyRequest {
+  stream?: boolean;
+  system?: string | SystemMessage[];
+  anthropic_version?: string;
+  max_tokens?: number;
+  temperature?: number;
+  tools?: Tool[];
+  tool_choice?: ToolChoice;
+}
+
+export interface SystemMessage {
+  type: 'text';
+  text: string;
+  cache_control?: {
+    type: 'ephemeral';
+  };
+}
+
+export interface Tool {
+  name: string;
+  description: string;
+  input_schema: {
+    type: 'object';
+    properties: Record<string, any>;
+    required?: string[];
+  };
+}
+
+export interface ToolChoice {
+  type: 'auto' | 'any' | 'tool';
+  name?: string;
+}
+
+export interface ClaudeCodeUser {
+  id: string;
+  apiKey: string;
+  userId: string;
+  quotaDaily: number;
+  quotaMonthly: number;
+  usedDaily: number;
+  usedMonthly: number;
+  createdAt: Date;
+  lastUsedAt?: Date;
+  status: 'active' | 'suspended' | 'expired';
+  version?: string;
+  metadata?: Record<string, any>;
+}
+
+export interface ClaudeCodeUsage {
+  userId: string;
+  requestId: string;
+  timestamp: Date;
+  inputTokens: number;
+  outputTokens: number;
+  cacheCreationTokens: number;
+  cacheReadTokens: number;
+  totalTokens: number;
+  model: string;
+  requestDuration: number;
+  success: boolean;
+  error?: string;
+  tools?: string[];
+  files?: string[];
+}
+
+export interface ClaudeCodeHeaders {
+  'user-agent': string;
+  'anthropic-version': string;
+  'x-stainless-lang'?: string;
+  'x-stainless-package-version'?: string;
+  'x-stainless-os'?: string;
+  'x-stainless-arch'?: string;
+  'x-stainless-runtime'?: string;
+  'x-stainless-runtime-version'?: string;
+  'x-app'?: string;
+  'accept-language'?: string;
+  'anthropic-dangerous-direct-browser-access'?: string;
+  [key: string]: string | undefined;
+}
+
+export interface ClaudeCodeConfig {
+  supportedVersions: string[];
+  systemPrompt: string;
+  defaultHeaders: ClaudeCodeHeaders;
+  quotaLimits: {
+    daily: number;
+    monthly: number;
+  };
+  features: {
+    tools: boolean;
+    files: boolean;
+    streaming: boolean;
+    memory: boolean;
+  };
+}

@@ -9,6 +9,7 @@ import { HeartbeatManager } from './HeartbeatManager.js';
 import { ConfigManager } from './ConfigManager.js';
 import { HealthMonitor } from './HealthMonitor.js';
 import { AiProxyService } from '@/services/AiProxyService.js';
+import { ClaudeCodeProxyService } from '@/services/ClaudeCodeProxyService.js';
 import { MetricsService } from '@/services/MetricsService.js';
 import { NetworkUtil } from '@/utils/network.js';
 import { CryptoUtil } from '@/utils/crypto.js';
@@ -25,6 +26,7 @@ export class EdgeClient extends EventEmitter {
   private configManager: ConfigManager;
   private healthMonitor: HealthMonitor;
   public aiProxyService: AiProxyService;
+  public claudeCodeProxyService: ClaudeCodeProxyService;
   private metricsService: MetricsService;
   private isConnected: boolean = false;
   private reconnectAttempts: number = 0;
@@ -52,6 +54,7 @@ export class EdgeClient extends EventEmitter {
     this.configManager = new ConfigManager(this);
     this.healthMonitor = new HealthMonitor(this);
     this.aiProxyService = new AiProxyService(this);
+    this.claudeCodeProxyService = new ClaudeCodeProxyService(this);
     this.metricsService = new MetricsService(this);
 
     this.setupEventHandlers();
@@ -76,6 +79,7 @@ export class EdgeClient extends EventEmitter {
       // 启动各个管理器
       await this.metricsService.initialize();
       await this.aiProxyService.initialize();
+      await this.claudeCodeProxyService.initialize();
       await this.heartbeatManager.start();
       await this.configManager.start();
       await this.healthMonitor.start();
