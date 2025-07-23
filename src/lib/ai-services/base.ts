@@ -64,6 +64,7 @@ export abstract class AIServiceBase {
   abstract chat(request: ChatRequest): Promise<ChatResponse>;
   abstract calculateCost(usage: ChatResponse['usage'], model: string): number;
   abstract validateApiKey(): Promise<boolean>;
+  abstract healthCheck(): Promise<boolean>;
 
   // 通用方法
   protected generateRequestId(): string {

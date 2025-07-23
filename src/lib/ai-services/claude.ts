@@ -139,6 +139,20 @@ export class ClaudeService extends AIServiceBase {
     }
   }
 
+  async healthCheck(): Promise<boolean> {
+    try {
+      const response = await this.chat({
+        messages: [{ role: 'user', content: 'ping' }],
+        maxTokens: 10,
+        temperature: 0,
+      });
+      return true;
+    } catch (error) {
+      console.warn('Claude health check failed:', error);
+      return false;
+    }
+  }
+
   private convertMessages(messages: ChatMessage[]): ClaudeMessage[] {
     return messages
       .filter(msg => msg.role !== 'system') // Claude不支持system消息

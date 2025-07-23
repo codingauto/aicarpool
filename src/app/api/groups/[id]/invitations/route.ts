@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import { prisma } from '@/lib/db';
-import { withAuth, AuthenticatedRequest, createApiResponse } from '@/lib/middleware';
+import { withAuth, AuthenticatedRequest, createApiResponse, serializeBigInt } from '@/lib/middleware';
 import { generateInviteToken } from '@/lib/auth';
+import { emailQueue } from '@/lib/email';
 
 const createInvitationSchema = z.object({
   email: z.string().email('请输入有效的邮箱地址'),
@@ -163,14 +164,22 @@ async function postHandler(req: AuthenticatedRequest, { params }: { params: { id
     });
 
     // 生成邀请链接
-    const inviteUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/auth/register?invite=${token}`;
+    const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001'}/invite/${token}`;
+
+    // 发送邀请邮件
+    await emailQueue.addToQueue('invitation', {
+      to: email,
+      inviterName: invitation.inviter.name,
+      groupName: invitation.group.name,
+      invitationLink: inviteUrl,
+    });
 
     const result = {
-      ...invitation,
+      ...serializeBigInt(invitation),
       inviteUrl,
     };
 
-    return createApiResponse(true, result, '邀请创建成功');
+    return createApiResponse(true, result, '邀请创建成功，邮件已发送');
 
   } catch (error) {
     if (error instanceof z.ZodError) {

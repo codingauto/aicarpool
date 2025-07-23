@@ -23,6 +23,7 @@ model User {
   createdGroups Group[]       @relation("GroupCreator")
   invitations   Invitation[]
   usageStats    UsageStat[]
+  userQuotaUsage UserQuotaUsage[]
 
   @@map("users")
 }
@@ -40,6 +41,9 @@ model AiService {
   apiKeys       ApiKey[]
   groupServices GroupAiService[]
   usageStats    UsageStat[]
+  quotaConfigs  QuotaConfig[]
+  quotaUsage    QuotaUsage[]
+  userQuotaUsage UserQuotaUsage[]
 
   @@map("ai_services")
 }
@@ -61,6 +65,9 @@ model Group {
   invitations   Invitation[]
   proxyBindings ProxyBinding[]
   usageStats    UsageStat[]
+  quotaConfigs  QuotaConfig[]
+  quotaUsage    QuotaUsage[]
+  userQuotaUsage UserQuotaUsage[]
 
   @@index([createdById], map: "groups_createdById_fkey")
   @@map("groups")
@@ -197,4 +204,87 @@ model UsageStat {
   @@index([groupId, requestTime])
   @@index([aiServiceId, requestTime])
   @@map("usage_stats")
+}
+
+model EmailLog {
+  id        String   @id @default(cuid())
+  to        String
+  subject   String
+  type      String   // invitation, welcome, alert
+  status    String   @default("pending")
+  attempts  Int      @default(0)
+  sentAt    DateTime?
+  error     String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("email_logs")
+}
+
+model QuotaConfig {
+  id                    String  @id @default(cuid())
+  groupId               String
+  aiServiceId           String
+  dailyTokenLimit       BigInt  @default(100000)
+  monthlyTokenLimit     BigInt  @default(3000000)
+  dailyCostLimit        Decimal @default(10.0) @db.Decimal(10, 2)
+  monthlyCostLimit      Decimal @default(300.0) @db.Decimal(10, 2)
+  warningThreshold      Int     @default(80)
+  userDailyTokenLimit   BigInt?
+  userMonthlyTokenLimit BigInt?
+  resetTime             String  @default("00:00")
+  timezone              String  @default("Asia/Shanghai")
+  isEnabled             Boolean @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  group                 Group   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  aiService             AiService @relation(fields: [aiServiceId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, aiServiceId])
+  @@map("quota_configs")
+}
+
+model QuotaUsage {
+  id            String   @id @default(cuid())
+  groupId       String
+  aiServiceId   String
+  dateKey       String   // YYYY-MM-DD
+  monthKey      String   // YYYY-MM
+  dailyTokens   BigInt   @default(0)
+  monthlyTokens BigInt   @default(0)
+  dailyCost     Decimal  @default(0) @db.Decimal(10, 4)
+  monthlyCost   Decimal  @default(0) @db.Decimal(10, 4)
+  lastResetDate DateTime @default(now())
+  warningsSent  Json?    // 存储已发送的警告状态
+  updatedAt     DateTime @updatedAt
+  group         Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  aiService     AiService @relation(fields: [aiServiceId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, aiServiceId])
+  @@index([dateKey])
+  @@index([monthKey])
+  @@map("quota_usage")
+}
+
+model UserQuotaUsage {
+  id            String   @id @default(cuid())
+  userId        String
+  groupId       String
+  aiServiceId   String
+  dateKey       String   // YYYY-MM-DD
+  monthKey      String   // YYYY-MM
+  dailyTokens   BigInt   @default(0)
+  monthlyTokens BigInt   @default(0)
+  dailyCost     Decimal  @default(0) @db.Decimal(10, 4)
+  monthlyCost   Decimal  @default(0) @db.Decimal(10, 4)
+  updatedAt     DateTime @updatedAt
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group         Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  aiService     AiService @relation(fields: [aiServiceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, groupId, aiServiceId])
+  @@index([dateKey])
+  @@index([monthKey])
+  @@map("user_quota_usage")
 }

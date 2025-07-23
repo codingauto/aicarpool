@@ -140,6 +140,20 @@ export class GeminiService extends AIServiceBase {
     }
   }
 
+  async healthCheck(): Promise<boolean> {
+    try {
+      const response = await this.chat({
+        messages: [{ role: 'user', content: 'ping' }],
+        maxTokens: 10,
+        temperature: 0,
+      });
+      return true;
+    } catch (error) {
+      console.warn('Gemini health check failed:', error);
+      return false;
+    }
+  }
+
   private convertMessages(messages: ChatMessage[]): GeminiContent[] {
     const contents: GeminiContent[] = [];
     

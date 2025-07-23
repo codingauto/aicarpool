@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db';
 import { createApiResponse } from '@/lib/middleware';
 import { AIServiceFactory, SupportedAIService } from '@/lib/ai-services/factory';
 import { ChatRequest } from '@/lib/ai-services/base';
+import { aiServiceRouter } from '@/lib/ai-services/router';
 
 const chatRequestSchema = z.object({
   messages: z.array(z.object({
@@ -13,6 +14,8 @@ const chatRequestSchema = z.object({
   model: z.string().optional(),
   maxTokens: z.number().optional(),
   temperature: z.number().min(0).max(2).optional(),
+  routingStrategy: z.enum(['round_robin', 'priority', 'least_connections', 'response_time']).optional(),
+  preferredService: z.string().optional(),
 });
 
 export async function POST(request: NextRequest) {

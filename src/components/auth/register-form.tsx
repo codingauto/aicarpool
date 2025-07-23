@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,8 +17,16 @@ export function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
-  // 从URL参数获取邀请码
+  // 从URL参数获取邀请码和预填邮箱
   const inviteToken = searchParams.get('invite');
+  const inviteEmail = searchParams.get('email');
+
+  // 预填邀请邮箱
+  useEffect(() => {
+    if (inviteEmail) {
+      setEmail(decodeURIComponent(inviteEmail));
+    }
+  }, [inviteEmail]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
