@@ -44,6 +44,8 @@ model AiService {
   quotaConfigs  QuotaConfig[]
   quotaUsage    QuotaUsage[]
   userQuotaUsage UserQuotaUsage[]
+  models        AiServiceModel[]
+  edgeRoutes    EdgeServiceRoute[]
 
   @@map("ai_services")
 }
@@ -68,6 +70,11 @@ model Group {
   quotaConfigs  QuotaConfig[]
   quotaUsage    QuotaUsage[]
   userQuotaUsage UserQuotaUsage[]
+  ipSubscriptions IpPackageSubscription[]
+  edgeNodeGroups EdgeNodeGroup[]
+  deploymentModes DeploymentMode[]
+  systemMetrics SystemMetric[]
+  alertRules    AlertRule[]
 
   @@index([createdById], map: "groups_createdById_fkey")
   @@map("groups")
@@ -287,4 +294,257 @@ model UserQuotaUsage {
   @@index([dateKey])
   @@index([monthKey])
   @@map("user_quota_usage")
+}
+
+// AI服务模型配置表
+model AiServiceModel {
+  id          String  @id @default(cuid())
+  aiServiceId String
+  modelName   String
+  displayName String
+  description String?
+  inputCost   Decimal @db.Decimal(12, 8)  // 每1K token的输入成本
+  outputCost  Decimal @db.Decimal(12, 8)  // 每1K token的输出成本
+  maxTokens   Int     @default(4096)
+  isEnabled   Boolean @default(true)
+  metadata    Json?   // 模型特定配置
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  aiService   AiService @relation(fields: [aiServiceId], references: [id], onDelete: Cascade)
+
+  @@unique([aiServiceId, modelName])
+  @@map("ai_service_models")
+}
+
+// IP代理套餐产品表
+model IpPackage {
+  id              String  @id @default(cuid())
+  name            String
+  description     String?
+  packageType     String  // residential_dual_isp, datacenter, mobile
+  maxConnections  Int     @default(10)
+  bandwidth       String  // 带宽规格，如 "100Mbps"
+  locations       Json    // 支持的地理位置
+  monthlyPrice    Decimal @db.Decimal(10, 2)
+  setupFee        Decimal @db.Decimal(10, 2) @default(0)
+  features        Json?   // 套餐特性
+  isEnabled       Boolean @default(true)
+  sortOrder       Int     @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  servers         IntegratedServer[]
+  subscriptions   IpPackageSubscription[]
+
+  @@map("ip_packages")
+}
+
+// 一体化服务器表
+model IntegratedServer {
+  id            String  @id @default(cuid())
+  packageId     String
+  serverName    String
+  hostname      String
+  ipAddress     String
+  port          Int     @default(22)
+  location      String  // 地理位置
+  provider      String  // 服务器提供商
+  specs         Json    // 服务器规格 CPU/内存/存储
+  status        String  @default("active") // active, maintenance, offline
+  healthScore   Int     @default(100)
+  lastCheckAt   DateTime?
+  metadata      Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  package       IpPackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  edgeNodes     EdgeNode[]
+  proxyBindings ServerProxyBinding[]
+
+  @@unique([hostname])
+  @@map("integrated_servers")
+}
+
+// IP套餐订阅表
+model IpPackageSubscription {
+  id            String   @id @default(cuid())
+  groupId       String
+  packageId     String
+  serverId      String?
+  status        String   @default("active") // active, suspended, expired
+  startDate     DateTime @default(now())
+  endDate       DateTime
+  autoRenew     Boolean  @default(true)
+  monthlyFee    Decimal  @db.Decimal(10, 2)
+  usageStats    Json?    // 使用统计
+  metadata      Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  group         Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  package       IpPackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, packageId])
+  @@map("ip_package_subscriptions")
+}
+
+// 分布式边缘节点表
+model EdgeNode {
+  id              String  @id @default(cuid())
+  nodeId          String  @unique // 节点唯一标识
+  serverId        String?
+  nodeName        String
+  location        String  // 地理位置
+  endpoint        String  // 节点访问端点
+  publicKey       String  // 节点公钥用于认证
+  status          String  @default("active") // active, inactive, maintenance
+  capabilities    Json    // 节点能力 CPU/内存/网络
+  currentLoad     Json    // 当前负载情况
+  healthScore     Int     @default(100)
+  lastHeartbeat   DateTime?
+  version         String  @default("1.0.0")
+  metadata        Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  server          IntegratedServer? @relation(fields: [serverId], references: [id], onDelete: SetNull)
+  groupBindings   EdgeNodeGroup[]
+  serviceRoutes   EdgeServiceRoute[]
+  metrics         EdgeNodeMetric[]
+
+  @@map("edge_nodes")
+}
+
+// 边缘节点组关联表
+model EdgeNodeGroup {
+  id         String   @id @default(cuid())
+  nodeId     String
+  groupId    String
+  priority   Int      @default(1)
+  isEnabled  Boolean  @default(true)
+  config     Json?    // 节点专属配置
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  node       EdgeNode @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  group      Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([nodeId, groupId])
+  @@map("edge_node_groups")
+}
+
+// 边缘服务路由表
+model EdgeServiceRoute {
+  id          String   @id @default(cuid())
+  nodeId      String
+  aiServiceId String
+  routeConfig Json     // 路由配置
+  isEnabled   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  node        EdgeNode @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  aiService   AiService @relation(fields: [aiServiceId], references: [id], onDelete: Cascade)
+
+  @@unique([nodeId, aiServiceId])
+  @@map("edge_service_routes")
+}
+
+// 边缘节点监控指标表
+model EdgeNodeMetric {
+  id           String   @id @default(cuid())
+  nodeId       String
+  metricType   String   // cpu, memory, network, requests
+  value        Decimal  @db.Decimal(15, 4)
+  unit         String   // percent, bytes, rps等
+  timestamp    DateTime @default(now())
+  metadata     Json?
+  node         EdgeNode @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+
+  @@index([nodeId, metricType, timestamp])
+  @@map("edge_node_metrics")
+}
+
+// 服务器代理绑定表
+model ServerProxyBinding {
+  id         String   @id @default(cuid())
+  serverId   String
+  proxyType  String   // socks5, http, https
+  localPort  Int
+  targetHost String
+  targetPort Int
+  authConfig Json?
+  isEnabled  Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  server     IntegratedServer @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  @@unique([serverId, localPort])
+  @@map("server_proxy_bindings")
+}
+
+// 部署模式配置表
+model DeploymentMode {
+  id          String  @id @default(cuid())
+  groupId     String
+  mode        String  // centralized, distributed, hybrid
+  config      Json    // 模式特定配置
+  isActive    Boolean @default(false)
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  group       Group   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, mode])
+  @@map("deployment_modes")
+}
+
+// 系统监控指标表
+model SystemMetric {
+  id         String   @id @default(cuid())
+  groupId    String?
+  component  String   // api, database, proxy, edge_node
+  metricName String   // response_time, error_rate, throughput
+  value      Decimal  @db.Decimal(15, 4)
+  unit       String
+  tags       Json?    // 标签用于分组和过滤
+  timestamp  DateTime @default(now())
+  group      Group?   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([component, metricName, timestamp])
+  @@index([groupId, timestamp])
+  @@map("system_metrics")
+}
+
+// 告警规则表
+model AlertRule {
+  id          String  @id @default(cuid())
+  groupId     String?
+  ruleName    String
+  description String?
+  condition   Json    // 告警条件
+  severity    String  @default("warning") // info, warning, error, critical
+  isEnabled   Boolean @default(true)
+  cooldown    Int     @default(300) // 冷却时间(秒)
+  actions     Json    // 告警动作配置
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  group       Group?  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  incidents   AlertIncident[]
+
+  @@map("alert_rules")
+}
+
+// 告警事件表
+model AlertIncident {
+  id          String   @id @default(cuid())
+  ruleId      String
+  status      String   @default("active") // active, resolved, suppressed
+  severity    String
+  title       String
+  description String
+  metadata    Json?
+  startTime   DateTime @default(now())
+  endTime     DateTime?
+  resolvedBy  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  rule        AlertRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  @@index([status, startTime])
+  @@map("alert_incidents")
 }
