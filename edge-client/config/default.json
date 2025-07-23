@@ -1,0 +1,70 @@
+{
+  "node": {
+    "name": "edge-node-default",
+    "location": "Default",
+    "endpoint": "https://localhost:8080",
+    "capabilities": {
+      "cpu": {
+        "cores": 4,
+        "frequency": "2.4GHz"
+      },
+      "memory": {
+        "total": "8GB",
+        "available": "6GB"
+      },
+      "network": {
+        "bandwidth": "1Gbps",
+        "latency": 10
+      },
+      "maxConnections": 1000
+    }
+  },
+  "server": {
+    "port": 8080,
+    "host": "0.0.0.0",
+    "ssl": {
+      "enabled": false,
+      "certPath": "./certs/server.crt",
+      "keyPath": "./certs/server.key"
+    },
+    "keepAliveTimeout": 65000,
+    "requestTimeout": 30000,
+    "maxConnections": 1000
+  },
+  "centralServer": {
+    "url": "https://aicarpool.example.com",
+    "wsUrl": "wss://aicarpool.example.com/ws",
+    "timeout": 30000,
+    "retryAttempts": 3,
+    "retryDelay": 1000
+  },
+  "auth": {
+    "privateKeyPath": "./certs/node-private-key.pem",
+    "publicKeyPath": "./certs/node-public-key.pem",
+    "tokenExpiration": 3600
+  },
+  "logging": {
+    "level": "info",
+    "maxSize": "20m",
+    "maxFiles": "14d",
+    "datePattern": "YYYY-MM-DD",
+    "zippedArchive": true
+  },
+  "monitoring": {
+    "metricsInterval": 30000,
+    "heartbeatInterval": 60000,
+    "healthCheckInterval": 30000,
+    "retentionDays": 7
+  },
+  "proxy": {
+    "timeout": 120000,
+    "retryAttempts": 3,
+    "retryDelay": 1000,
+    "rateLimit": {
+      "windowMs": 60000,
+      "max": 100
+    }
+  },
+  "environment": "production",
+  "debug": false
+}
