@@ -3,6 +3,7 @@ import { render } from '@react-email/render';
 import { InvitationEmail } from '@/components/emails/invitation-email';
 import { WelcomeEmail } from '@/components/emails/welcome-email';
 import { AlertEmail } from '@/components/emails/alert-email';
+import { ReactElement } from 'react';
 
 export interface EmailConfig {
   host: string;
@@ -18,7 +19,7 @@ export class EmailService {
   private transporter: nodemailer.Transporter;
 
   constructor(config: EmailConfig) {
-    this.transporter = nodemailer.createTransporter({
+    this.transporter = nodemailer.createTransport({
       host: config.host,
       port: config.port,
       secure: config.secure,
@@ -32,11 +33,13 @@ export class EmailService {
     groupName: string,
     invitationLink: string
   ) {
-    const html = render(InvitationEmail({
+    const htmlContent = InvitationEmail({
       inviterName,
       groupName,
       invitationLink,
-    }));
+    }) as ReactElement;
+    
+    const html = await render(htmlContent);
 
     const result = await this.transporter.sendMail({
       from: process.env.EMAIL_FROM || 'noreply@aicarpool.com',
@@ -53,10 +56,12 @@ export class EmailService {
     userName: string,
     groupName: string
   ) {
-    const html = render(WelcomeEmail({
+    const htmlContent = WelcomeEmail({
       userName,
       groupName,
-    }));
+    }) as ReactElement;
+    
+    const html = await render(htmlContent);
 
     const result = await this.transporter.sendMail({
       from: process.env.EMAIL_FROM || 'noreply@aicarpool.com',
@@ -79,10 +84,12 @@ export class EmailService {
       message?: string;
     }
   ) {
-    const html = render(AlertEmail({
+    const htmlContent = AlertEmail({
       alertType,
       ...details,
-    }));
+    }) as ReactElement;
+    
+    const html = await render(htmlContent);
 
     let subject = '【AiCarpool 拼车】系统通知';
     switch (alertType) {

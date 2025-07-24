@@ -95,7 +95,7 @@ export default function EdgeNodesPage() {
 
       const data = await response.json();
       if (data.success) {
-        setNodes(data.data);
+        setNodes(data.data.nodes || []);
       }
     } catch (error) {
       console.error('获取边缘节点失败:', error);
