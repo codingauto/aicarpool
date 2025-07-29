@@ -74,6 +74,11 @@ export function serializeBigInt(obj: any): any {
     return Number(obj);
   }
   
+  // 保持Date对象不变
+  if (obj instanceof Date) {
+    return obj;
+  }
+  
   if (Array.isArray(obj)) {
     return obj.map(serializeBigInt);
   }

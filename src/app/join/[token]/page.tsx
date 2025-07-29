@@ -8,9 +8,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
-interface InvitationData {
+interface InviteLinkData {
   id: string;
-  email: string;
+  name: string;
+  maxUses: number;
+  usedCount: number;
   status: string;
   expiresAt: string;
   group: {
@@ -22,22 +24,23 @@ interface InvitationData {
       members: number;
     };
   };
-  inviter: {
+  creator: {
     id: string;
     name: string;
     email: string;
   };
 }
 
-export default function InvitePage() {
+export default function JoinPage() {
   const params = useParams();
   const router = useRouter();
-  const [invitation, setInvitation] = useState<InvitationData | null>(null);
+  const [inviteLink, setInviteLink] = useState<InviteLinkData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [accepting, setAccepting] = useState(false);
+  const [joining, setJoining] = useState(false);
   const [showRegistration, setShowRegistration] = useState(false);
   const [formData, setFormData] = useState({
+    email: '',
     name: '',
     password: '',
     confirmPassword: ''
@@ -47,30 +50,38 @@ export default function InvitePage() {
   const token = params.token as string;
 
   useEffect(() => {
-    const verifyInvitation = async () => {
+    const verifyInviteLink = async () => {
       try {
-        const response = await fetch(`/api/invite/${token}`);
+        const response = await fetch(`/api/join/${token}`);
         const data = await response.json();
 
         if (data.success) {
-          setInvitation(data.data);
+          setInviteLink(data.data);
         } else {
           setError(data.message);
         }
       } catch (error) {
-        console.error('验证邀请失败:', error);
-        setError('验证邀请时出错');
+        console.error('验证邀请链接失败:', error);
+        setError('验证邀请链接时出错');
       } finally {
         setLoading(false);
       }
     };
 
     if (token) {
-      verifyInvitation();
+      verifyInviteLink();
     }
   }, [token]);
 
   const validateForm = () => {
+    if (!formData.email.trim()) {
+      setValidationError('请输入邮箱地址');
+      return false;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      setValidationError('请输入有效的邮箱地址');
+      return false;
+    }
     if (showRegistration) {
       if (!formData.name.trim()) {
         setValidationError('请输入姓名');
@@ -89,21 +100,23 @@ export default function InvitePage() {
     return true;
   };
 
-  const handleAcceptInvitation = async () => {
-    if (!invitation) return;
+  const handleJoinGroup = async () => {
+    if (!inviteLink) return;
 
     if (!validateForm()) return;
 
-    setAccepting(true);
+    setJoining(true);
     try {
-      const requestBody: any = {};
+      const requestBody: any = {
+        email: formData.email,
+      };
       
       if (showRegistration) {
         requestBody.name = formData.name;
         requestBody.password = formData.password;
       }
 
-      const response = await fetch(`/api/invite/${token}`, {
+      const response = await fetch(`/api/join/${token}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -125,17 +138,20 @@ export default function InvitePage() {
           router.push('/dashboard?message=成功加入拼车组');
         }
       } else {
-        if (data.message === '新用户需要提供姓名和密码') {
+        console.log('API Error:', data);
+        if (data.error === '新用户需要提供姓名和密码' || data.message === '新用户需要提供姓名和密码') {
+          console.log('Showing registration form');
           setShowRegistration(true);
+          setValidationError(''); // 清除之前的错误
         } else {
-          setError(data.message);
+          setError(data.error || data.message);
         }
       }
     } catch (error) {
-      console.error('接受邀请失败:', error);
-      setError('接受邀请时出错');
+      console.error('加入拼车组失败:', error);
+      setError('加入拼车组时出错');
     } finally {
-      setAccepting(false);
+      setJoining(false);
     }
   };
 
@@ -145,7 +161,7 @@ export default function InvitePage() {
         <Card className="w-full max-w-md">
           <CardContent className="flex items-center justify-center py-6">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-            <span className="ml-2">正在验证邀请...</span>
+            <span className="ml-2">正在验证邀请链接...</span>
           </CardContent>
         </Card>
       </div>
@@ -157,7 +173,7 @@ export default function InvitePage() {
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
-            <CardTitle className="text-red-600">🚫 邀请无效</CardTitle>
+            <CardTitle className="text-red-600">🚫 邀请链接无效</CardTitle>
           </CardHeader>
           <CardContent className="text-center">
             <p className="text-gray-600 mb-4">{error}</p>
@@ -179,61 +195,70 @@ export default function InvitePage() {
     );
   }
 
-  if (!invitation) {
+  if (!inviteLink) {
     return null;
   }
 
-  const expiresAt = new Date(invitation.expiresAt);
+  const remainingUses = inviteLink.maxUses - inviteLink.usedCount;
+  const expiresAt = new Date(inviteLink.expiresAt);
   const remainingHours = Math.ceil((expiresAt.getTime() - new Date().getTime()) / (1000 * 60 * 60));
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl">🎉 拼车组邀请</CardTitle>
+          <CardTitle className="text-2xl">🎉 加入拼车组</CardTitle>
           <CardDescription>
-            您已被邀请加入 AiCarpool 拼车组
+            通过邀请链接加入 AiCarpool 拼车组
           </CardDescription>
         </CardHeader>
         
         <CardContent className="space-y-4">
           <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg p-4 border">
-            <h3 className="font-semibold text-lg mb-2">{invitation.group.name}</h3>
-            {invitation.group.description && (
-              <p className="text-gray-600 text-sm mb-3">{invitation.group.description}</p>
+            <h3 className="font-semibold text-lg mb-2">{inviteLink.group.name}</h3>
+            {inviteLink.group.description && (
+              <p className="text-gray-600 text-sm mb-3">{inviteLink.group.description}</p>
             )}
-            <div className="flex justify-between text-sm text-gray-500">
-              <span>成员数量</span>
-              <span>{invitation.group._count.members}/{invitation.group.maxMembers}</span>
+            <div className="space-y-1 text-sm text-gray-500">
+              <div className="flex justify-between">
+                <span>成员数量</span>
+                <span>{inviteLink.group._count.members}/{inviteLink.group.maxMembers}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>剩余名额</span>
+                <span>{remainingUses}/{inviteLink.maxUses}</span>
+              </div>
             </div>
           </div>
 
           <div className="bg-gray-50 rounded-lg p-4">
             <p className="text-sm text-gray-600 mb-2">
-              <strong>{invitation.inviter.name}</strong> 邀请您加入此拼车组
+              邀请链接名称：<strong>{inviteLink.name}</strong>
             </p>
-            <p className="text-sm text-gray-500">
-              邀请邮箱：{invitation.email}
+            <p className="text-sm text-gray-500 mb-2">
+              创建者：{inviteLink.creator.name}
             </p>
             <p className="text-sm text-gray-500">
               过期时间：还剩 {remainingHours} 小时
             </p>
           </div>
 
-          <div className="bg-blue-50 rounded-lg p-4">
-            <h4 className="font-medium mb-2">🚀 加入后您将获得：</h4>
-            <ul className="text-sm text-gray-600 space-y-1">
-              <li>• 使用多种AI编程工具（Claude Code、Gemini CLI等）</li>
-              <li>• 享受成本分摊，降低使用费用</li>
-              <li>• 统一的API接口和服务管理</li>
-              <li>• 团队协作，提升开发效率</li>
-            </ul>
-          </div>
+          <div className="space-y-3">
+            <div>
+              <Label htmlFor="email">邮箱地址</Label>
+              <Input
+                id="email"
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({...formData, email: e.target.value})}
+                placeholder="请输入您的邮箱地址"
+                className="mt-1"
+              />
+            </div>
 
-          {showRegistration && (
-            <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
-              <h4 className="font-medium mb-3">📝 完成注册信息</h4>
-              <div className="space-y-3">
+            {showRegistration && (
+              <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200 space-y-3">
+                <h4 className="font-medium">📝 完成注册信息</h4>
                 <div>
                   <Label htmlFor="name">姓名</Label>
                   <Input
@@ -267,20 +292,31 @@ export default function InvitePage() {
                     className="mt-1"
                   />
                 </div>
-                {validationError && (
-                  <div className="text-red-500 text-sm">{validationError}</div>
-                )}
               </div>
-            </div>
-          )}
+            )}
+
+            {validationError && (
+              <div className="text-red-500 text-sm">{validationError}</div>
+            )}
+          </div>
+
+          <div className="bg-blue-50 rounded-lg p-4">
+            <h4 className="font-medium mb-2">🚀 加入后您将获得：</h4>
+            <ul className="text-sm text-gray-600 space-y-1">
+              <li>• 使用多种AI编程工具（Claude Code、Gemini CLI等）</li>
+              <li>• 享受成本分摊，降低使用费用</li>
+              <li>• 统一的API接口和服务管理</li>
+              <li>• 团队协作，提升开发效率</li>
+            </ul>
+          </div>
 
           <div className="space-y-2">
             <Button
-              onClick={handleAcceptInvitation}
-              disabled={accepting}
+              onClick={handleJoinGroup}
+              disabled={joining}
               className="w-full"
             >
-              {accepting ? '正在加入...' : (showRegistration ? '完成注册并加入' : '接受邀请')}
+              {joining ? '正在加入...' : (showRegistration ? '完成注册并加入' : '加入拼车组')}
             </Button>
             
             <Link href="/">
@@ -293,7 +329,7 @@ export default function InvitePage() {
           <p className="text-xs text-gray-500 text-center">
             {showRegistration 
               ? '点击"完成注册并加入"即表示您同意创建账户并加入该拼车组'
-              : '点击"接受邀请"即表示您同意加入该拼车组'
+              : '点击"加入拼车组"即表示您同意加入该拼车组'
             }
           </p>
         </CardContent>

@@ -24,6 +24,7 @@ model User {
   invitations   Invitation[]
   usageStats    UsageStat[]
   userQuotaUsage UserQuotaUsage[]
+  inviteLinks   InviteLink[]
 
   @@map("users")
 }
@@ -75,6 +76,7 @@ model Group {
   deploymentModes DeploymentMode[]
   systemMetrics SystemMetric[]
   alertRules    AlertRule[]
+  inviteLinks   InviteLink[]
 
   @@index([createdById], map: "groups_createdById_fkey")
   @@map("groups")
@@ -547,4 +549,25 @@ model AlertIncident {
 
   @@index([status, startTime])
   @@map("alert_incidents")
+}
+
+// 邀请链接表
+model InviteLink {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  name      String
+  groupId   String
+  creatorId String
+  maxUses   Int      @default(10)
+  usedCount Int      @default(0)
+  status    String   @default("active") // active, inactive, expired
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  creator   User     @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+
+  @@index([groupId], map: "invite_links_groupId_fkey")
+  @@index([creatorId], map: "invite_links_creatorId_fkey")
+  @@map("invite_links")
 }

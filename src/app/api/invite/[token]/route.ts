@@ -75,11 +75,8 @@ export async function POST(
 ) {
   try {
     const { token } = await params;
-    const { userId } = await req.json();
-
-    if (!userId) {
-      return createApiResponse(false, null, '用户ID不能为空', 400);
-    }
+    const body = await req.json();
+    const { name, password } = body; // 支持用户注册信息
 
     const invitation = await prisma.invitation.findUnique({
       where: { token },
@@ -105,31 +102,6 @@ export async function POST(
       return createApiResponse(false, null, '邀请已过期', 400);
     }
 
-    // 验证用户邮箱是否匹配
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-    });
-
-    if (!user) {
-      return createApiResponse(false, null, '用户不存在', 404);
-    }
-
-    if (user.email !== invitation.email) {
-      return createApiResponse(false, null, '邮箱地址不匹配', 400);
-    }
-
-    // 检查是否已是成员
-    const existingMember = await prisma.groupMember.findFirst({
-      where: {
-        groupId: invitation.groupId,
-        userId: userId,
-      },
-    });
-
-    if (existingMember) {
-      return createApiResponse(false, null, '您已经是该拼车组成员', 400);
-    }
-
     // 检查拼车组是否已满
     const memberCount = await prisma.groupMember.count({
       where: {
@@ -140,6 +112,42 @@ export async function POST(
 
     if (memberCount >= invitation.group.maxMembers) {
       return createApiResponse(false, null, '拼车组已满', 400);
+    }
+
+    // 查找或创建用户
+    let user = await prisma.user.findUnique({
+      where: { email: invitation.email },
+    });
+
+    if (!user) {
+      // 用户不存在，自动注册
+      if (!name || !password) {
+        return createApiResponse(false, null, '新用户需要提供姓名和密码', 400);
+      }
+
+      const { hashPassword } = await import('@/lib/auth');
+      const hashedPassword = await hashPassword(password);
+
+      user = await prisma.user.create({
+        data: {
+          email: invitation.email,
+          name,
+          password: hashedPassword,
+          emailVerified: true, // 通过邀请链接验证邮箱
+        },
+      });
+    }
+
+    // 检查是否已是成员
+    const existingMember = await prisma.groupMember.findFirst({
+      where: {
+        groupId: invitation.groupId,
+        userId: user.id,
+      },
+    });
+
+    if (existingMember) {
+      return createApiResponse(false, null, '您已经是该拼车组成员', 400);
     }
 
     // 使用事务处理邀请接受
@@ -154,7 +162,7 @@ export async function POST(
       const member = await tx.groupMember.create({
         data: {
           groupId: invitation.groupId,
-          userId: userId,
+          userId: user.id,
           role: 'member',
           status: 'active',
         },
@@ -181,7 +189,24 @@ export async function POST(
       groupName: invitation.group.name,
     });
 
-    return createApiResponse(true, serializeBigInt(result), '成功加入拼车组');
+    // 生成登录token
+    const { generateToken } = await import('@/lib/auth');
+    const authToken = generateToken({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      status: user.status,
+      emailVerified: user.emailVerified,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt
+    });
+
+    return createApiResponse(true, {
+      member: serializeBigInt(result),
+      authToken,
+      isNewUser: user.createdAt.getTime() > Date.now() - 60000 // 刚刚创建的用户
+    }, '成功加入拼车组');
 
   } catch (error) {
     console.error('Accept invitation error:', error);

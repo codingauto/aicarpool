@@ -182,8 +182,8 @@ async function postHandler(req: AuthenticatedRequest, { params }: { params: { id
     return createApiResponse(true, result, '邀请创建成功，邮件已发送');
 
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return createApiResponse(false, null, error.errors[0].message, 400);
+    if (error && typeof error === 'object' && 'issues' in error) {
+      return createApiResponse(false, null, (error as { issues: Array<{ message: string }> }).issues[0].message, 400);
     }
 
     console.error('Create invitation error:', error);
@@ -191,5 +191,75 @@ async function postHandler(req: AuthenticatedRequest, { params }: { params: { id
   }
 }
 
+// 撤销邀请
+async function deleteHandler(req: AuthenticatedRequest, { params }: { params: { id: string } }) {
+  try {
+    const body = await req.json();
+    const { invitationId } = body;
+    const userId = req.user!.userId;
+    const groupId = params.id;
+
+    if (!invitationId) {
+      return createApiResponse(false, null, '邀请ID不能为空', 400);
+    }
+
+    // 检查用户是否为该组管理员
+    const membership = await prisma.groupMember.findFirst({
+      where: {
+        groupId,
+        userId,
+        status: 'active',
+        role: 'admin',
+      },
+    });
+
+    if (!membership) {
+      return createApiResponse(false, null, '只有管理员可以撤销邀请', 403);
+    }
+
+    // 查找邀请
+    const invitation = await prisma.invitation.findUnique({
+      where: { id: invitationId },
+      include: {
+        group: true,
+      },
+    });
+
+    if (!invitation) {
+      return createApiResponse(false, null, '邀请不存在', 404);
+    }
+
+    if (invitation.groupId !== groupId) {
+      return createApiResponse(false, null, '邀请不属于该拼车组', 400);
+    }
+
+    if (invitation.status !== 'pending') {
+      return createApiResponse(false, null, '只能撤销待处理的邀请', 400);
+    }
+
+    // 更新邀请状态为已撤销
+    const updatedInvitation = await prisma.invitation.update({
+      where: { id: invitationId },
+      data: { status: 'cancelled' },
+      include: {
+        inviter: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    return createApiResponse(true, serializeBigInt(updatedInvitation), '邀请已撤销');
+
+  } catch (error) {
+    console.error('Cancel invitation error:', error);
+    return createApiResponse(false, null, '撤销邀请失败', 500);
+  }
+}
+
 export const GET = withAuth(getHandler);
 export const POST = withAuth(postHandler);
+export const DELETE = withAuth(deleteHandler);

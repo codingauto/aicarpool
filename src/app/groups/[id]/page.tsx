@@ -28,7 +28,12 @@ import {
   DollarSign,
   Clock,
   Shield,
+  RefreshCw,
+  X,
   Copy,
+  QrCode,
+  Link,
+  Download,
   CheckCircle,
   Globe,
   Server,
@@ -128,6 +133,32 @@ export default function GroupDetailPage() {
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteLoading, setInviteLoading] = useState(false);
   const [inviteError, setInviteError] = useState('');
+  
+  // 邀请操作相关状态
+  const [inviteActionLoading, setInviteActionLoading] = useState<string | null>(null);
+  
+  // 批量邀请相关状态
+  const [showBatchInviteDialog, setShowBatchInviteDialog] = useState(false);
+  const [batchEmails, setBatchEmails] = useState('');
+  const [batchInviteLoading, setBatchInviteLoading] = useState(false);
+  const [batchInviteError, setBatchInviteError] = useState('');
+  const [batchInviteResult, setBatchInviteResult] = useState<any>(null);
+  
+  // 邀请链接相关状态
+  const [showCreateInviteLinkDialog, setShowCreateInviteLinkDialog] = useState(false);
+  const [inviteLinks, setInviteLinks] = useState<any[]>([]);
+  const [inviteLinkLoading, setInviteLinkLoading] = useState(false);
+  const [inviteLinkError, setInviteLinkError] = useState('');
+  const [inviteLinkForm, setInviteLinkForm] = useState({
+    name: '',
+    maxUses: 10,
+    expiresInDays: 7
+  });
+  
+  // 二维码相关状态
+  const [showQRCodeDialog, setShowQRCodeDialog] = useState(false);
+  const [qrCodeData, setQRCodeData] = useState<any>(null);
+  const [qrCodeLoading, setQRCodeLoading] = useState(false);
 
   // 创建API密钥相关状态
   const [showCreateKeyDialog, setShowCreateKeyDialog] = useState(false);
@@ -136,8 +167,6 @@ export default function GroupDetailPage() {
   const [selectedAiService, setSelectedAiService] = useState('');
   const [createKeyLoading, setCreateKeyLoading] = useState(false);
   const [createKeyError, setCreateKeyError] = useState('');
-
-  // AI服务相关状态已移至EnhancedAiServiceConfig组件
 
   // Tab状态管理
   const [activeTab, setActiveTab] = useState('members');
@@ -183,136 +212,6 @@ export default function GroupDetailPage() {
     }
   };
 
-
-  // 添加AI服务
-  const handleAddAiService = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setAddServiceLoading(true);
-    setAddServiceError('');
-
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        router.push('/auth/login');
-        return;
-      }
-
-      const requestData = {
-        aiServiceId: selectedServiceId,
-        keyName: serviceApiKey,
-        quota: {
-          ...(dailyLimit && { dailyLimit: parseInt(dailyLimit) }),
-          ...(monthlyLimit && { monthlyLimit: parseInt(monthlyLimit) }),
-        },
-      };
-
-      const response = await fetch(`/api/groups/${groupId}/ai-services`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify(requestData),
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        // 显示生成的API密钥
-        if (data.data.generatedApiKey) {
-          setGeneratedApiKey(data.data.generatedApiKey);
-          setShowGeneratedKey(true);
-        }
-        
-        // 重新获取拼车组信息并保持在AI服务tab
-        await fetchGroupDetail();
-        setActiveTab('services');
-      } else {
-        setAddServiceError(data.error || '添加AI服务失败');
-      }
-    } catch (error) {
-      setAddServiceError('网络错误，请稍后重试');
-    } finally {
-      setAddServiceLoading(false);
-    }
-  };
-
-  // 复制API密钥到剪贴板
-  const copyApiKey = async () => {
-    try {
-      await navigator.clipboard.writeText(generatedApiKey);
-      alert('API密钥已复制到剪贴板');
-    } catch (error) {
-      console.error('复制失败:', error);
-      alert('复制失败，请手动复制');
-    }
-  };
-
-  // 复制现有API密钥到剪贴板
-  const copyExistingApiKey = async (apiKey: string) => {
-    try {
-      await navigator.clipboard.writeText(apiKey);
-      alert('API密钥已复制到剪贴板');
-    } catch (error) {
-      console.error('复制失败:', error);
-      alert('复制失败，请手动复制');
-    }
-  };
-
-  // 格式化密钥显示（隐藏中间部分）
-  const formatApiKeyDisplay = (key: string) => {
-    if (key.length <= 12) return key;
-    const prefix = key.substring(0, 8);
-    const suffix = key.substring(key.length - 4);
-    return `${prefix}...${suffix}`;
-  };
-
-  // 关闭AI服务配置对话框
-  const closeAiServiceDialog = () => {
-    setShowAddAiServiceDialog(false);
-    setShowGeneratedKey(false);
-    setSelectedServiceId('');
-    setServiceApiKey('');
-    setDailyLimit('');
-    setMonthlyLimit('');
-    setGeneratedApiKey('');
-    setAddServiceError('');
-  };
-
-  // 切换AI服务启用状态
-  const toggleAiServiceStatus = async (aiServiceId: string, currentStatus: boolean) => {
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        router.push('/auth/login');
-        return;
-      }
-
-      const response = await fetch(`/api/groups/${groupId}/ai-services`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          aiServiceId,
-          isEnabled: !currentStatus,
-        }),
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        // 重新获取拼车组信息以更新UI并保持在AI服务tab
-        await fetchGroupDetail();
-        setActiveTab('services');
-      } else {
-        alert(data.error || '更新AI服务状态失败');
-      }
-    } catch (error) {
-      console.error('Toggle AI service error:', error);
-      alert('网络错误，请稍后重试');
-    }
-  };
-
   const handleInviteUser = async (e: React.FormEvent) => {
     e.preventDefault();
     setInviteLoading(true);
@@ -344,6 +243,228 @@ export default function GroupDetailPage() {
       setInviteError('网络错误，请稍后重试');
     } finally {
       setInviteLoading(false);
+    }
+  };
+
+  // 撤销邀请
+  const handleCancelInvitation = async (invitationId: string) => {
+    setInviteActionLoading(invitationId);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/groups/${groupId}/invitations/${invitationId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        fetchGroupDetail(); // 刷新数据
+      } else {
+        alert(data.message || '撤销邀请失败');
+      }
+    } catch (error) {
+      console.error('撤销邀请失败:', error);
+      alert('网络错误，请稍后重试');
+    } finally {
+      setInviteActionLoading(null);
+    }
+  };
+
+  // 重新发送邀请
+  const handleResendInvitation = async (invitationId: string) => {
+    setInviteActionLoading(invitationId);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/groups/${groupId}/invitations/${invitationId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        alert('邀请已重新发送');
+        fetchGroupDetail(); // 刷新数据
+      } else {
+        alert(data.message || '重新发送邀请失败');
+      }
+    } catch (error) {
+      console.error('重新发送邀请失败:', error);
+      alert('网络错误，请稍后重试');
+    } finally {
+      setInviteActionLoading(null);
+    }
+  };
+
+  // 批量邀请用户
+  const handleBatchInvite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBatchInviteLoading(true);
+    setBatchInviteError('');
+    setBatchInviteResult(null);
+
+    try {
+      // 解析邮箱列表
+      const emailList = batchEmails
+        .split('\n')
+        .map(email => email.trim())
+        .filter(email => email.length > 0);
+
+      if (emailList.length === 0) {
+        setBatchInviteError('请输入至少一个邮箱地址');
+        return;
+      }
+
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/groups/${groupId}/invitations/batch`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          emails: emailList,
+        }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setBatchInviteResult(data.data);
+        setBatchEmails('');
+        fetchGroupDetail(); // 刷新数据
+      } else {
+        setBatchInviteError(data.message || '批量邀请失败');
+      }
+    } catch (error) {
+      console.error('批量邀请失败:', error);
+      setBatchInviteError('网络错误，请稍后重试');
+    } finally {
+      setBatchInviteLoading(false);
+    }
+  };
+
+  // 重置批量邀请对话框
+  const resetBatchInviteDialog = () => {
+    setShowBatchInviteDialog(false);
+    setBatchEmails('');
+    setBatchInviteError('');
+    setBatchInviteResult(null);
+  };
+
+  // 获取邀请链接列表
+  const fetchInviteLinks = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/groups/${groupId}/invite-link`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      const data = await response.json();
+      if (data.success) {
+        setInviteLinks(data.data);
+      }
+    } catch (error) {
+      console.error('获取邀请链接失败:', error);
+    }
+  };
+
+  // 创建邀请链接
+  const handleCreateInviteLink = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setInviteLinkLoading(true);
+    setInviteLinkError('');
+    
+    try {
+      console.log('开始创建邀请链接...');
+      console.log('表单数据:', inviteLinkForm);
+      
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setInviteLinkError('用户未登录，请重新登录');
+        return;
+      }
+
+      const response = await fetch(`/api/groups/${groupId}/invite-link`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(inviteLinkForm),
+      });
+
+      console.log('API响应状态:', response.status);
+      
+      const data = await response.json();
+      console.log('API响应数据:', data);
+
+      if (data.success) {
+        setShowCreateInviteLinkDialog(false);
+        setInviteLinkForm({ name: '', maxUses: 10, expiresInDays: 7 });
+        setInviteLinkError('');
+        fetchInviteLinks(); // 刷新列表
+        alert('邀请链接创建成功！');
+      } else {
+        const errorMsg = data.error || data.message || '创建邀请链接失败';
+        console.error('API错误:', errorMsg);
+        setInviteLinkError(errorMsg);
+      }
+    } catch (error) {
+      console.error('创建邀请链接网络错误:', error);
+      const errorMsg = error instanceof Error ? error.message : '网络连接失败';
+      setInviteLinkError(`网络错误: ${errorMsg}`);
+    } finally {
+      setInviteLinkLoading(false);
+    }
+  };
+
+  // 生成二维码
+  const handleGenerateQRCode = async (linkId?: string) => {
+    setQRCodeLoading(true);
+    setShowQRCodeDialog(true);
+    
+    try {
+      const token = localStorage.getItem('token');
+      const url = linkId 
+        ? `/api/groups/${groupId}/qrcode?linkId=${linkId}`
+        : `/api/groups/${groupId}/qrcode`;
+        
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setQRCodeData(data.data);
+      } else {
+        alert(data.message || '生成二维码失败');
+        setShowQRCodeDialog(false);
+      }
+    } catch (error) {
+      console.error('生成二维码失败:', error);
+      alert('网络错误，请稍后重试');
+      setShowQRCodeDialog(false);
+    } finally {
+      setQRCodeLoading(false);
+    }
+  };
+
+  // 复制邀请链接
+  const copyInviteLink = async (url: string) => {
+    try {
+      await navigator.clipboard.writeText(url);
+      alert('邀请链接已复制到剪贴板');
+    } catch (error) {
+      console.error('复制失败:', error);
+      alert('复制失败，请手动复制');
     }
   };
 
@@ -385,8 +506,28 @@ export default function GroupDetailPage() {
     }
   };
 
+  // 复制现有API密钥到剪贴板
+  const copyExistingApiKey = async (apiKey: string) => {
+    try {
+      await navigator.clipboard.writeText(apiKey);
+      alert('API密钥已复制到剪贴板');
+    } catch (error) {
+      console.error('复制失败:', error);
+      alert('复制失败，请手动复制');
+    }
+  };
+
+  // 格式化密钥显示（隐藏中间部分）
+  const formatApiKeyDisplay = (key: string) => {
+    if (key.length <= 12) return key;
+    const prefix = key.substring(0, 8);
+    const suffix = key.substring(key.length - 4);
+    return `${prefix}...${suffix}`;
+  };
+
   useEffect(() => {
     fetchGroupDetail();
+    fetchInviteLinks();
     // 获取当前用户信息
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
@@ -429,7 +570,7 @@ export default function GroupDetailPage() {
     );
   }
 
-  const isAdmin = group.members.find(m => 
+  const isAdmin = !!group.members.find(m => 
     m.user.id === currentUser?.id && m.role === 'admin'
   );
 
@@ -637,7 +778,11 @@ export default function GroupDetailPage() {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          {new Date(member.joinedAt).toLocaleDateString('zh-CN')}
+                          {new Date(member.joinedAt).toLocaleDateString('zh-CN', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit'
+                          })}
                         </TableCell>
                         <TableCell>
                           {isAdmin && member.user.id !== currentUser?.id && (
@@ -940,11 +1085,232 @@ export default function GroupDetailPage() {
 
           {/* 邀请管理 */}
           <TabsContent value="invitations" className="space-y-6">
+            {/* 邀请方式快捷操作 */}
+            {isAdmin && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>邀请新成员</CardTitle>
+                  <CardDescription>
+                    选择适合的邀请方式快速邀请新成员加入
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <Dialog open={showInviteDialog} onOpenChange={setShowInviteDialog}>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" className="h-20 flex-col space-y-2">
+                          <Mail className="w-6 h-6" />
+                          <span>邮件邀请</span>
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>邮件邀请</DialogTitle>
+                          <DialogDescription>
+                            输入邮箱地址发送邀请邮件
+                          </DialogDescription>
+                        </DialogHeader>
+                        <form onSubmit={handleInviteUser} className="space-y-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="inviteEmail">邮箱地址</Label>
+                            <Input
+                              id="inviteEmail"
+                              type="email"
+                              value={inviteEmail}
+                              onChange={(e) => setInviteEmail(e.target.value)}
+                              required
+                              disabled={inviteLoading}
+                              placeholder="请输入邮箱地址"
+                            />
+                          </div>
+                          {inviteError && (
+                            <div className="text-red-500 text-sm">{inviteError}</div>
+                          )}
+                          <div className="flex space-x-2">
+                            <Button type="submit" disabled={inviteLoading}>
+                              {inviteLoading ? '发送中...' : '发送邀请'}
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => setShowInviteDialog(false)}
+                              disabled={inviteLoading}
+                            >
+                              取消
+                            </Button>
+                          </div>
+                        </form>
+                      </DialogContent>
+                    </Dialog>
+
+                    <Dialog open={showBatchInviteDialog} onOpenChange={setShowBatchInviteDialog}>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" className="h-20 flex-col space-y-2">
+                          <Users className="w-6 h-6" />
+                          <span>批量邀请</span>
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-2xl">
+                        <DialogHeader>
+                          <DialogTitle>批量邀请</DialogTitle>
+                          <DialogDescription>
+                            一次邀请多个用户，每行一个邮箱地址
+                          </DialogDescription>
+                        </DialogHeader>
+                        <form onSubmit={handleBatchInvite} className="space-y-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="batchEmails">邮箱列表</Label>
+                            <Textarea
+                              id="batchEmails"
+                              value={batchEmails}
+                              onChange={(e) => setBatchEmails(e.target.value)}
+                              placeholder="user1@example.com&#10;user2@example.com&#10;user3@example.com"
+                              rows={6}
+                              disabled={batchInviteLoading}
+                            />
+                            <div className="text-sm text-gray-500">
+                              最多一次邀请50个用户
+                            </div>
+                          </div>
+                          {batchInviteError && (
+                            <div className="text-red-500 text-sm">{batchInviteError}</div>
+                          )}
+                          {batchInviteResult && (
+                            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                              <h4 className="font-medium text-green-800 mb-2">批量邀请结果</h4>
+                              <div className="text-sm text-green-700 space-y-1">
+                                <div>成功: {batchInviteResult.summary.successful} 个</div>
+                                <div>失败: {batchInviteResult.summary.failed} 个</div>
+                                <div>跳过: {batchInviteResult.summary.skippedMembers + batchInviteResult.summary.skippedInvitations} 个</div>
+                              </div>
+                            </div>
+                          )}
+                          <div className="flex space-x-2">
+                            <Button type="submit" disabled={batchInviteLoading}>
+                              {batchInviteLoading ? '批量邀请中...' : '批量邀请'}
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={resetBatchInviteDialog}
+                              disabled={batchInviteLoading}
+                            >
+                              {batchInviteResult ? '重置' : '取消'}
+                            </Button>
+                          </div>
+                        </form>
+                      </DialogContent>
+                    </Dialog>
+
+                    <Dialog open={showCreateInviteLinkDialog} onOpenChange={setShowCreateInviteLinkDialog}>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" className="h-20 flex-col space-y-2">
+                          <Link className="w-6 h-6" />
+                          <span>创建链接</span>
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>创建邀请链接</DialogTitle>
+                          <DialogDescription>
+                            创建可重复使用的邀请链接
+                          </DialogDescription>
+                        </DialogHeader>
+                        <form onSubmit={handleCreateInviteLink} className="space-y-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="linkName">链接名称</Label>
+                            <Input
+                              id="linkName"
+                              value={inviteLinkForm.name}
+                              onChange={(e) => setInviteLinkForm({...inviteLinkForm, name: e.target.value})}
+                              required
+                              disabled={inviteLinkLoading}
+                              placeholder="请输入链接名称"
+                            />
+                          </div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="maxUses">最大使用次数</Label>
+                              <Input
+                                id="maxUses"
+                                type="number"
+                                min="1"
+                                max="100"
+                                value={inviteLinkForm.maxUses}
+                                onChange={(e) => setInviteLinkForm({...inviteLinkForm, maxUses: parseInt(e.target.value) || 10})}
+                                disabled={inviteLinkLoading}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="expiresInDays">有效期（天）</Label>
+                              <Input
+                                id="expiresInDays"
+                                type="number"
+                                min="1"
+                                max="30"
+                                value={inviteLinkForm.expiresInDays}
+                                onChange={(e) => setInviteLinkForm({...inviteLinkForm, expiresInDays: parseInt(e.target.value) || 7})}
+                                disabled={inviteLinkLoading}
+                              />
+                            </div>
+                          </div>
+                          {inviteLinkError && (
+                            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                              <div className="flex items-start">
+                                <AlertTriangle className="w-5 h-5 text-red-600 mr-2 mt-0.5 flex-shrink-0" />
+                                <div>
+                                  <div className="text-red-800 font-medium mb-1">创建失败</div>
+                                  <div className="text-red-700 text-sm">{inviteLinkError}</div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                          <div className="flex space-x-2">
+                            <Button type="submit" disabled={inviteLinkLoading}>
+                              {inviteLinkLoading ? (
+                                <>
+                                  <div className="w-4 h-4 animate-spin rounded-full border-2 border-white border-t-transparent mr-2"></div>
+                                  创建中...
+                                </>
+                              ) : (
+                                '创建链接'
+                              )}
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => {
+                                setShowCreateInviteLinkDialog(false);
+                                setInviteLinkError('');
+                              }}
+                              disabled={inviteLinkLoading}
+                            >
+                              取消
+                            </Button>
+                          </div>
+                        </form>
+                      </DialogContent>
+                    </Dialog>
+
+                    <Button 
+                      variant="outline" 
+                      className="h-20 flex-col space-y-2"
+                      onClick={() => handleGenerateQRCode()}
+                    >
+                      <QrCode className="w-6 h-6" />
+                      <span>生成二维码</span>
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* 邮件邀请列表 */}
             <Card>
               <CardHeader>
-                <CardTitle>邀请管理</CardTitle>
+                <CardTitle>邮件邀请记录</CardTitle>
                 <CardDescription>
-                  查看和管理拼车组邀请
+                  查看和管理邮件邀请记录
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -978,16 +1344,65 @@ export default function GroupDetailPage() {
                           </TableCell>
                           <TableCell>{invitation.inviter.name}</TableCell>
                           <TableCell>
-                            {new Date(invitation.createdAt).toLocaleDateString('zh-CN')}
+                            {(() => {
+                              try {
+                                const date = new Date(invitation.createdAt);
+                                if (isNaN(date.getTime())) return '日期格式错误';
+                                return date.toLocaleDateString('zh-CN', {
+                                  year: 'numeric',
+                                  month: '2-digit',
+                                  day: '2-digit'
+                                });
+                              } catch (error) {
+                                return '日期解析失败';
+                              }
+                            })()}
                           </TableCell>
                           <TableCell>
-                            {new Date(invitation.expiresAt).toLocaleDateString('zh-CN')}
+                            {(() => {
+                              try {
+                                const date = new Date(invitation.expiresAt);
+                                if (isNaN(date.getTime())) return '日期格式错误';
+                                return date.toLocaleDateString('zh-CN', {
+                                  year: 'numeric',
+                                  month: '2-digit',
+                                  day: '2-digit'
+                                });
+                              } catch (error) {
+                                return '日期解析失败';
+                              }
+                            })()}
                           </TableCell>
                           <TableCell>
                             {isAdmin && invitation.status === 'pending' && (
-                              <Button variant="ghost" size="sm">
-                                <MoreHorizontal className="w-4 h-4" />
-                              </Button>
+                              <div className="flex space-x-2">
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={() => handleResendInvitation(invitation.id)}
+                                  disabled={inviteActionLoading === invitation.id}
+                                  title="重新发送邀请"
+                                >
+                                  {inviteActionLoading === invitation.id ? (
+                                    <div className="w-4 h-4 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600"></div>
+                                  ) : (
+                                    <RefreshCw className="w-4 h-4 text-blue-600" />
+                                  )}
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={() => handleCancelInvitation(invitation.id)}
+                                  disabled={inviteActionLoading === invitation.id}
+                                  title="撤销邀请"
+                                >
+                                  {inviteActionLoading === invitation.id ? (
+                                    <div className="w-4 h-4 animate-spin rounded-full border-2 border-gray-300 border-t-red-600"></div>
+                                  ) : (
+                                    <X className="w-4 h-4 text-red-600" />
+                                  )}
+                                </Button>
+                              </div>
                             )}
                           </TableCell>
                         </TableRow>
@@ -996,11 +1411,158 @@ export default function GroupDetailPage() {
                   </Table>
                 ) : (
                   <div className="text-center py-8">
-                    <div className="text-gray-500">没有邀请记录</div>
+                    <div className="text-gray-500">没有邮件邀请记录</div>
                   </div>
                 )}
               </CardContent>
             </Card>
+
+            {/* 邀请链接列表 */}
+            <Card>
+              <CardHeader>
+                <CardTitle>邀请链接管理</CardTitle>
+                <CardDescription>
+                  管理可重复使用的邀请链接
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {inviteLinks.length > 0 ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>链接名称</TableHead>
+                        <TableHead>使用情况</TableHead>
+                        <TableHead>状态</TableHead>
+                        <TableHead>创建者</TableHead>
+                        <TableHead>过期时间</TableHead>
+                        <TableHead>操作</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {inviteLinks.map((link) => (
+                        <TableRow key={link.id}>
+                          <TableCell className="font-medium">{link.name}</TableCell>
+                          <TableCell>
+                            <div className="text-sm">
+                              {link.usedCount}/{link.maxUses} 次使用
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge 
+                              variant={
+                                link.status === 'active' ? 'default' : 'secondary'
+                              }
+                            >
+                              {link.status === 'active' ? '活跃' : 
+                               link.status === 'expired' ? '已过期' : '已禁用'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{link.creator.name}</TableCell>
+                          <TableCell>
+                            {(() => {
+                              try {
+                                if (!link.expiresAt) return '无过期时间';
+                                const date = new Date(link.expiresAt);
+                                if (isNaN(date.getTime())) return '日期格式错误';
+                                return date.toLocaleDateString('zh-CN', {
+                                  year: 'numeric',
+                                  month: '2-digit',
+                                  day: '2-digit'
+                                });
+                              } catch (error) {
+                                console.error('日期解析错误:', error, link.expiresAt);
+                                return '日期解析失败';
+                              }
+                            })()}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex space-x-2">
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => copyInviteLink(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001'}/join/${link.token}`)}
+                                title="复制链接"
+                              >
+                                <Copy className="w-4 h-4 text-blue-600" />
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => handleGenerateQRCode(link.id)}
+                                title="生成二维码"
+                              >
+                                <QrCode className="w-4 h-4 text-green-600" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <div className="text-center py-8">
+                    <div className="text-gray-500">没有邀请链接</div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* 二维码对话框 */}
+            <Dialog open={showQRCodeDialog} onOpenChange={setShowQRCodeDialog}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>邀请二维码</DialogTitle>
+                  <DialogDescription>
+                    扫描二维码加入拼车组
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="text-center space-y-4">
+                  {qrCodeLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                      <span className="ml-2">正在生成二维码...</span>
+                    </div>
+                  ) : qrCodeData ? (
+                    <>
+                      <div className="flex justify-center">
+                        <img 
+                          src={qrCodeData.qrCode} 
+                          alt="邀请二维码" 
+                          className="border rounded-lg"
+                        />
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        <p>邀请链接:</p>
+                        <code className="block bg-gray-100 p-2 rounded text-xs break-all">
+                          {qrCodeData.inviteUrl}
+                        </code>
+                      </div>
+                      <div className="flex space-x-2">
+                        <Button 
+                          onClick={() => copyInviteLink(qrCodeData.inviteUrl)}
+                          variant="outline"
+                        >
+                          <Copy className="w-4 h-4 mr-2" />
+                          复制链接
+                        </Button>
+                        <Button 
+                          onClick={() => {
+                            const link = document.createElement('a');
+                            link.href = qrCodeData.qrCode;
+                            link.download = '邀请二维码.png';
+                            link.click();
+                          }}
+                          variant="outline"
+                        >
+                          <Download className="w-4 h-4 mr-2" />
+                          下载二维码
+                        </Button>
+                      </div>
+                    </>
+                  ) : null}
+                </div>
+              </DialogContent>
+            </Dialog>
           </TabsContent>
 
           {/* 使用统计 */}
