@@ -98,6 +98,30 @@ check_network() {
     log_info "网络连接正常"
 }
 
+# 检查是否为root用户
+check_root() {
+    if [[ $EUID -eq 0 ]]; then
+        log_warn "当前以root用户身份运行此脚本"
+        log_warn "建议使用普通用户运行以提高安全性"
+        case $SYSTEM_TYPE in
+            ubuntu)
+                log_info "建议创建普通用户: adduser aicarpool && usermod -aG sudo aicarpool"
+                ;;
+            centos)
+                log_info "建议创建普通用户: useradd -m aicarpool && usermod -aG wheel aicarpool"
+                ;;
+        esac
+        echo ""
+        read -p "确认要以root用户继续安装吗？[y/N] " -n 1 -r
+        echo ""
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            log_info "安装已取消"
+            exit 0
+        fi
+        log_info "继续以root用户安装..."
+    fi
+}
+
 # 检查系统要求
 check_requirements() {
     log_step "检查系统要求..."
@@ -115,29 +139,8 @@ check_requirements() {
         exit 1
     fi
     
-    # 检查是否为root用户
-    if [[ $EUID -eq 0 ]]; then
-        log_error "请不要使用root用户运行此脚本！"
-        echo ""
-        echo "建议操作:"
-        case $SYSTEM_TYPE in
-            ubuntu)
-                echo "sudo adduser aicarpool"
-                echo "sudo usermod -aG sudo aicarpool"
-                echo "su - aicarpool"
-                ;;
-            centos)
-                echo "sudo useradd -m aicarpool"
-                echo "sudo usermod -aG wheel aicarpool"
-                echo "sudo passwd aicarpool"
-                echo "su - aicarpool"
-                ;;
-        esac
-        exit 1
-    fi
-    
-    # 检查sudo权限
-    if ! sudo -n true 2>/dev/null; then
+    # 检查sudo权限（仅当非root用户时）
+    if [[ $EUID -ne 0 ]] && ! sudo -n true 2>/dev/null; then
         log_error "当前用户没有sudo权限，请确保用户在sudo组中"
         exit 1
     fi
@@ -187,7 +190,7 @@ show_confirmation() {
     echo -e "${BLUE}系统类型:${NC} $PRETTY_NAME"
     echo -e "${BLUE}部署脚本:${NC} $SCRIPT_NAME"
     echo -e "${BLUE}安装位置:${NC} /opt/aicarpool"
-    echo -e "${BLUE}服务端口:${NC} 3000"
+    echo -e "${BLUE}服务端口:${NC} 4000"
     echo ""
     echo -e "${YELLOW}此脚本将会安装以下组件:${NC}"
     echo "- Node.js 18+"
@@ -216,6 +219,7 @@ show_confirmation() {
 main() {
     show_welcome
     detect_system
+    check_root
     check_network
     check_requirements
     show_confirmation

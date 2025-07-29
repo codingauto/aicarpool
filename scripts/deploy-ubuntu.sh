@@ -30,12 +30,31 @@ log_step() {
     echo -e "${BLUE}[STEP]${NC} $1"
 }
 
+# 执行命令（根据是否为root用户决定是否使用sudo）
+run_cmd() {
+    if [[ "$USING_ROOT" == "true" ]]; then
+        "$@"
+    else
+        sudo "$@"
+    fi
+}
+
 # 检查是否为root用户
 check_root() {
     if [[ $EUID -eq 0 ]]; then
-        log_error "请不要使用root用户运行此脚本！"
-        log_info "建议创建普通用户: sudo adduser aicarpool && sudo usermod -aG sudo aicarpool"
-        exit 1
+        log_warn "当前以root用户身份运行此脚本"
+        log_warn "建议使用普通用户运行以提高安全性"
+        log_info "建议创建普通用户: adduser aicarpool && usermod -aG sudo aicarpool"
+        echo ""
+        read -p "确认要以root用户继续安装吗？[y/N] " -n 1 -r
+        echo ""
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            log_info "安装已取消"
+            exit 0
+        fi
+        log_info "继续以root用户安装..."
+        # 设置标志表示使用root用户
+        export USING_ROOT=true
     fi
 }
 
@@ -78,8 +97,8 @@ check_system() {
 # 更新系统
 update_system() {
     log_step "更新系统包..."
-    sudo apt update && sudo apt upgrade -y
-    sudo apt install -y curl wget git build-essential software-properties-common apt-transport-https ca-certificates gnupg lsb-release bc
+    run_cmd apt update && run_cmd apt upgrade -y
+    run_cmd apt install -y curl wget git build-essential software-properties-common apt-transport-https ca-certificates gnupg lsb-release bc
 }
 
 # 验证Git安装
@@ -140,8 +159,8 @@ install_nodejs() {
     fi
     
     # 安装Node.js 18
-    curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-    sudo apt-get install -y nodejs
+    curl -fsSL https://deb.nodesource.com/setup_18.x | run_cmd -E bash -
+    run_cmd apt-get install -y nodejs
     
     # 验证安装
     if ! command -v node &> /dev/null; then
@@ -171,22 +190,22 @@ install_mysql() {
     fi
     
     # 预设置MySQL密码
-    sudo debconf-set-selections <<< "mysql-server mysql-server/root_password password $MYSQL_ROOT_PASSWORD"
-    sudo debconf-set-selections <<< "mysql-server mysql-server/root_password_again password $MYSQL_ROOT_PASSWORD"
+    run_cmd debconf-set-selections <<< "mysql-server mysql-server/root_password password $MYSQL_ROOT_PASSWORD"
+    run_cmd debconf-set-selections <<< "mysql-server mysql-server/root_password_again password $MYSQL_ROOT_PASSWORD"
     
     # 安装MySQL
-    sudo apt install -y mysql-server mysql-client
+    run_cmd apt install -y mysql-server mysql-client
     
     # 启动MySQL
-    sudo systemctl start mysql
-    sudo systemctl enable mysql
+    run_cmd systemctl start mysql
+    run_cmd systemctl enable mysql
     
     # 安全配置
-    sudo mysql -u root -p"$MYSQL_ROOT_PASSWORD" -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '$MYSQL_ROOT_PASSWORD';"
-    sudo mysql -u root -p"$MYSQL_ROOT_PASSWORD" -e "DELETE FROM mysql.user WHERE User='';"
-    sudo mysql -u root -p"$MYSQL_ROOT_PASSWORD" -e "DROP DATABASE IF EXISTS test;"
-    sudo mysql -u root -p"$MYSQL_ROOT_PASSWORD" -e "DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';"
-    sudo mysql -u root -p"$MYSQL_ROOT_PASSWORD" -e "FLUSH PRIVILEGES;"
+    run_cmd mysql -u root -p"$MYSQL_ROOT_PASSWORD" -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '$MYSQL_ROOT_PASSWORD';"
+    run_cmd mysql -u root -p"$MYSQL_ROOT_PASSWORD" -e "DELETE FROM mysql.user WHERE User='';"
+    run_cmd mysql -u root -p"$MYSQL_ROOT_PASSWORD" -e "DROP DATABASE IF EXISTS test;"
+    run_cmd mysql -u root -p"$MYSQL_ROOT_PASSWORD" -e "DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';"
+    run_cmd mysql -u root -p"$MYSQL_ROOT_PASSWORD" -e "FLUSH PRIVILEGES;"
     
     log_info "MySQL安装完成"
 }
@@ -200,14 +219,14 @@ install_redis() {
         return
     fi
     
-    sudo apt install -y redis-server
+    run_cmd apt install -y redis-server
     
     # 配置Redis
-    sudo sed -i 's/^supervised no/supervised systemd/' /etc/redis/redis.conf
+    run_cmd sed -i 's/^supervised no/supervised systemd/' /etc/redis/redis.conf
     
     # 启动Redis
-    sudo systemctl restart redis-server
-    sudo systemctl enable redis-server
+    run_cmd systemctl restart redis-server
+    run_cmd systemctl enable redis-server
     
     # 测试Redis
     if redis-cli ping | grep -q PONG; then
@@ -227,10 +246,10 @@ install_pm2() {
         return
     fi
     
-    sudo npm install -g pm2
+    run_cmd npm install -g pm2
     
     # 设置PM2开机自启
-    sudo pm2 startup
+    run_cmd pm2 startup
     
     log_info "PM2安装完成"
 }
@@ -242,8 +261,8 @@ setup_app() {
     # 创建应用目录
     APP_DIR="/opt/aicarpool"
     if [[ ! -d "$APP_DIR" ]]; then
-        sudo mkdir -p "$APP_DIR"
-        sudo chown $USER:$USER "$APP_DIR"
+        run_cmd mkdir -p "$APP_DIR"
+        run_cmd chown $USER:$USER "$APP_DIR"
     fi
     
     # 克隆或更新代码
@@ -343,11 +362,11 @@ REDIS_URL="redis://localhost:6379"
 
 # JWT配置
 NEXTAUTH_SECRET="$NEXTAUTH_SECRET"
-NEXTAUTH_URL="http://localhost:3000"
+NEXTAUTH_URL="http://localhost:4000"
 
 # 应用配置
 NODE_ENV="production"
-PORT=3000
+PORT=4000
 
 # 邮件配置（需要手动配置）
 # SMTP_HOST=""
@@ -404,11 +423,11 @@ setup_firewall() {
     log_step "配置防火墙..."
     
     if command -v ufw &> /dev/null; then
-        sudo ufw allow 22/tcp
-        sudo ufw allow 3000/tcp
-        sudo ufw allow 80/tcp
-        sudo ufw allow 443/tcp
-        sudo ufw --force enable
+        run_cmd ufw allow 22/tcp
+        run_cmd ufw allow 4000/tcp
+        run_cmd ufw allow 80/tcp
+        run_cmd ufw allow 443/tcp
+        run_cmd ufw --force enable
         log_info "防火墙配置完成"
     else
         log_warn "未检测到ufw防火墙"
@@ -431,7 +450,7 @@ module.exports = {
     cwd: '$APP_DIR',
     env: {
       NODE_ENV: 'production',
-      PORT: 3000
+      PORT: 4000
     },
     log_file: '$APP_DIR/logs/combined.log',
     out_file: '$APP_DIR/logs/out.log',
@@ -470,7 +489,7 @@ show_info() {
     log_step "部署完成！"
     
     echo -e "\n${GREEN}=== AiCarpool 部署信息 ===${NC}"
-    echo -e "${BLUE}应用地址:${NC} http://$(hostname -I | awk '{print $1}'):3000"
+    echo -e "${BLUE}应用地址:${NC} http://$(hostname -I | awk '{print $1}'):4000"
     echo -e "${BLUE}应用目录:${NC} $APP_DIR"
     echo -e "${BLUE}日志目录:${NC} $APP_DIR/logs"
     echo -e "${BLUE}配置文件:${NC} $APP_DIR/.env.local"
@@ -493,7 +512,7 @@ show_info() {
     echo -e "${YELLOW}3. 建议配置SSL证书和域名${NC}"
     echo -e "${YELLOW}4. 生产环境建议使用Nginx反向代理${NC}"
     
-    echo -e "\n${GREEN}部署成功！访问 http://$(hostname -I | awk '{print $1}'):3000 开始使用${NC}"
+    echo -e "\n${GREEN}部署成功！访问 http://$(hostname -I | awk '{print $1}'):4000 开始使用${NC}"
 }
 
 # 主函数

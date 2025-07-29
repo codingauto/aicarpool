@@ -30,12 +30,31 @@ log_step() {
     echo -e "${BLUE}[STEP]${NC} $1"
 }
 
+# 执行命令（根据是否为root用户决定是否使用sudo）
+run_cmd() {
+    if [[ "$USING_ROOT" == "true" ]]; then
+        "$@"
+    else
+        sudo "$@"
+    fi
+}
+
 # 检查是否为root用户
 check_root() {
     if [[ $EUID -eq 0 ]]; then
-        log_error "请不要使用root用户运行此脚本！"
+        log_warn "当前以root用户身份运行此脚本"
+        log_warn "建议使用普通用户运行以提高安全性"
         log_info "建议创建普通用户: useradd -m aicarpool && usermod -aG wheel aicarpool"
-        exit 1
+        echo ""
+        read -p "确认要以root用户继续安装吗？[y/N] " -n 1 -r
+        echo ""
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            log_info "安装已取消"
+            exit 0
+        fi
+        log_info "继续以root用户安装..."
+        # 设置标志表示使用root用户
+        export USING_ROOT=true
     fi
 }
 
@@ -81,12 +100,12 @@ check_system() {
 # 更新系统
 update_system() {
     log_step "更新系统包..."
-    sudo $PACKAGE_MANAGER update -y
-    sudo $PACKAGE_MANAGER install -y curl wget git gcc gcc-c++ make python3 python3-pip openssl-devel bc
+    run_cmd $PACKAGE_MANAGER update -y
+    run_cmd $PACKAGE_MANAGER install -y curl wget git gcc gcc-c++ make python3 python3-pip openssl-devel bc
     
     # 启用EPEL仓库
     if [[ "$ID" == "centos" || "$ID" == "rhel" ]]; then
-        sudo $PACKAGE_MANAGER install -y epel-release
+        run_cmd $PACKAGE_MANAGER install -y epel-release
     fi
 }
 
@@ -148,8 +167,8 @@ install_nodejs() {
     fi
     
     # 安装Node.js 18
-    curl -fsSL https://rpm.nodesource.com/setup_18.x | sudo bash -
-    sudo $PACKAGE_MANAGER install -y nodejs
+    curl -fsSL https://rpm.nodesource.com/setup_18.x | run_cmd bash -
+    run_cmd $PACKAGE_MANAGER install -y nodejs
     
     # 验证安装
     if ! command -v node &> /dev/null; then
@@ -180,23 +199,23 @@ install_mysql() {
     
     # 安装MySQL仓库
     if [[ ! -f /etc/yum.repos.d/mysql-community.repo ]]; then
-        sudo $PACKAGE_MANAGER install -y https://dev.mysql.com/get/mysql80-community-release-el8-1.noarch.rpm || true
+        run_cmd $PACKAGE_MANAGER install -y https://dev.mysql.com/get/mysql80-community-release-el8-1.noarch.rpm || true
     fi
     
     # 禁用默认MySQL模块（CentOS 8+）
     if command -v dnf &> /dev/null; then
-        sudo dnf module disable mysql -y || true
+        run_cmd dnf module disable mysql -y || true
     fi
     
     # 安装MySQL
-    sudo $PACKAGE_MANAGER install -y mysql-community-server mysql-community-client
+    run_cmd $PACKAGE_MANAGER install -y mysql-community-server mysql-community-client
     
     # 启动MySQL
-    sudo systemctl start mysqld
-    sudo systemctl enable mysqld
+    run_cmd systemctl start mysqld
+    run_cmd systemctl enable mysqld
     
     # 获取临时密码
-    TEMP_PASSWORD=$(sudo grep 'temporary password' /var/log/mysqld.log | tail -1 | awk '{print $NF}')
+    TEMP_PASSWORD=$(run_cmd grep 'temporary password' /var/log/mysqld.log | tail -1 | awk '{print $NF}')
     
     # 重置root密码
     mysql --connect-expired-password -u root -p"$TEMP_PASSWORD" << EOF
@@ -219,14 +238,14 @@ install_redis() {
         return
     fi
     
-    sudo $PACKAGE_MANAGER install -y redis
+    run_cmd $PACKAGE_MANAGER install -y redis
     
     # 配置Redis
-    sudo sed -i 's/^supervised no/supervised systemd/' /etc/redis.conf || sudo sed -i 's/^supervised no/supervised systemd/' /etc/redis/redis.conf
+    run_cmd sed -i 's/^supervised no/supervised systemd/' /etc/redis.conf || run_cmd sed -i 's/^supervised no/supervised systemd/' /etc/redis/redis.conf
     
     # 启动Redis
-    sudo systemctl start redis
-    sudo systemctl enable redis
+    run_cmd systemctl start redis
+    run_cmd systemctl enable redis
     
     # 测试Redis
     if redis-cli ping | grep -q PONG; then
@@ -246,10 +265,10 @@ install_pm2() {
         return
     fi
     
-    sudo npm install -g pm2
+    run_cmd npm install -g pm2
     
     # 设置PM2开机自启
-    sudo pm2 startup
+    run_cmd pm2 startup
     
     log_info "PM2安装完成"
 }
@@ -261,8 +280,10 @@ setup_app() {
     # 创建应用目录
     APP_DIR="/opt/aicarpool"
     if [[ ! -d "$APP_DIR" ]]; then
-        sudo mkdir -p "$APP_DIR"
-        sudo chown $USER:$USER "$APP_DIR"
+        run_cmd mkdir -p "$APP_DIR"
+        if [[ "$USING_ROOT" != "true" ]]; then
+            run_cmd chown $USER:$USER "$APP_DIR"
+        fi
     fi
     
     # 克隆或更新代码
@@ -362,11 +383,11 @@ REDIS_URL="redis://localhost:6379"
 
 # JWT配置
 NEXTAUTH_SECRET="$NEXTAUTH_SECRET"
-NEXTAUTH_URL="http://localhost:3000"
+NEXTAUTH_URL="http://localhost:4000"
 
 # 应用配置
 NODE_ENV="production"
-PORT=3000
+PORT=4000
 
 # 邮件配置（需要手动配置）
 # SMTP_HOST=""
@@ -423,11 +444,11 @@ setup_firewall() {
     log_step "配置防火墙..."
     
     if systemctl is-active --quiet firewalld; then
-        sudo firewall-cmd --permanent --add-port=22/tcp
-        sudo firewall-cmd --permanent --add-port=3000/tcp
-        sudo firewall-cmd --permanent --add-port=80/tcp
-        sudo firewall-cmd --permanent --add-port=443/tcp
-        sudo firewall-cmd --reload
+        run_cmd firewall-cmd --permanent --add-port=22/tcp
+        run_cmd firewall-cmd --permanent --add-port=4000/tcp
+        run_cmd firewall-cmd --permanent --add-port=80/tcp
+        run_cmd firewall-cmd --permanent --add-port=443/tcp
+        run_cmd firewall-cmd --reload
         log_info "防火墙配置完成"
     else
         log_warn "防火墙未启用"
@@ -440,11 +461,11 @@ setup_selinux() {
     
     if command -v getenforce &> /dev/null && [[ "$(getenforce)" != "Disabled" ]]; then
         # 允许网络连接
-        sudo setsebool -P httpd_can_network_connect 1
-        sudo setsebool -P httpd_can_network_relay 1
+        run_cmd setsebool -P httpd_can_network_connect 1
+        run_cmd setsebool -P httpd_can_network_relay 1
         
         # 允许端口绑定
-        sudo semanage port -a -t http_port_t -p tcp 3000 || true
+        run_cmd semanage port -a -t http_port_t -p tcp 4000 || true
         
         log_info "SELinux配置完成"
     else
@@ -468,7 +489,7 @@ module.exports = {
     cwd: '$APP_DIR',
     env: {
       NODE_ENV: 'production',
-      PORT: 3000
+      PORT: 4000
     },
     log_file: '$APP_DIR/logs/combined.log',
     out_file: '$APP_DIR/logs/out.log',
@@ -507,7 +528,7 @@ show_info() {
     log_step "部署完成！"
     
     echo -e "\n${GREEN}=== AiCarpool 部署信息 ===${NC}"
-    echo -e "${BLUE}应用地址:${NC} http://$(hostname -I | awk '{print $1}'):3000"
+    echo -e "${BLUE}应用地址:${NC} http://$(hostname -I | awk '{print $1}'):4000"
     echo -e "${BLUE}应用目录:${NC} $APP_DIR"
     echo -e "${BLUE}日志目录:${NC} $APP_DIR/logs"
     echo -e "${BLUE}配置文件:${NC} $APP_DIR/.env.local"
@@ -532,7 +553,7 @@ show_info() {
     echo -e "${YELLOW}4. 生产环境建议使用Nginx反向代理${NC}"
     echo -e "${YELLOW}5. 检查防火墙和SELinux设置${NC}"
     
-    echo -e "\n${GREEN}部署成功！访问 http://$(hostname -I | awk '{print $1}'):3000 开始使用${NC}"
+    echo -e "\n${GREEN}部署成功！访问 http://$(hostname -I | awk '{print $1}'):4000 开始使用${NC}"
 }
 
 # 主函数
