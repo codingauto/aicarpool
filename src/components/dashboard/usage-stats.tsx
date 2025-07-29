@@ -119,8 +119,20 @@ export function UsageStats() {
     );
   }
 
-  if (!stats || !stats.total) {
-    return null;
+  if (!stats) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>使用统计</CardTitle>
+          <CardDescription>您的AI服务使用情况</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8">
+            <div className="text-gray-500">暂无使用数据</div>
+          </div>
+        </CardContent>
+      </Card>
+    );
   }
 
   return (
@@ -155,7 +167,7 @@ export function UsageStats() {
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-green-600">
-                {stats.total?.cost ? formatCost(stats.total.cost) : '¥0.0000'}
+                {stats.total?.cost !== undefined ? formatCost(stats.total.cost) : '¥0.0000'}
               </div>
               <div className="text-sm text-gray-600">总费用</div>
             </div>

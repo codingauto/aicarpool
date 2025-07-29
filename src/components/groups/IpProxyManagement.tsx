@@ -447,7 +447,7 @@ export function IpProxyManagement({ groupId, isAdmin }: IpProxyManagementProps) 
               <Users className="w-5 h-5 text-purple-600 mr-3" />
               <div>
                 <div className="text-2xl font-bold">
-                  {proxyConfigs.reduce((sum, p) => sum + p.currentConnections, 0)}
+                  {proxyConfigs.reduce((sum, p) => sum + (Number(p.currentConnections) || 0), 0)}
                 </div>
                 <div className="text-sm text-gray-600">当前连接</div>
               </div>
