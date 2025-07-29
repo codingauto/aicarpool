@@ -47,15 +47,6 @@ export async function POST(request: NextRequest) {
             status: true,
           },
         },
-        aiService: {
-          select: {
-            id: true,
-            serviceName: true,
-            displayName: true,
-            baseUrl: true,
-            isEnabled: true,
-          },
-        },
       },
     });
 
@@ -72,8 +63,34 @@ export async function POST(request: NextRequest) {
       return createApiResponse(false, null, '拼车组已被禁用', 403);
     }
 
-    if (!apiKeyRecord.aiService.isEnabled) {
-      return createApiResponse(false, null, 'AI服务已被禁用', 403);
+    // 静态AI服务信息
+    const staticAiServices = {
+      claude: {
+        id: 'claude',
+        serviceName: 'claude',
+        displayName: 'Claude Code',
+        baseUrl: 'https://api.anthropic.com',
+        isEnabled: true,
+      },
+      gemini: {
+        id: 'gemini',
+        serviceName: 'gemini',
+        displayName: 'Gemini CLI',
+        baseUrl: 'https://generativelanguage.googleapis.com',
+        isEnabled: true,
+      },
+      ampcode: {
+        id: 'ampcode',
+        serviceName: 'ampcode',
+        displayName: 'AmpCode',
+        baseUrl: 'https://api.ampcode.com',
+        isEnabled: true,
+      },
+    };
+
+    const aiServiceInfo = staticAiServices[apiKeyRecord.aiServiceId as keyof typeof staticAiServices];
+    if (!aiServiceInfo || !aiServiceInfo.isEnabled) {
+      return createApiResponse({ error: 'AI服务已被禁用' }, false, 403);
     }
 
     // 检查配额
@@ -89,26 +106,26 @@ export async function POST(request: NextRequest) {
     const groupAiService = await prisma.groupAiService.findFirst({
       where: {
         groupId: apiKeyRecord.group.id,
-        aiServiceId: apiKeyRecord.aiService.id,
+        aiServiceId: apiKeyRecord.aiServiceId,
         isEnabled: true,
       },
     });
 
     if (!groupAiService || !groupAiService.authConfig) {
-      return createApiResponse(false, null, '拼车组未配置该AI服务', 400);
+      return createApiResponse({ error: '拼车组未配置该AI服务' }, false, 400);
     }
 
     const authConfig = groupAiService.authConfig as Record<string, unknown>;
     if (!authConfig.apiKey) {
-      return createApiResponse(false, null, 'AI服务未配置API密钥', 400);
+      return createApiResponse({ error: 'AI服务未配置API密钥' }, false, 400);
     }
 
     // 创建AI服务实例
     const aiService = AIServiceFactory.create(
-      apiKeyRecord.aiService.serviceName as SupportedAIService,
+      aiServiceInfo.serviceName as SupportedAIService,
       {
-        apiKey: authConfig.apiKey,
-        baseUrl: apiKeyRecord.aiService.baseUrl,
+        apiKey: authConfig.apiKey as string,
+        baseUrl: aiServiceInfo.baseUrl,
         timeout: 30000,
       }
     );
@@ -131,7 +148,7 @@ export async function POST(request: NextRequest) {
           data: {
             userId: apiKeyRecord.user.id,
             groupId: apiKeyRecord.group.id,
-            aiServiceId: apiKeyRecord.aiService.id,
+            aiServiceId: apiKeyRecord.aiServiceId,
             requestType: 'chat',
             tokenCount: BigInt(response.usage.totalTokens),
             cost: cost,
@@ -159,7 +176,7 @@ export async function POST(request: NextRequest) {
         });
       });
 
-      return createApiResponse(true, response);
+      return createApiResponse(response, true, 200);
 
     } catch (aiError) {
       const endTime = Date.now();
@@ -172,7 +189,7 @@ export async function POST(request: NextRequest) {
         data: {
           userId: apiKeyRecord.user.id,
           groupId: apiKeyRecord.group.id,
-          aiServiceId: apiKeyRecord.aiService.id,
+          aiServiceId: apiKeyRecord.aiServiceId,
           requestType: 'chat',
           tokenCount: BigInt(0),
           cost: 0,
@@ -188,15 +205,15 @@ export async function POST(request: NextRequest) {
       });
 
       const errorMessage = aiError instanceof Error ? aiError.message : 'AI服务调用失败';
-      return createApiResponse(false, null, errorMessage, 500);
+      return createApiResponse({ error: errorMessage }, false, 500);
     }
 
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return createApiResponse(false, null, error.errors[0].message, 400);
+      return createApiResponse({ error: error.errors[0].message }, false, 400);
     }
 
     console.error('Chat proxy error:', error);
-    return createApiResponse(false, null, '请求处理失败', 500);
+    return createApiResponse({ error: '请求处理失败' }, false, 500);
   }
 }

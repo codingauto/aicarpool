@@ -44,14 +44,16 @@ async function getHandler(req: NextRequest, user: any) {
             },
             aiServices: {
               where: { isEnabled: true },
-              include: {
-                aiService: {
-                  select: {
-                    id: true,
-                    serviceName: true,
-                    displayName: true,
-                  },
-                },
+              select: {
+                id: true,
+                groupId: true,
+                aiServiceId: true,
+                isEnabled: true,
+                quota: true,
+                authConfig: true,
+                proxySettings: true,
+                createdAt: true,
+                updatedAt: true,
               },
             },
             _count: {
@@ -91,12 +93,37 @@ async function getHandler(req: NextRequest, user: any) {
         joinedAt: m.joinedAt,
         user: m.user,
       })),
-      aiServices: gm.group.aiServices.map((as) => ({
-        id: as.id,
-        isEnabled: as.isEnabled,
-        quota: as.quota,
-        aiService: as.aiService,
-      })),
+      aiServices: gm.group.aiServices.map((as) => {
+        // 静态AI服务信息
+        const staticAiServices = {
+          claude: {
+            id: 'claude',
+            serviceName: 'claude',
+            displayName: 'Claude Code',
+          },
+          gemini: {
+            id: 'gemini',
+            serviceName: 'gemini',
+            displayName: 'Gemini CLI',
+          },
+          ampcode: {
+            id: 'ampcode',
+            serviceName: 'ampcode',
+            displayName: 'AmpCode',
+          },
+        };
+        
+        return {
+          id: as.id,
+          isEnabled: as.isEnabled,
+          quota: as.quota,
+          aiService: staticAiServices[as.aiServiceId as keyof typeof staticAiServices] || {
+            id: as.aiServiceId,
+            serviceName: as.aiServiceId,
+            displayName: as.aiServiceId,
+          },
+        };
+      }),
       stats: {
         memberCount: gm.group._count.members,
         apiKeyCount: gm.group._count.apiKeys,

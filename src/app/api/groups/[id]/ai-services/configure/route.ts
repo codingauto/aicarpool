@@ -29,21 +29,22 @@ const aiServiceConfigSchema = z.object({
   }).optional(),
 });
 
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '');
     const decoded = verifyToken(token);
     
     if (!decoded) {
-      return createApiResponse(false, null, '未授权访问', 401);
+      return createApiResponse({ error: '未授权访问' }, false, 401);
     }
 
-    const groupId = params.id;
+    const resolvedParams = await params;
+    const groupId = resolvedParams.id;
     
     // 验证用户是否为组管理员
     const groupMember = await prisma.groupMember.findFirst({
       where: {
-        userId: decoded.userId,
+        userId: (decoded as any).userId,
         groupId: groupId,
         status: 'active',
         role: { in: ['admin', 'owner'] },
@@ -51,19 +52,16 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     });
 
     if (!groupMember) {
-      return createApiResponse(false, null, '无权管理该组的AI服务配置', 403);
+      return createApiResponse({ error: '权限不足' }, false, 403);
     }
 
     const body = await request.json();
     const validatedData = aiServiceConfigSchema.parse(body);
 
-    // 检查AI服务是否存在
-    const aiService = await prisma.aiService.findUnique({
-      where: { id: validatedData.aiServiceId },
-    });
-
-    if (!aiService) {
-      return createApiResponse(false, null, 'AI服务不存在', 404);
+    // 验证AI服务ID是否为支持的服务
+    const supportedServices = ['claude', 'gemini', 'ampcode'];
+    if (!supportedServices.includes(validatedData.aiServiceId)) {
+      return createApiResponse({ error: 'AI服务不存在' }, false, 404);
     }
 
     // 更新或创建组AI服务配置
@@ -87,16 +85,6 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
           proxySettings: validatedData.proxySettings,
           quota: validatedData.quota,
         },
-        include: {
-          aiService: {
-            select: {
-              id: true,
-              serviceName: true,
-              displayName: true,
-              description: true,
-            },
-          },
-        },
       });
     } else {
       // 创建新配置
@@ -108,16 +96,6 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
           authConfig: validatedData.authConfig,
           proxySettings: validatedData.proxySettings,
           quota: validatedData.quota,
-        },
-        include: {
-          aiService: {
-            select: {
-              id: true,
-              serviceName: true,
-              displayName: true,
-              description: true,
-            },
-          },
         },
       });
     }
@@ -154,61 +132,78 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       });
     }
 
-    return createApiResponse(true, result);
+    return createApiResponse(result, true, 200);
 
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return createApiResponse(false, null, error.errors[0].message, 400);
+      return createApiResponse({ error: error.errors[0].message }, false, 400);
     }
 
     console.error('Configure AI service error:', error);
-    return createApiResponse(false, null, '配置AI服务失败', 500);
+    return createApiResponse({ error: '配置AI服务失败' }, false, 500);
   }
 }
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '');
     const decoded = verifyToken(token);
     
     if (!decoded) {
-      return createApiResponse(false, null, '未授权访问', 401);
+      return createApiResponse({ error: '未授权访问' }, false, 401);
     }
 
-    const groupId = params.id;
+    const resolvedParams = await params;
+    const groupId = resolvedParams.id;
     
     // 验证用户是否属于该组
     const groupMember = await prisma.groupMember.findFirst({
       where: {
-        userId: decoded.userId,
+        userId: (decoded as any).userId,
         groupId: groupId,
         status: 'active',
       },
     });
 
     if (!groupMember) {
-      return createApiResponse(false, null, '无权访问该组信息', 403);
+      return createApiResponse({ error: '权限不足' }, false, 403);
     }
 
-    // 获取组的AI服务配置（包括详细配置信息）
+    // 获取组的AI服务配置
     const groupAiServices = await prisma.groupAiService.findMany({
       where: { groupId },
-      include: {
-        aiService: {
-          select: {
-            id: true,
-            serviceName: true,
-            displayName: true,
-            description: true,
-            baseUrl: true,
-            isEnabled: true,
-          },
-        },
-      },
       orderBy: {
         createdAt: 'asc',
       },
     });
+
+    // 定义静态AI服务信息
+    const staticAiServices = {
+      'claude': {
+        id: 'claude',
+        serviceName: 'claude',
+        displayName: 'Claude Code',
+        description: 'Anthropic Claude AI服务',
+        baseUrl: 'https://api.anthropic.com',
+        isEnabled: true,
+      },
+      'gemini': {
+        id: 'gemini',
+        serviceName: 'gemini',
+        displayName: 'Gemini CLI',
+        description: 'Google Gemini AI服务',
+        baseUrl: 'https://generativelanguage.googleapis.com',
+        isEnabled: true,
+      },
+      'ampcode': {
+        id: 'ampcode',
+        serviceName: 'ampcode',
+        displayName: 'AmpCode',
+        description: 'AmpCode AI服务',
+        baseUrl: 'https://api.ampcode.com',
+        isEnabled: true,
+      },
+    };
 
     // 获取配额配置
     const quotaConfigs = await prisma.quotaConfig.findMany({
@@ -220,26 +215,52 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       where: { groupId },
     });
 
+    // 序列化BigInt的辅助函数
+    const serializeBigInt = (obj: any): any => {
+      if (obj === null || obj === undefined) return obj;
+      if (typeof obj === 'bigint') return Number(obj);
+      if (Array.isArray(obj)) return obj.map(serializeBigInt);
+      if (typeof obj === 'object') {
+        const result: any = {};
+        for (const [key, value] of Object.entries(obj)) {
+          result[key] = serializeBigInt(value);
+        }
+        return result;
+      }
+      return obj;
+    };
+
     // 组合数据
     const servicesWithDetails = groupAiServices.map(service => {
       const quotaConfig = quotaConfigs.find(q => q.aiServiceId === service.aiServiceId);
       const usage = quotaUsage.find(u => u.aiServiceId === service.aiServiceId);
+      const proxySettings = service.proxySettings as any;
+      const aiServiceInfo = staticAiServices[service.aiServiceId as keyof typeof staticAiServices];
       
-      return {
+      return serializeBigInt({
         ...service,
+        aiService: aiServiceInfo || {
+          id: service.aiServiceId,
+          serviceName: service.aiServiceId,
+          displayName: service.aiServiceId,
+          description: '',
+          baseUrl: '',
+          isEnabled: true,
+        },
         quotaConfig,
         quotaUsage: usage,
-        priority: service.proxySettings?.['priority'] || 1,
-        routingStrategy: service.proxySettings?.['routingStrategy'] || 'priority',
+        priority: proxySettings?.priority || 1,
+        routingStrategy: proxySettings?.routingStrategy || 'priority',
         healthStatus: 'healthy', // TODO: 从监控系统获取实际状态
         responseTime: 0, // TODO: 从监控系统获取实际响应时间
-      };
+      });
     });
 
-    return createApiResponse(true, servicesWithDetails);
+    return createApiResponse(servicesWithDetails, true, 200);
 
   } catch (error) {
     console.error('Get AI service configuration error:', error);
-    return createApiResponse(false, null, '获取AI服务配置失败', 500);
+    console.error('Error details:', error.message, error.stack);
+    return createApiResponse({ error: '获取AI服务配置失败', details: error.message }, false, 500);
   }
 }

@@ -30,27 +30,6 @@ model User {
   @@map("users")
 }
 
-model AiService {
-  id            String           @id @default(cuid())
-  serviceName   String           @unique
-  displayName   String
-  description   String?
-  baseUrl       String
-  isEnabled     Boolean          @default(true)
-  rateLimits    Json?
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
-  apiKeys       ApiKey[]
-  groupServices GroupAiService[]
-  usageStats    UsageStat[]
-  quotaConfigs  QuotaConfig[]
-  quotaUsage    QuotaUsage[]
-  userQuotaUsage UserQuotaUsage[]
-  models        AiServiceModel[]
-  edgeRoutes    EdgeServiceRoute[]
-
-  @@map("ai_services")
-}
 
 model Group {
   id            String           @id @default(cuid())
@@ -101,18 +80,16 @@ model GroupMember {
 model GroupAiService {
   id            String    @id @default(cuid())
   groupId       String
-  aiServiceId   String
+  aiServiceId   String    // 现在直接使用服务名称作为标识
   isEnabled     Boolean   @default(true)
   quota         Json?
   authConfig    Json?
   proxySettings Json?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
-  aiService     AiService @relation(fields: [aiServiceId], references: [id], onDelete: Cascade)
   group         Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
 
   @@unique([groupId, aiServiceId])
-  @@index([aiServiceId], map: "group_ai_services_aiServiceId_fkey")
   @@map("group_ai_services")
 }
 
@@ -140,7 +117,7 @@ model ApiKey {
   description String?
   groupId     String
   userId      String
-  aiServiceId String
+  aiServiceId String    // 现在直接使用服务名称
   quotaLimit  BigInt?
   quotaUsed   BigInt    @default(0)
   status      String    @default("active")
@@ -148,11 +125,9 @@ model ApiKey {
   lastUsedAt  DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
-  aiService   AiService @relation(fields: [aiServiceId], references: [id], onDelete: Cascade)
   group       Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([aiServiceId], map: "api_keys_aiServiceId_fkey")
   @@index([groupId], map: "api_keys_groupId_fkey")
   @@index([userId], map: "api_keys_userId_fkey")
   @@map("api_keys")
@@ -197,7 +172,7 @@ model UsageStat {
   id           String    @id @default(cuid())
   userId       String
   groupId      String
-  aiServiceId  String
+  aiServiceId  String    // 现在直接使用服务名称
   requestType  String
   tokenCount   BigInt
   cost         Decimal   @db.Decimal(10, 6)
@@ -206,7 +181,6 @@ model UsageStat {
   status       String
   errorCode    String?
   metadata     Json?
-  aiService    AiService @relation(fields: [aiServiceId], references: [id], onDelete: Cascade)
   group        Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
   user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -235,7 +209,7 @@ model EmailLog {
 model QuotaConfig {
   id                    String  @id @default(cuid())
   groupId               String
-  aiServiceId           String
+  aiServiceId           String  // 现在直接使用服务名称
   dailyTokenLimit       BigInt  @default(100000)
   monthlyTokenLimit     BigInt  @default(3000000)
   dailyCostLimit        Decimal @default(10.0) @db.Decimal(10, 2)
@@ -249,7 +223,6 @@ model QuotaConfig {
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
   group                 Group   @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  aiService             AiService @relation(fields: [aiServiceId], references: [id], onDelete: Cascade)
 
   @@unique([groupId, aiServiceId])
   @@map("quota_configs")
@@ -258,7 +231,7 @@ model QuotaConfig {
 model QuotaUsage {
   id            String   @id @default(cuid())
   groupId       String
-  aiServiceId   String
+  aiServiceId   String   // 现在直接使用服务名称
   dateKey       String   // YYYY-MM-DD
   monthKey      String   // YYYY-MM
   dailyTokens   BigInt   @default(0)
@@ -269,7 +242,6 @@ model QuotaUsage {
   warningsSent  Json?    // 存储已发送的警告状态
   updatedAt     DateTime @updatedAt
   group         Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  aiService     AiService @relation(fields: [aiServiceId], references: [id], onDelete: Cascade)
 
   @@unique([groupId, aiServiceId])
   @@index([dateKey])
@@ -281,7 +253,7 @@ model UserQuotaUsage {
   id            String   @id @default(cuid())
   userId        String
   groupId       String
-  aiServiceId   String
+  aiServiceId   String   // 现在直接使用服务名称
   dateKey       String   // YYYY-MM-DD
   monthKey      String   // YYYY-MM
   dailyTokens   BigInt   @default(0)
@@ -291,7 +263,6 @@ model UserQuotaUsage {
   updatedAt     DateTime @updatedAt
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   group         Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  aiService     AiService @relation(fields: [aiServiceId], references: [id], onDelete: Cascade)
 
   @@unique([userId, groupId, aiServiceId])
   @@index([dateKey])
@@ -299,25 +270,6 @@ model UserQuotaUsage {
   @@map("user_quota_usage")
 }
 
-// AI服务模型配置表
-model AiServiceModel {
-  id          String  @id @default(cuid())
-  aiServiceId String
-  modelName   String
-  displayName String
-  description String?
-  inputCost   Decimal @db.Decimal(12, 8)  // 每1K token的输入成本
-  outputCost  Decimal @db.Decimal(12, 8)  // 每1K token的输出成本
-  maxTokens   Int     @default(4096)
-  isEnabled   Boolean @default(true)
-  metadata    Json?   // 模型特定配置
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  aiService   AiService @relation(fields: [aiServiceId], references: [id], onDelete: Cascade)
-
-  @@unique([aiServiceId, modelName])
-  @@map("ai_service_models")
-}
 
 // IP代理配置表 - 简化版本
 model IpProxyConfig {
@@ -439,13 +391,12 @@ model EdgeNodeGroup {
 model EdgeServiceRoute {
   id          String   @id @default(cuid())
   nodeId      String
-  aiServiceId String
+  aiServiceId String   // 现在直接使用服务名称
   routeConfig Json     // 路由配置
   isEnabled   Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   node        EdgeNode @relation(fields: [nodeId], references: [id], onDelete: Cascade)
-  aiService   AiService @relation(fields: [aiServiceId], references: [id], onDelete: Cascade)
 
   @@unique([nodeId, aiServiceId])
   @@map("edge_service_routes")

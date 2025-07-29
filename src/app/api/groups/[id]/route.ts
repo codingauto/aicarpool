@@ -58,17 +58,16 @@ async function getHandler(req: NextRequest, user: any, { params }: { params: Pro
           },
         },
         aiServices: {
-          include: {
-            aiService: {
-              select: {
-                id: true,
-                serviceName: true,
-                displayName: true,
-                description: true,
-                baseUrl: true,
-                isEnabled: true,
-              },
-            },
+          select: {
+            id: true,
+            groupId: true,
+            aiServiceId: true,
+            isEnabled: true,
+            quota: true,
+            authConfig: true,
+            proxySettings: true,
+            createdAt: true,
+            updatedAt: true,
           },
         },
         apiKeys: {
@@ -79,13 +78,6 @@ async function getHandler(req: NextRequest, user: any, { params }: { params: Pro
                 id: true,
                 name: true,
                 email: true,
-              },
-            },
-            aiService: {
-              select: {
-                id: true,
-                serviceName: true,
-                displayName: true,
               },
             },
           },
@@ -126,15 +118,74 @@ async function getHandler(req: NextRequest, user: any, { params }: { params: Pro
       return createErrorResponse('拼车组不存在', 404);
     }
 
+    // 静态AI服务信息
+    const staticAiServices = {
+      claude: {
+        id: 'claude',
+        serviceName: 'claude',
+        displayName: 'Claude Code',
+        description: 'Anthropic Claude AI服务',
+        baseUrl: 'https://api.anthropic.com',
+        isEnabled: true,
+      },
+      gemini: {
+        id: 'gemini',
+        serviceName: 'gemini',
+        displayName: 'Gemini CLI',
+        description: 'Google Gemini AI服务',
+        baseUrl: 'https://generativelanguage.googleapis.com',
+        isEnabled: true,
+      },
+      ampcode: {
+        id: 'ampcode',
+        serviceName: 'ampcode',
+        displayName: 'AmpCode',
+        description: 'AmpCode AI服务',
+        baseUrl: 'https://api.ampcode.com',
+        isEnabled: true,
+      },
+    };
+
+    // 序列化BigInt的辅助函数
+    const serializeBigInt = (obj: any): any => {
+      if (obj === null || obj === undefined) return obj;
+      if (typeof obj === 'bigint') return Number(obj);
+      if (Array.isArray(obj)) return obj.map(serializeBigInt);
+      if (typeof obj === 'object') {
+        const result: any = {};
+        for (const [key, value] of Object.entries(obj)) {
+          result[key] = serializeBigInt(value);
+        }
+        return result;
+      }
+      return obj;
+    };
+
     // 格式化返回数据，处理 BigInt 类型
-    const result = {
+    const result = serializeBigInt({
       ...group,
       userRole: membership.role,
       userJoinedAt: membership.joinedAt,
+      aiServices: group.aiServices.map(service => ({
+        ...service,
+        aiService: staticAiServices[service.aiServiceId as keyof typeof staticAiServices] || {
+          id: service.aiServiceId,
+          serviceName: service.aiServiceId,
+          displayName: service.aiServiceId,
+          description: '',
+          baseUrl: '',
+          isEnabled: true,
+        },
+      })),
       apiKeys: group.apiKeys.map(key => ({
         ...key,
         quotaLimit: key.quotaLimit ? key.quotaLimit.toString() : null,
         quotaUsed: key.quotaUsed.toString(),
+        aiService: staticAiServices[key.aiServiceId as keyof typeof staticAiServices] || {
+          id: key.aiServiceId,
+          serviceName: key.aiServiceId,
+          displayName: key.aiServiceId,
+        },
       })),
       stats: {
         memberCount: group._count.members,
@@ -143,7 +194,7 @@ async function getHandler(req: NextRequest, user: any, { params }: { params: Pro
         totalUsage: 0,
         totalCost: 0,
       },
-    };
+    });
 
     return createApiResponse(result);
 
