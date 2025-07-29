@@ -42,4 +42,4 @@ process.on('SIGTERM', () => {
 });
 
 console.log('✅ 启动脚本已执行，等待Next.js服务器启动...');
-console.log('📱 服务器启动后可访问: http://localhost:3000');
+console.log('📱 服务器启动后可访问: http://localhost:4000');
