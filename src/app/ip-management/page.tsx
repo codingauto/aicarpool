@@ -80,10 +80,14 @@ export default function IpManagementPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingResource, setEditingResource] = useState<ProxyResource | null>(null);
   const [formData, setFormData] = useState<ProxyFormData>(initialFormData);
+  const [groupId, setGroupId] = useState<string>('');
 
   // 获取当前用户的组ID
-  const getUserGroupId = () => {
-    // 从localStorage获取当前选择的组ID，或使用第一个组
+  const getUserGroupId = async () => {
+    // 只在客户端访问localStorage
+    if (typeof window === 'undefined') return null;
+    
+    // 从localStorage获取当前选择的组ID
     const selectedGroupId = localStorage.getItem('selectedGroupId');
     if (selectedGroupId) return selectedGroupId;
     
@@ -92,20 +96,51 @@ export default function IpManagementPage() {
       return user.groups[0].id;
     }
     
-    // 默认值（实际部署时需要处理这种情况）
-    return 'temp-group-id';
+    // 尝试从API获取用户的组信息
+    try {
+      const response = await fetch('/api/groups', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      const result = await response.json();
+      if (result.success && result.data.length > 0) {
+        return result.data[0].id;
+      }
+    } catch (error) {
+      console.error('Failed to fetch groups:', error);
+    }
+    
+    return null;
   };
 
-  const groupId = getUserGroupId();
+  useEffect(() => {
+    // 在客户端设置groupId
+    const initGroupId = async () => {
+      if (token) {
+        const id = await getUserGroupId();
+        if (id) {
+          setGroupId(id);
+        }
+      }
+    };
+    
+    initGroupId();
+  }, [user, token]);
 
   useEffect(() => {
-    fetchProxyResources();
-  }, []);
+    // 只有当groupId设置后才获取数据
+    if (groupId) {
+      fetchProxyResources();
+    }
+  }, [groupId]);
 
   const fetchProxyResources = async () => {
+    if (!groupId || !token) return;
+    
     try {
       setLoading(true);
-      const response = await fetch(`/api/proxy-resources?groupId=${groupId}`, {
+      const response = await fetch(`/api/groups/${groupId}/ip-proxy`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -115,7 +150,7 @@ export default function IpManagementPage() {
       if (result.success) {
         setProxyResources(result.data);
       } else {
-        toast.error(result.message || '获取代理资源失败');
+        toast.error(result.error || '获取代理资源失败');
       }
     } catch (error) {
       console.error('Failed to fetch proxy resources:', error);
@@ -127,14 +162,27 @@ export default function IpManagementPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!groupId || !token) return;
+    
     setSubmitting(true);
 
     try {
-      const url = editingResource ? '/api/proxy-resources' : '/api/proxy-resources';
+      const url = editingResource 
+        ? `/api/groups/${groupId}/ip-proxy/${editingResource.id}` 
+        : `/api/groups/${groupId}/ip-proxy`;
       const method = editingResource ? 'PUT' : 'POST';
-      const payload = editingResource 
-        ? { id: editingResource.id, groupId, ...formData }
-        : { groupId, ...formData };
+      const payload = {
+        name: formData.host, // 使用主机地址作为名称
+        proxyType: formData.type,
+        host: formData.host,
+        port: formData.port,
+        username: formData.username || undefined,
+        password: formData.password || undefined,
+        location: formData.location || undefined,
+        description: formData.provider ? `提供商: ${formData.provider}` : undefined,
+        maxConnections: 10,
+        isEnabled: true
+      };
 
       const response = await fetch(url, {
         method,
@@ -153,7 +201,7 @@ export default function IpManagementPage() {
         setFormData(initialFormData);
         fetchProxyResources();
       } else {
-        toast.error(result.message || '操作失败');
+        toast.error(result.error || '操作失败');
       }
     } catch (error) {
       console.error('Failed to submit proxy resource:', error);
@@ -166,7 +214,7 @@ export default function IpManagementPage() {
   const handleEdit = (resource: ProxyResource) => {
     setEditingResource(resource);
     setFormData({
-      type: resource.type,
+      type: (resource as any).proxyType || resource.type,
       host: resource.host,
       port: resource.port,
       username: resource.username || '',
@@ -183,7 +231,7 @@ export default function IpManagementPage() {
     }
 
     try {
-      const response = await fetch(`/api/proxy-resources?id=${resource.id}&groupId=${groupId}`, {
+      const response = await fetch(`/api/groups/${groupId}/ip-proxy/${resource.id}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -195,7 +243,7 @@ export default function IpManagementPage() {
         toast.success('代理资源删除成功');
         fetchProxyResources();
       } else {
-        toast.error(result.message || '删除失败');
+        toast.error(result.error || '删除失败');
       }
     } catch (error) {
       console.error('Failed to delete proxy resource:', error);
@@ -408,7 +456,7 @@ export default function IpManagementPage() {
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline">
-                        {getTypeLabel(resource.type)}
+                        {getTypeLabel((resource as any).proxyType || resource.type)}
                       </Badge>
                     </TableCell>
                     <TableCell>

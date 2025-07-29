@@ -24,7 +24,7 @@ async function getHandler(req: NextRequest, user: any, { params }: { params: Pro
     }
 
     // 验证代理配置是否存在
-    const proxyConfig = await prisma.proxyResource.findFirst({
+    const proxyConfig = await prisma.ipProxyConfig.findFirst({
       where: {
         id: proxyId,
         groupId
@@ -51,7 +51,7 @@ async function getHandler(req: NextRequest, user: any, { params }: { params: Pro
 
     // 构建查询条件
     const whereCondition: any = {
-      proxyResourceId: proxyId,
+      proxyId: proxyId,
       startTime: {
         gte: startDate
       }
@@ -62,7 +62,7 @@ async function getHandler(req: NextRequest, user: any, { params }: { params: Pro
     }
 
     // 获取使用日志统计
-    const usageLogs = await prisma.proxyUsageLog.findMany({
+    const usageLogs = await prisma.ipUsageLog.findMany({
       where: whereCondition,
       select: {
         id: true,
@@ -220,7 +220,7 @@ async function postHandler(req: NextRequest, user: any, { params }: { params: Pr
     const body = await req.json();
 
     // 验证代理配置是否存在
-    const proxyConfig = await prisma.proxyResource.findFirst({
+    const proxyConfig = await prisma.ipProxyConfig.findFirst({
       where: {
         id: proxyId,
         groupId
@@ -232,25 +232,28 @@ async function postHandler(req: NextRequest, user: any, { params }: { params: Pr
     }
 
     // 创建使用日志
-    const usageLog = await prisma.proxyUsageLog.create({
+    const usageLog = await prisma.ipUsageLog.create({
       data: {
-        proxyResourceId: proxyId,
+        proxyId: proxyId,
         userId: body.userId || user.id,
+        sessionId: body.sessionId || null,
+        sourceIp: body.sourceIp || req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown',
         targetHost: body.targetHost,
         targetPort: body.targetPort,
         bytesIn: BigInt(body.bytesIn || 0),
         bytesOut: BigInt(body.bytesOut || 0),
         duration: body.duration || 0,
         status: body.status || 'success',
-        errorMessage: body.errorMessage || null,
+        errorCode: body.errorCode || null,
         startTime: body.startTime ? new Date(body.startTime) : new Date(),
-        endTime: body.endTime ? new Date(body.endTime) : null
+        endTime: body.endTime ? new Date(body.endTime) : null,
+        metadata: body.metadata || null
       }
     });
 
     // 更新代理配置的流量使用统计
     const totalTraffic = Number(body.bytesIn || 0) + Number(body.bytesOut || 0);
-    await prisma.proxyResource.update({
+    await prisma.ipProxyConfig.update({
       where: { id: proxyId },
       data: {
         trafficUsed: {

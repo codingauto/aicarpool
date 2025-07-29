@@ -41,24 +41,32 @@ async function getHandler(
       return createErrorResponse('无权限访问该拼车组', 403);
     }
 
-    // 返回模拟数据，因为数据库中没有 ipProxyConfig 表
-    const mockData = [
-      {
-        id: '1',
-        name: '示例代理配置',
-        description: '这是一个示例IP代理配置',
-        proxyType: 'http',
-        host: '127.0.0.1',
-        port: 8080,
-        location: '本地',
-        maxConnections: 10,
-        isActive: true,
-        createdAt: new Date(),
-        updatedAt: new Date()
+    // 从数据库中获取真实的IP代理配置数据
+    const ipProxyConfigs = await prisma.ipProxyConfig.findMany({
+      where: {
+        groupId
+      },
+      include: {
+        _count: {
+          select: {
+            usageLogs: true,
+            memberConfigs: true
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
       }
-    ];
+    });
 
-    return createApiResponse(mockData);
+    // 处理 BigInt 序列化
+    const processedConfigs = ipProxyConfigs.map(config => ({
+      ...config,
+      trafficUsed: config.trafficUsed.toString(),
+      trafficLimit: config.trafficLimit ? config.trafficLimit.toString() : null
+    }));
+
+    return createApiResponse(processedConfigs);
 
   } catch (error) {
     console.error('获取IP代理配置失败:', error);
@@ -93,17 +101,47 @@ async function postHandler(
     // 验证请求数据
     const validatedData = createIpProxySchema.parse(body);
 
-    // 返回模拟创建成功的数据
-    const mockCreatedData = {
-      id: Date.now().toString(),
-      ...validatedData,
-      groupId,
-      isActive: true,
-      createdAt: new Date(),
-      updatedAt: new Date()
+    // 检查名称是否已存在
+    const existingConfig = await prisma.ipProxyConfig.findFirst({
+      where: {
+        groupId,
+        name: validatedData.name
+      }
+    });
+
+    if (existingConfig) {
+      return createErrorResponse('代理配置名称已存在', 400);
+    }
+
+    // 创建新的IP代理配置
+    const newConfig = await prisma.ipProxyConfig.create({
+      data: {
+        ...validatedData,
+        groupId,
+        trafficLimit: validatedData.trafficLimit ? BigInt(validatedData.trafficLimit * 1024 * 1024) : null, // 转换为字节
+        isEnabled: true,
+        status: 'active',
+        currentConnections: 0,
+        trafficUsed: BigInt(0)
+      },
+      include: {
+        _count: {
+          select: {
+            usageLogs: true,
+            memberConfigs: true
+          }
+        }
+      }
+    });
+
+    // 处理 BigInt 序列化
+    const processedConfig = {
+      ...newConfig,
+      trafficUsed: newConfig.trafficUsed.toString(),
+      trafficLimit: newConfig.trafficLimit ? newConfig.trafficLimit.toString() : null
     };
 
-    return createApiResponse(mockCreatedData);
+    return createApiResponse(processedConfig, true, 201);
 
   } catch (error) {
     if (error instanceof z.ZodError) {

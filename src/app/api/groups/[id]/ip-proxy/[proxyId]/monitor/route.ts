@@ -35,7 +35,7 @@ export async function GET(
     }
 
     // 获取代理配置
-    const proxyConfig = await prisma.proxyResource.findFirst({
+    const proxyConfig = await prisma.ipProxyConfig.findFirst({
       where: {
         id: proxyId,
         groupId
@@ -51,9 +51,9 @@ export async function GET(
     const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
 
     // 获取最近1小时的使用日志
-    const recentLogs = await prisma.proxyUsageLog.findMany({
+    const recentLogs = await prisma.ipUsageLog.findMany({
       where: {
-        proxyResourceId: proxyId,
+        proxyId: proxyId,
         startTime: {
           gte: oneHourAgo
         }
@@ -147,17 +147,17 @@ export async function GET(
         startTime: log.startTime,
         endTime: log.endTime,
         duration: log.duration,
-        bytesIn: log.bytesIn,
-        bytesOut: log.bytesOut,
-        errorMessage: log.errorMessage
+        bytesIn: log.bytesIn.toString(),
+        bytesOut: log.bytesOut.toString(),
+        errorCode: log.errorCode
       })),
       proxyStatus: {
         status: proxyConfig.status,
         isEnabled: proxyConfig.isEnabled,
         currentConnections: proxyConfig.currentConnections,
         maxConnections: proxyConfig.maxConnections,
-        trafficUsed: proxyConfig.trafficUsed,
-        trafficLimit: proxyConfig.trafficLimit,
+        trafficUsed: proxyConfig.trafficUsed.toString(),
+        trafficLimit: proxyConfig.trafficLimit ? proxyConfig.trafficLimit.toString() : null,
         lastCheckAt: proxyConfig.lastCheckAt,
         responseTime: proxyConfig.responseTime,
         errorMessage: proxyConfig.errorMessage
@@ -216,7 +216,7 @@ export async function POST(
 
     if (action === 'health_check') {
       // 更新代理健康状态
-      const updatedProxy = await prisma.proxyResource.update({
+      const updatedProxy = await prisma.ipProxyConfig.update({
         where: { id: proxyId },
         data: {
           status: healthCheckData.isHealthy ? 'active' : 'error',
