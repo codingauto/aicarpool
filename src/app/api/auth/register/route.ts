@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
-import { prisma } from '@/lib/db';
+import { prisma } from '@/lib/prisma';
 import { hashPassword, generateToken, verifyInviteToken } from '@/lib/auth';
 import { createApiResponse } from '@/lib/middleware';
 

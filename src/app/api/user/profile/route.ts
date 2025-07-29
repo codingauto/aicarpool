@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
-import { prisma } from '@/lib/db';
-import { withAuth, AuthenticatedRequest, createApiResponse } from '@/lib/middleware';
+import { prisma } from '@/lib/prisma';
+import { withAuth, createApiResponse, createErrorResponse } from '@/lib/middleware';
 import { hashPassword } from '@/lib/auth';
 
 const updateProfileSchema = z.object({
@@ -15,11 +15,11 @@ const changePasswordSchema = z.object({
 });
 
 // 获取用户档案
-async function getHandler(req: AuthenticatedRequest) {
+async function getHandler(req: NextRequest, user: any) {
   try {
-    const userId = req.user!.userId;
+    const userId = user.id;
 
-    const user = await prisma.user.findUnique({
+    const userData = await prisma.user.findUnique({
       where: { id: userId },
       select: {
         id: true,
@@ -63,34 +63,39 @@ async function getHandler(req: AuthenticatedRequest) {
       },
     });
 
-    if (!user) {
-      return createApiResponse(false, null, '用户不存在', 404);
+    if (!userData) {
+      return createErrorResponse('用户不存在', 404);
     }
 
-    // 格式化返回数据
-    const userData = {
-      ...user,
-      groups: user.groups.map(gm => ({
+    // 格式化返回数据，处理 BigInt 类型
+    const formattedData = {
+      ...userData,
+      groups: userData.groups.map(gm => ({
         ...gm.group,
         memberRole: gm.role,
         joinedAt: gm.joinedAt,
       })),
+      apiKeys: userData.apiKeys.map(key => ({
+        ...key,
+        quotaLimit: key.quotaLimit ? key.quotaLimit.toString() : null,
+        quotaUsed: key.quotaUsed.toString(),
+      })),
     };
 
-    return createApiResponse(true, userData);
+    return createApiResponse(formattedData);
 
   } catch (error) {
     console.error('Get user profile error:', error);
-    return createApiResponse(false, null, '获取用户档案失败', 500);
+    return createErrorResponse('获取用户档案失败', 500);
   }
 }
 
 // 更新用户档案
-async function putHandler(req: AuthenticatedRequest) {
+async function putHandler(req: NextRequest, user: any) {
   try {
     const body = await req.json();
     const validatedData = updateProfileSchema.parse(body);
-    const userId = req.user!.userId;
+    const userId = user.id;
 
     const updatedUser = await prisma.user.update({
       where: { id: userId },
@@ -107,15 +112,15 @@ async function putHandler(req: AuthenticatedRequest) {
       },
     });
 
-    return createApiResponse(true, updatedUser, '档案更新成功');
+    return createApiResponse(updatedUser);
 
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return createApiResponse(false, null, error.errors[0].message, 400);
+      return createErrorResponse(error.issues[0].message, 400);
     }
 
     console.error('Update user profile error:', error);
-    return createApiResponse(false, null, '更新档案失败', 500);
+    return createErrorResponse('更新档案失败', 500);
   }
 }
 

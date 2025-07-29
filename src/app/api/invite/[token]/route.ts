@@ -1,6 +1,7 @@
+import { NextRequest } from 'next/server';
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
-import { createApiResponse, serializeBigInt } from '@/lib/middleware';
+import { prisma } from '@/lib/prisma';
+import { createApiResponse } from '@/lib/middleware';
 
 // 验证邀请token
 export async function GET(
@@ -60,7 +61,7 @@ export async function GET(
       return createApiResponse(false, null, '拼车组已满', 400);
     }
 
-    return createApiResponse(true, serializeBigInt(invitation), '邀请有效');
+    return createApiResponse(true(invitation), '邀请有效');
 
   } catch (error) {
     console.error('Verify invitation error:', error);

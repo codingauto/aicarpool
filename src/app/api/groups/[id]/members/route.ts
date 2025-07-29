@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { prisma } from '@/lib/db';
-import { withAuth, AuthenticatedRequest, createApiResponse } from '@/lib/middleware';
+import { prisma } from '@/lib/prisma';
+import { withAuth, createApiResponse } from '@/lib/middleware';
 
 const updateMemberSchema = z.object({
   memberId: z.string(),
@@ -9,9 +9,9 @@ const updateMemberSchema = z.object({
 });
 
 // 获取拼车组成员列表
-async function getHandler(req: AuthenticatedRequest, { params }: { params: { id: string } }) {
+async function getHandler(req: { params }: { params: { id: string } }) {
   try {
-    const userId = req.user!.userId;
+    const userId = user.id;
     const groupId = params.id;
 
     // 检查用户是否为该组成员
@@ -91,11 +91,11 @@ async function getHandler(req: AuthenticatedRequest, { params }: { params: { id:
 }
 
 // 更新成员信息（角色、状态等）
-async function putHandler(req: AuthenticatedRequest, { params }: { params: { id: string } }) {
+async function putHandler(req: { params }: { params: { id: string } }) {
   try {
     const body = await req.json();
     const validatedData = updateMemberSchema.parse(body);
-    const userId = req.user!.userId;
+    const userId = user.id;
     const groupId = params.id;
 
     const { memberId, role, status } = validatedData;

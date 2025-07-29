@@ -1,8 +1,8 @@
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
-import { prisma } from '@/lib/db';
+import { prisma } from '@/lib/prisma';
 import { verifyPassword, generateToken } from '@/lib/auth';
-import { createApiResponse } from '@/lib/middleware';
+import { createApiResponse, createErrorResponse } from '@/lib/middleware';
 
 const loginSchema = z.object({
   email: z.string().email('请输入有效的邮箱地址'),
@@ -22,18 +22,18 @@ export async function POST(request: NextRequest) {
     });
 
     if (!user) {
-      return createApiResponse(false, null, '邮箱或密码错误', 401);
+      return createErrorResponse('邮箱或密码错误', 401);
     }
 
     // 检查用户状态
     if (user.status !== 'active') {
-      return createApiResponse(false, null, '账户已被禁用，请联系管理员', 401);
+      return createErrorResponse('账户已被禁用，请联系管理员', 401);
     }
 
     // 验证密码
     const isPasswordValid = await verifyPassword(password, user.password);
     if (!isPasswordValid) {
-      return createApiResponse(false, null, '邮箱或密码错误', 401);
+      return createErrorResponse('邮箱或密码错误', 401);
     }
 
     // 准备返回的用户数据（排除密码）
@@ -50,9 +50,9 @@ export async function POST(request: NextRequest) {
     };
 
     // 生成JWT令牌
-    const token = generateToken(userData);
+    const token = generateToken(user.id);
 
-    return createApiResponse(true, {
+    return createApiResponse({
       user: userData,
       token,
       message: '登录成功',

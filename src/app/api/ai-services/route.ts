@@ -1,6 +1,7 @@
+import { NextRequest } from 'next/server';
 import { z } from 'zod';
-import { prisma } from '@/lib/db';
-import { withAuth, AuthenticatedRequest, createApiResponse } from '@/lib/middleware';
+import { prisma } from '@/lib/prisma';
+import { withAuth, createApiResponse } from '@/lib/middleware';
 
 const createAiServiceSchema = z.object({
   serviceName: z.enum(['claude', 'gemini', 'ampcode']),
@@ -19,7 +20,7 @@ const updateAiServiceSchema = z.object({
 });
 
 // 获取所有AI服务
-async function getHandler(req: AuthenticatedRequest) {
+async function getHandler(req: NextRequest, user: any) {
   try {
     const services = await prisma.aiService.findMany({
       orderBy: {
@@ -36,7 +37,7 @@ async function getHandler(req: AuthenticatedRequest) {
 }
 
 // 创建新的AI服务（仅管理员）
-async function postHandler(req: AuthenticatedRequest) {
+async function postHandler(req: NextRequest, user: any) {
   try {
     const body = await req.json();
     const validatedData = createAiServiceSchema.parse(body);

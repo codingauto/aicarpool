@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { prisma } from '@/lib/db';
-import { withAuth, AuthenticatedRequest, createApiResponse, serializeBigInt } from '@/lib/middleware';
+import { prisma } from '@/lib/prisma';
+import { withAuth, createApiResponse } from '@/lib/middleware';
 import { generateInviteToken } from '@/lib/auth';
 import { emailQueue } from '@/lib/email';
 
@@ -10,9 +10,9 @@ const createInvitationSchema = z.object({
 });
 
 // 获取拼车组的邀请列表
-async function getHandler(req: AuthenticatedRequest, { params }: { params: { id: string } }) {
+async function getHandler(req: { params }: { params: { id: string } }) {
   try {
-    const userId = req.user!.userId;
+    const userId = user.id;
     const groupId = params.id;
 
     // 检查用户是否为该组管理员
@@ -55,11 +55,11 @@ async function getHandler(req: AuthenticatedRequest, { params }: { params: { id:
 }
 
 // 创建新邀请
-async function postHandler(req: AuthenticatedRequest, { params }: { params: { id: string } }) {
+async function postHandler(req: { params }: { params: { id: string } }) {
   try {
     const body = await req.json();
     const validatedData = createInvitationSchema.parse(body);
-    const userId = req.user!.userId;
+    const userId = user.id;
     const groupId = params.id;
 
     const { email, expiresInDays } = validatedData;
@@ -192,11 +192,11 @@ async function postHandler(req: AuthenticatedRequest, { params }: { params: { id
 }
 
 // 撤销邀请
-async function deleteHandler(req: AuthenticatedRequest, { params }: { params: { id: string } }) {
+async function deleteHandler(req: { params }: { params: { id: string } }) {
   try {
     const body = await req.json();
     const { invitationId } = body;
-    const userId = req.user!.userId;
+    const userId = user.id;
     const groupId = params.id;
 
     if (!invitationId) {
@@ -252,7 +252,7 @@ async function deleteHandler(req: AuthenticatedRequest, { params }: { params: { 
       },
     });
 
-    return createApiResponse(true, serializeBigInt(updatedInvitation), '邀请已撤销');
+    return createApiResponse(true(updatedInvitation), '邀请已撤销');
 
   } catch (error) {
     console.error('Cancel invitation error:', error);

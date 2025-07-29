@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { prisma } from '@/lib/db';
-import { withAuth, AuthenticatedRequest, createApiResponse } from '@/lib/middleware';
+import { prisma } from '@/lib/prisma';
+import { withAuth, createApiResponse } from '@/lib/middleware';
 import { AIServiceFactory, SupportedAIService } from '@/lib/ai-services/factory';
 import { generateApiKey } from '@/lib/crypto';
 
@@ -33,9 +33,9 @@ const updateAiServiceSchema = z.object({
 });
 
 // 获取拼车组的AI服务配置
-async function getHandler(req: AuthenticatedRequest, { params }: { params: Promise<{ id: string }> }) {
+async function getHandler(req: { params }: { params: Promise<{ id: string }> }) {
   try {
-    const userId = req.user!.userId;
+    const userId = user.id;
     const { id: groupId } = await params;
 
     // 检查用户是否为该组成员
@@ -91,11 +91,11 @@ async function getHandler(req: AuthenticatedRequest, { params }: { params: Promi
 }
 
 // 为拼车组添加AI服务配置
-async function postHandler(req: AuthenticatedRequest, { params }: { params: Promise<{ id: string }> }) {
+async function postHandler(req: { params }: { params: Promise<{ id: string }> }) {
   try {
     const body = await req.json();
     const validatedData = addAiServiceSchema.parse(body);
-    const userId = req.user!.userId;
+    const userId = user.id;
     const { id: groupId } = await params;
 
     const { aiServiceId, keyName, quota, proxySettings } = validatedData;
@@ -194,11 +194,11 @@ async function postHandler(req: AuthenticatedRequest, { params }: { params: Prom
 }
 
 // 更新拼车组AI服务配置
-async function putHandler(req: AuthenticatedRequest, { params }: { params: Promise<{ id: string }> }) {
+async function putHandler(req: { params }: { params: Promise<{ id: string }> }) {
   try {
     const body = await req.json();
     const validatedData = updateAiServiceSchema.parse(body);
-    const userId = req.user!.userId;
+    const userId = user.id;
     const { id: groupId } = await params;
 
     const { aiServiceId } = body; // 需要从body中获取aiServiceId

@@ -1,6 +1,7 @@
+import { NextRequest } from 'next/server';
 import { z } from 'zod';
-import { prisma } from '@/lib/db';
-import { withAuth, AuthenticatedRequest, createApiResponse } from '@/lib/middleware';
+import { prisma } from '@/lib/prisma';
+import { withAuth, createApiResponse, createErrorResponse } from '@/lib/middleware';
 
 const createGroupSchema = z.object({
   name: z.string().min(2, '组名至少需要2个字符').max(50, '组名不能超过50个字符'),
@@ -9,9 +10,9 @@ const createGroupSchema = z.object({
 });
 
 // 获取用户的所有拼车组
-async function getHandler(req: AuthenticatedRequest) {
+async function getHandler(req: NextRequest, user: any) {
   try {
-    const userId = req.user!.userId;
+    const userId = user.id;
 
     const groups = await prisma.groupMember.findMany({
       where: {
@@ -102,20 +103,20 @@ async function getHandler(req: AuthenticatedRequest) {
       },
     }));
 
-    return createApiResponse(true, formattedGroups);
+    return createApiResponse(formattedGroups);
 
   } catch (error) {
     console.error('Get groups error:', error);
-    return createApiResponse(false, null, '获取拼车组列表失败', 500);
+    return createErrorResponse('获取拼车组列表失败', 500);
   }
 }
 
 // 创建新的拼车组
-async function postHandler(req: AuthenticatedRequest) {
+async function postHandler(req: NextRequest, user: any) {
   try {
     const body = await req.json();
     const validatedData = createGroupSchema.parse(body);
-    const userId = req.user!.userId;
+    const userId = user.id;
 
     const { name, description, maxMembers } = validatedData;
 
@@ -128,7 +129,7 @@ async function postHandler(req: AuthenticatedRequest) {
     });
 
     if (existingGroup) {
-      return createApiResponse(false, null, '该组名已被使用', 400);
+      return createErrorResponse('该组名已被使用', 400);
     }
 
     // 创建拼车组和管理员成员关系
@@ -191,15 +192,15 @@ async function postHandler(req: AuthenticatedRequest) {
       },
     });
 
-    return createApiResponse(true, groupWithDetails, '拼车组创建成功');
+    return createApiResponse(groupWithDetails);
 
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return createApiResponse(false, null, error.errors[0].message, 400);
+      return createErrorResponse(error.issues[0].message, 400);
     }
 
     console.error('Create group error:', error);
-    return createApiResponse(false, null, '创建拼车组失败', 500);
+    return createErrorResponse('创建拼车组失败', 500);
   }
 }
 

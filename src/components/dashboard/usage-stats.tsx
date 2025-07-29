@@ -119,7 +119,7 @@ export function UsageStats() {
     );
   }
 
-  if (!stats) {
+  if (!stats || !stats.total) {
     return null;
   }
 
@@ -149,25 +149,25 @@ export function UsageStats() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="text-center">
               <div className="text-2xl font-bold text-blue-600">
-                {formatTokenCount(stats.total.tokenCount)}
+                {stats.total?.tokenCount ? formatTokenCount(stats.total.tokenCount) : '0'}
               </div>
               <div className="text-sm text-gray-600">总Token数</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-green-600">
-                {formatCost(stats.total.cost)}
+                {stats.total?.cost ? formatCost(stats.total.cost) : '¥0.0000'}
               </div>
               <div className="text-sm text-gray-600">总费用</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-purple-600">
-                {stats.total.requestCount}
+                {stats.total?.requestCount || 0}
               </div>
               <div className="text-sm text-gray-600">请求次数</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-orange-600">
-                {formatResponseTime(stats.total.avgResponseTime)}
+                {stats.total?.avgResponseTime ? formatResponseTime(stats.total.avgResponseTime) : '0ms'}
               </div>
               <div className="text-sm text-gray-600">平均响应时间</div>
             </div>
@@ -176,7 +176,7 @@ export function UsageStats() {
       </Card>
 
       {/* 按服务统计 */}
-      {stats.byService.length > 0 && (
+      {stats.byService && stats.byService.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle>按AI服务统计</CardTitle>
@@ -218,7 +218,7 @@ export function UsageStats() {
       )}
 
       {/* 最近使用情况 */}
-      {stats.daily.length > 0 && (
+      {stats.daily && stats.daily.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle>最近使用趋势</CardTitle>

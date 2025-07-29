@@ -1,16 +1,15 @@
 import { z } from 'zod';
-import { prisma } from '@/lib/db';
-import { withAuth, AuthenticatedRequest, createApiResponse, serializeBigInt } from '@/lib/middleware';
+import { prisma } from '@/lib/prisma';
+import { withAuth, createApiResponse } from '@/lib/middleware';
 import { generateInviteToken } from '@/lib/auth';
 import { emailQueue } from '@/lib/email';
 
 // 重新发送邀请
 async function postHandler(
-  req: AuthenticatedRequest, 
-  { params }: { params: { id: string; invitationId: string } }
+  req: { params }: { params: { id: string; invitationId: string } }
 ) {
   try {
-    const userId = req.user!.userId;
+    const userId = user.id;
     const groupId = params.id;
     const invitationId = params.invitationId;
 
@@ -100,11 +99,10 @@ async function postHandler(
 
 // 撤销邀请
 async function deleteHandler(
-  req: AuthenticatedRequest, 
-  { params }: { params: { id: string; invitationId: string } }
+  req: { params }: { params: { id: string; invitationId: string } }
 ) {
   try {
-    const userId = req.user!.userId;
+    const userId = user.id;
     const groupId = params.id;
     const invitationId = params.invitationId;
 
@@ -157,7 +155,7 @@ async function deleteHandler(
       },
     });
 
-    return createApiResponse(true, serializeBigInt(updatedInvitation), '邀请已撤销');
+    return createApiResponse(true(updatedInvitation), '邀请已撤销');
 
   } catch (error) {
     console.error('Cancel invitation error:', error);

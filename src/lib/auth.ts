@@ -1,60 +1,157 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import { User } from '@/types';
+import { NextRequest } from 'next/server';
+import { prisma } from './prisma';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
-export async function hashPassword(password: string): Promise<string> {
-  return bcrypt.hash(password, 12);
+export interface AuthUser {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
 }
 
-export async function verifyPassword(password: string, hashedPassword: string): Promise<boolean> {
-  return bcrypt.compare(password, hashedPassword);
-}
-
-export function generateToken(user: Omit<User, 'password'>): string {
-  return jwt.sign(
-    {
-      userId: user.id,
-      email: user.email,
-      role: user.role,
-    },
-    JWT_SECRET,
-    { expiresIn: '7d' }
-  );
-}
-
-export function verifyToken(token: string): any {
+export async function verifyToken(token: string): Promise<AuthUser | null> {
   try {
-    return jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    
+    // 从数据库获取用户信息
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        status: true,
+      },
+    });
+
+    if (!user || user.status !== 'active') {
+      return null;
+    }
+
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+    };
   } catch (error) {
-    throw new Error('Invalid token');
+    console.error('Token verification failed:', error);
+    return null;
   }
 }
 
-export function generateInviteToken(groupId: string, email: string): string {
-  return jwt.sign(
-    {
-      groupId,
-      email,
-      type: 'invitation',
-    },
-    JWT_SECRET,
-    { expiresIn: '7d' }
-  );
+export async function getUserFromRequest(request: NextRequest): Promise<AuthUser | null> {
+  try {
+    if (!request || !request.headers) {
+      return null;
+    }
+
+    const authHeader = request.headers.get('authorization');
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return null;
+    }
+
+    const token = authHeader.substring(7).trim();
+    
+    if (!token || token === 'null' || token === 'undefined') {
+      return null;
+    }
+    
+    return await verifyToken(token);
+  } catch (error) {
+    console.error('Auth middleware error:', error);
+    return null;
+  }
 }
 
-export function verifyInviteToken(token: string): { groupId: string; email: string } {
+export function generateToken(userId: string): string {
+  return jwt.sign({ userId }, JWT_SECRET, { expiresIn: '7d' });
+}
+
+export async function verifyPassword(plainPassword: string, hashedPassword: string): Promise<boolean> {
   try {
-    const payload = jwt.verify(token, JWT_SECRET) as any;
-    if (payload.type !== 'invitation') {
-      throw new Error('Invalid invitation token');
+    return await bcrypt.compare(plainPassword, hashedPassword);
+  } catch (error) {
+    console.error('Password verification failed:', error);
+    return false;
+  }
+}
+
+export async function hashPassword(password: string): Promise<string> {
+  try {
+    const saltRounds = 10;
+    return await bcrypt.hash(password, saltRounds);
+  } catch (error) {
+    console.error('Password hashing failed:', error);
+    throw new Error('密码加密失败');
+  }
+}
+
+export async function authenticateUser(email: string, password: string): Promise<AuthUser | null> {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { email },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        status: true,
+        password: true,
+      },
+    });
+
+    if (!user || user.status !== 'active') {
+      return null;
     }
+
+    const isPasswordValid = await verifyPassword(password, user.password);
+    if (!isPasswordValid) {
+      return null;
+    }
+
     return {
-      groupId: payload.groupId,
-      email: payload.email,
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
     };
   } catch (error) {
-    throw new Error('Invalid or expired invitation token');
+    console.error('User authentication failed:', error);
+    return null;
+  }
+}
+
+export async function checkGroupPermission(
+  userId: string, 
+  groupId: string, 
+  requiredRole: 'admin' | 'member' = 'member'
+): Promise<boolean> {
+  try {
+    const membership = await prisma.groupMember.findFirst({
+      where: {
+        userId,
+        groupId,
+        status: 'active',
+      },
+    });
+
+    if (!membership) {
+      return false;
+    }
+
+    if (requiredRole === 'admin') {
+      return membership.role === 'admin';
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Permission check failed:', error);
+    return false;
   }
 }

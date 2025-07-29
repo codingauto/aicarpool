@@ -1,12 +1,12 @@
 import { NextRequest } from 'next/server';
-import { prisma } from '@/lib/db';
-import { withAuth, AuthenticatedRequest, createApiResponse } from '@/lib/middleware';
+import { prisma } from '@/lib/prisma';
+import { withAuth, createApiResponse } from '@/lib/middleware';
 import QRCode from 'qrcode';
 
 // 生成邀请二维码
-async function getHandler(req: NextRequest & AuthenticatedRequest, { params }: { params: { id: string } }) {
+async function getHandler(req: NextRequest & { params }: { params: { id: string } }) {
   try {
-    const userId = req.user!.userId;
+    const userId = user.id;
     const groupId = params.id;
     const { searchParams } = new URL(req.url);
     const linkId = searchParams.get('linkId'); // 可选：指定特定的邀请链接ID

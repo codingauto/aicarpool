@@ -1,10 +1,10 @@
 import { NextRequest } from 'next/server';
-import { prisma } from '@/lib/db';
-import { withAuth, AuthenticatedRequest, createApiResponse } from '@/lib/middleware';
+import { prisma } from '@/lib/prisma';
+import { withAuth, createApiResponse } from '@/lib/middleware';
 
-async function handler(req: AuthenticatedRequest) {
+async function handler(req: NextRequest, user: any) {
   try {
-    const userId = req.user!.userId;
+    const userId = user.id;
     const { searchParams } = new URL(req.url);
     
     // 获取查询参数
@@ -25,7 +25,7 @@ async function handler(req: AuthenticatedRequest) {
         endDate: new Date(),
       },
       total: {
-        tokenCount: BigInt(125000),
+        tokenCount: "125000",
         cost: 18.75,
         requestCount: 1250,
         avgResponseTime: 850,
@@ -33,21 +33,21 @@ async function handler(req: AuthenticatedRequest) {
       daily: [
         {
           date: new Date().toISOString().split('T')[0],
-          tokenCount: BigInt(8500),
+          tokenCount: "8500",
           cost: 1.28,
           requestCount: 85,
           avgResponseTime: 820,
         },
         {
           date: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          tokenCount: BigInt(12000),
+          tokenCount: "12000",
           cost: 1.80,
           requestCount: 120,
           avgResponseTime: 890,
         },
         {
           date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          tokenCount: BigInt(9800),
+          tokenCount: "9800",
           cost: 1.47,
           requestCount: 98,
           avgResponseTime: 760,
@@ -58,7 +58,7 @@ async function handler(req: AuthenticatedRequest) {
           aiServiceId: 'claude-service-1',
           serviceName: 'claude',
           displayName: 'Claude Code',
-          tokenCount: BigInt(100000),
+          tokenCount: "100000",
           cost: 15.0,
           requestCount: 1000,
           avgResponseTime: 850,
@@ -67,7 +67,7 @@ async function handler(req: AuthenticatedRequest) {
           aiServiceId: 'gemini-service-1',
           serviceName: 'gemini',
           displayName: 'Gemini CLI',
-          tokenCount: BigInt(25000),
+          tokenCount: "25000",
           cost: 3.75,
           requestCount: 250,
           avgResponseTime: 1200,
@@ -79,7 +79,7 @@ async function handler(req: AuthenticatedRequest) {
 
   } catch (error) {
     console.error('Get usage stats error:', error);
-    return createApiResponse(false, null, '获取使用统计失败', 500);
+    return createApiResponse(null, false, 500);
   }
 }
 

@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { prisma } from '@/lib/db';
-import { withAuth, AuthenticatedRequest, createApiResponse, serializeBigInt } from '@/lib/middleware';
+import { prisma } from '@/lib/prisma';
+import { withAuth, createApiResponse } from '@/lib/middleware';
 import { generateInviteToken } from '@/lib/auth';
 import { emailQueue } from '@/lib/email';
 
@@ -10,11 +10,11 @@ const batchInvitationSchema = z.object({
 });
 
 // 批量创建邀请
-async function postHandler(req: AuthenticatedRequest, { params }: { params: { id: string } }) {
+async function postHandler(req: { params }: { params: { id: string } }) {
   try {
     const body = await req.json();
     const validatedData = batchInvitationSchema.parse(body);
-    const userId = req.user!.userId;
+    const userId = user.id;
     const groupId = params.id;
 
     const { emails, expiresInDays } = validatedData;

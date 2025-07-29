@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
-import { prisma } from '@/lib/db';
-import { withAuth, AuthenticatedRequest, createApiResponse } from '@/lib/middleware';
+import { prisma } from '@/lib/prisma';
+import { withAuth, createApiResponse, createErrorResponse } from '@/lib/middleware';
 
 const updateGroupSchema = z.object({
   name: z.string().min(2, '组名至少需要2个字符').max(50, '组名不能超过50个字符').optional(),
@@ -11,9 +11,9 @@ const updateGroupSchema = z.object({
 });
 
 // 获取拼车组详细信息
-async function getHandler(req: AuthenticatedRequest, { params }: { params: Promise<{ id: string }> }) {
+async function getHandler(req: NextRequest, user: any, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const userId = req.user!.userId;
+    const userId = user.id;
     const { id: groupId } = await params;
 
     // 检查用户是否为该组成员
@@ -26,7 +26,7 @@ async function getHandler(req: AuthenticatedRequest, { params }: { params: Promi
     });
 
     if (!membership) {
-      return createApiResponse(false, null, '您不是该拼车组的成员', 403);
+      return createErrorResponse('您不是该拼车组的成员', 403);
     }
 
     // 获取拼车组详细信息
@@ -123,14 +123,19 @@ async function getHandler(req: AuthenticatedRequest, { params }: { params: Promi
     });
 
     if (!group) {
-      return createApiResponse(false, null, '拼车组不存在', 404);
+      return createErrorResponse('拼车组不存在', 404);
     }
 
-    // 格式化返回数据
+    // 格式化返回数据，处理 BigInt 类型
     const result = {
       ...group,
       userRole: membership.role,
       userJoinedAt: membership.joinedAt,
+      apiKeys: group.apiKeys.map(key => ({
+        ...key,
+        quotaLimit: key.quotaLimit ? key.quotaLimit.toString() : null,
+        quotaUsed: key.quotaUsed.toString(),
+      })),
       stats: {
         memberCount: group._count.members,
         apiKeyCount: group._count.apiKeys,
@@ -140,20 +145,20 @@ async function getHandler(req: AuthenticatedRequest, { params }: { params: Promi
       },
     };
 
-    return createApiResponse(true, result);
+    return createApiResponse(result);
 
   } catch (error) {
     console.error('Get group details error:', error);
-    return createApiResponse(false, null, '获取拼车组信息失败', 500);
+    return createErrorResponse('获取拼车组信息失败', 500);
   }
 }
 
 // 更新拼车组信息
-async function putHandler(req: AuthenticatedRequest, { params }: { params: Promise<{ id: string }> }) {
+async function putHandler(req: NextRequest, user: any, { params }: { params: Promise<{ id: string }> }) {
   try {
     const body = await req.json();
     const validatedData = updateGroupSchema.parse(body);
-    const userId = req.user!.userId;
+    const userId = user.id;
     const { id: groupId } = await params;
 
     // 检查用户是否为该组管理员
@@ -167,7 +172,7 @@ async function putHandler(req: AuthenticatedRequest, { params }: { params: Promi
     });
 
     if (!membership) {
-      return createApiResponse(false, null, '只有管理员可以修改拼车组信息', 403);
+      return createErrorResponse('只有管理员可以修改拼车组信息', 403);
     }
 
     // 如果要修改组名，检查是否重复
@@ -181,7 +186,7 @@ async function putHandler(req: AuthenticatedRequest, { params }: { params: Promi
       });
 
       if (existingGroup) {
-        return createApiResponse(false, null, '该组名已被使用', 400);
+        return createErrorResponse('该组名已被使用', 400);
       }
     }
 
@@ -207,22 +212,22 @@ async function putHandler(req: AuthenticatedRequest, { params }: { params: Promi
       },
     });
 
-    return createApiResponse(true, updatedGroup, '拼车组信息更新成功');
+    return createApiResponse(updatedGroup);
 
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return createApiResponse(false, null, error.errors[0].message, 400);
+      return createErrorResponse(error.issues[0].message, 400);
     }
 
     console.error('Update group error:', error);
-    return createApiResponse(false, null, '更新拼车组信息失败', 500);
+    return createErrorResponse('更新拼车组信息失败', 500);
   }
 }
 
 // 删除拼车组
-async function deleteHandler(req: AuthenticatedRequest, { params }: { params: Promise<{ id: string }> }) {
+async function deleteHandler(req: NextRequest, user: any, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const userId = req.user!.userId;
+    const userId = user.id;
     const { id: groupId } = await params;
 
     // 检查用户是否为该组创建者
@@ -246,16 +251,16 @@ async function deleteHandler(req: AuthenticatedRequest, { params }: { params: Pr
     });
 
     if (!group) {
-      return createApiResponse(false, null, '拼车组不存在', 404);
+      return createErrorResponse('拼车组不存在', 404);
     }
 
     if (group.createdById !== userId) {
-      return createApiResponse(false, null, '只有组创建者可以删除拼车组', 403);
+      return createErrorResponse('只有组创建者可以删除拼车组', 403);
     }
 
     // 检查是否还有活跃的API密钥
     if (group._count.apiKeys > 0) {
-      return createApiResponse(false, null, '请先撤销所有API密钥后再删除拼车组', 400);
+      return createErrorResponse('请先撤销所有API密钥后再删除拼车组', 400);
     }
 
     // 软删除拼车组
@@ -279,14 +284,30 @@ async function deleteHandler(req: AuthenticatedRequest, { params }: { params: Pr
       });
     });
 
-    return createApiResponse(true, null, '拼车组删除成功');
+    return createApiResponse({ message: '拼车组删除成功' });
 
   } catch (error) {
     console.error('Delete group error:', error);
-    return createApiResponse(false, null, '删除拼车组失败', 500);
+    return createErrorResponse('删除拼车组失败', 500);
   }
 }
 
-export const GET = withAuth(getHandler);
-export const PUT = withAuth(putHandler);
-export const DELETE = withAuth(deleteHandler);
+// 修复 withAuth 包装器以支持额外参数
+function withAuthAndParams(handler: (req: NextRequest, user: any, context: any) => Promise<any>) {
+  return withAuth(async (req: NextRequest, user: any) => {
+    // 从 URL 中提取参数
+    const url = new URL(req.url);
+    const pathSegments = url.pathname.split('/');
+    const id = pathSegments[pathSegments.length - 1];
+    
+    const context = {
+      params: Promise.resolve({ id })
+    };
+    
+    return handler(req, user, context);
+  });
+}
+
+export const GET = withAuthAndParams(getHandler);
+export const PUT = withAuthAndParams(putHandler);
+export const DELETE = withAuthAndParams(deleteHandler);

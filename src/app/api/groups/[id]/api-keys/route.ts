@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { prisma } from '@/lib/db';
-import { withAuth, AuthenticatedRequest, createApiResponse } from '@/lib/middleware';
+import { prisma } from '@/lib/prisma';
+import { withAuth, createApiResponse } from '@/lib/middleware';
 import { randomBytes } from 'crypto';
 
 const createApiKeySchema = z.object({
@@ -12,9 +12,9 @@ const createApiKeySchema = z.object({
 });
 
 // 获取拼车组的API密钥列表
-async function getHandler(req: AuthenticatedRequest, { params }: { params: { id: string } }) {
+async function getHandler(req: { params }: { params: { id: string } }) {
   try {
-    const userId = req.user!.userId;
+    const userId = user.id;
     const groupId = params.id;
 
     // 检查用户是否为该组成员
@@ -72,11 +72,11 @@ async function getHandler(req: AuthenticatedRequest, { params }: { params: { id:
 }
 
 // 创建新的API密钥
-async function postHandler(req: AuthenticatedRequest, { params }: { params: { id: string } }) {
+async function postHandler(req: { params }: { params: { id: string } }) {
   try {
     const body = await req.json();
     const validatedData = createApiKeySchema.parse(body);
-    const userId = req.user!.userId;
+    const userId = user.id;
     const groupId = params.id;
 
     const { name, description, aiServiceId, quotaLimit, expiresInDays } = validatedData;

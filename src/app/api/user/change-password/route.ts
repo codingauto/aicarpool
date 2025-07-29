@@ -1,6 +1,7 @@
+import { NextRequest } from 'next/server';
 import { z } from 'zod';
-import { prisma } from '@/lib/db';
-import { withAuth, AuthenticatedRequest, createApiResponse } from '@/lib/middleware';
+import { prisma } from '@/lib/prisma';
+import { withAuth, createApiResponse } from '@/lib/middleware';
 import { hashPassword, verifyPassword } from '@/lib/auth';
 
 const changePasswordSchema = z.object({
@@ -8,11 +9,11 @@ const changePasswordSchema = z.object({
   newPassword: z.string().min(6, '新密码至少需要6个字符'),
 });
 
-async function handler(req: AuthenticatedRequest) {
+async function handler(req: NextRequest, user: any) {
   try {
     const body = await req.json();
     const validatedData = changePasswordSchema.parse(body);
-    const userId = req.user!.userId;
+    const userId = user.id;
 
     const { currentPassword, newPassword } = validatedData;
 

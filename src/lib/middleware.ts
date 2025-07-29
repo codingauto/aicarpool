@@ -1,111 +1,75 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyToken } from './auth';
-import { prisma } from './db';
+import { getUserFromRequest, checkGroupPermission } from './auth';
 
-export interface AuthenticatedRequest extends NextRequest {
-  user?: {
-    userId: string;
-    email: string;
-    role: string;
-  };
-}
-
-export function withAuth(
-  handler: (req: AuthenticatedRequest, context?: any) => Promise<NextResponse>,
-  options: { requireAdmin?: boolean } = {}
-) {
-  return async (req: NextRequest, context?: any) => {
+export function withAuth(handler: (request: NextRequest, user: any) => Promise<NextResponse>) {
+  return async (request: NextRequest) => {
     try {
-      const authHeader = req.headers.get('authorization');
-      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      const user = await getUserFromRequest(request);
+      
+      if (!user) {
         return NextResponse.json(
-          { success: false, error: '未提供认证令牌' },
+          { success: false, error: '未授权访问' },
           { status: 401 }
         );
       }
 
-      const token = authHeader.substring(7);
-      const payload = verifyToken(token);
-
-      // 验证用户是否存在且状态正常
-      const user = await prisma.user.findUnique({
-        where: { id: payload.userId },
-        select: { id: true, email: true, role: true, status: true },
-      });
-
-      if (!user || user.status !== 'active') {
-        return NextResponse.json(
-          { success: false, error: '用户不存在或已被禁用' },
-          { status: 401 }
-        );
-      }
-
-      // 检查管理员权限
-      if (options.requireAdmin && user.role !== 'admin') {
-        return NextResponse.json(
-          { success: false, error: '需要管理员权限' },
-          { status: 403 }
-        );
-      }
-
-      // 将用户信息添加到请求对象
-      (req as AuthenticatedRequest).user = {
-        userId: user.id,
-        email: user.email,
-        role: user.role,
-      };
-
-      return handler(req as AuthenticatedRequest, context);
+      return await handler(request, user);
     } catch (error) {
       console.error('Auth middleware error:', error);
       return NextResponse.json(
-        { success: false, error: '认证失败' },
-        { status: 401 }
+        { success: false, error: '服务器错误' },
+        { status: 500 }
       );
     }
   };
 }
 
-// 序列化函数，处理BigInt类型
-export function serializeBigInt(obj: any): any {
-  if (obj === null || obj === undefined) return obj;
-  
-  if (typeof obj === 'bigint') {
-    return Number(obj);
-  }
-  
-  // 保持Date对象不变
-  if (obj instanceof Date) {
-    return obj;
-  }
-  
-  if (Array.isArray(obj)) {
-    return obj.map(serializeBigInt);
-  }
-  
-  if (typeof obj === 'object') {
-    const result: any = {};
-    for (const [key, value] of Object.entries(obj)) {
-      result[key] = serializeBigInt(value);
+export function withGroupAuth(
+  groupId: string,
+  requiredRole: 'admin' | 'member' = 'member',
+  handler: (request: NextRequest, user: any) => Promise<NextResponse>
+) {
+  return async (request: NextRequest) => {
+    try {
+      const user = await getUserFromRequest(request);
+      
+      if (!user) {
+        return NextResponse.json(
+          { success: false, error: '未授权访问' },
+          { status: 401 }
+        );
+      }
+
+      const hasPermission = await checkGroupPermission(user.id, groupId, requiredRole);
+      
+      if (!hasPermission) {
+        return NextResponse.json(
+          { success: false, error: '权限不足' },
+          { status: 403 }
+        );
+      }
+
+      return await handler(request, user);
+    } catch (error) {
+      console.error('Group auth middleware error:', error);
+      return NextResponse.json(
+        { success: false, error: '服务器错误' },
+        { status: 500 }
+      );
     }
-    return result;
-  }
-  
-  return obj;
+  };
 }
 
-export function createApiResponse<T>(
-  success: boolean,
-  data?: T,
-  error?: string,
-  status: number = 200
-) {
+export function createApiResponse(data: any, success: boolean = true, status: number = 200) {
   return NextResponse.json(
-    {
-      success,
-      data: serializeBigInt(data),
-      error,
-    },
+    { success, data, error: success ? undefined : undefined },
+    { status }
+  );
+}
+
+export function createErrorResponse(error: string, status: number = 400) {
+  return NextResponse.json(
+    { success: false, error },
     { status }
   );
 }

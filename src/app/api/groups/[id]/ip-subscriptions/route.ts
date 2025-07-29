@@ -1,8 +1,8 @@
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
-import { withAuth, AuthenticatedRequest, createApiResponse, serializeBigInt } from '@/lib/middleware';
+import { withAuth, createApiResponse } from '@/lib/middleware';
 import { ipPackageManager } from '@/lib/ip-packages';
-import { prisma } from '@/lib/db';
+import { prisma } from '@/lib/prisma';
 
 const createSubscriptionSchema = z.object({
   packageId: z.string(),
@@ -12,7 +12,7 @@ const createSubscriptionSchema = z.object({
 });
 
 // 获取拼车组的IP套餐订阅列表
-async function getHandler(req: AuthenticatedRequest, { params }: { params: Promise<{ id: string }> }) {
+async function getHandler(req: { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id: groupId } = await params;
 
@@ -31,7 +31,7 @@ async function getHandler(req: AuthenticatedRequest, { params }: { params: Promi
 
     const subscriptions = await ipPackageManager.getGroupSubscriptions(groupId);
     
-    return createApiResponse(true, serializeBigInt(subscriptions), '获取订阅列表成功');
+    return createApiResponse(true(subscriptions), '获取订阅列表成功');
   } catch (error) {
     console.error('Get IP subscriptions error:', error);
     return createApiResponse(false, null, '获取订阅列表失败', 500);
@@ -39,7 +39,7 @@ async function getHandler(req: AuthenticatedRequest, { params }: { params: Promi
 }
 
 // 创建新的IP套餐订阅
-async function postHandler(req: AuthenticatedRequest, { params }: { params: Promise<{ id: string }> }) {
+async function postHandler(req: { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id: groupId } = await params;
     const body = await req.json();
@@ -71,7 +71,7 @@ async function postHandler(req: AuthenticatedRequest, { params }: { params: Prom
       }
     );
 
-    return createApiResponse(true, serializeBigInt(subscription), '订阅创建成功');
+    return createApiResponse(true(subscription), '订阅创建成功');
   } catch (error) {
     if (error instanceof z.ZodError) {
       return createApiResponse(false, null, error.errors[0].message, 400);
