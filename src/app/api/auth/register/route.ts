@@ -95,13 +95,12 @@ export async function POST(request: NextRequest) {
     }
 
     // 生成JWT令牌
-    const token = generateToken(user);
+    const token = generateToken(user.id);
 
     return createApiResponse(true, {
       user,
       token,
-      message: '注册成功',
-    });
+    }, '注册成功', 201);
 
   } catch (error) {
     if (error instanceof z.ZodError) {

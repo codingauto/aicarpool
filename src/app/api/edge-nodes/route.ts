@@ -1,3 +1,4 @@
+import { NextRequest } from 'next/server';
 import { createApiResponse } from '@/lib/middleware';
 
 export async function GET() {
@@ -85,7 +86,7 @@ export async function GET() {
     return createApiResponse(true, {
       nodes: mockEdgeNodes,
       summary
-    });
+    }, '获取边缘节点列表成功', 200);
 
   } catch (error) {
     console.error('Get edge nodes error:', error);

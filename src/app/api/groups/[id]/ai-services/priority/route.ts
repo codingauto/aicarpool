@@ -11,7 +11,10 @@ const priorityUpdateSchema = z.object({
   })),
 });
 
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '');
     const decoded = verifyToken(token);
@@ -20,7 +23,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       return createApiResponse(false, null, '未授权访问', 401);
     }
 
-    const groupId = params.id;
+    const { id: groupId } = await params;
     
     // 验证用户是否为组管理员
     const groupMember = await prisma.groupMember.findFirst({

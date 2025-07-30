@@ -9,10 +9,10 @@ const updateMemberSchema = z.object({
 });
 
 // 获取拼车组成员列表
-async function getHandler(req: Request, { params }: { params: { id: string } }) {
+async function getHandler(req: Request, { params }: { params: Promise<{ id: string }> }, user: any) {
   try {
     const userId = user.id;
-    const groupId = params.id;
+    const { id: groupId } = await params;
 
     // 检查用户是否为该组成员
     const membership = await prisma.groupMember.findFirst({
@@ -91,12 +91,12 @@ async function getHandler(req: Request, { params }: { params: { id: string } }) 
 }
 
 // 更新成员信息（角色、状态等）
-async function putHandler(req: Request, { params }: { params: { id: string } }) {
+async function putHandler(req: Request, { params }: { params: Promise<{ id: string }> }, user: any) {
   try {
     const body = await req.json();
     const validatedData = updateMemberSchema.parse(body);
     const userId = user.id;
-    const groupId = params.id;
+    const { id: groupId } = await params;
 
     const { memberId, role, status } = validatedData;
 

@@ -29,6 +29,11 @@ const updateAccountSchema = z.object({
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string; accountId: string }> }) {
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '');
+    
+    if (!token) {
+      return createApiResponse({ error: '缺少授权令牌' }, false, 401);
+    }
+    
     const decoded = verifyToken(token);
     
     if (!decoded) {
@@ -62,7 +67,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     return createApiResponse(account, true, 200);
 
   } catch (error) {
-    if (error.message === 'Account not found') {
+    if (error instanceof Error && error.message === 'Account not found') {
       return createApiResponse({ error: '账户不存在' }, false, 404);
     }
 
@@ -74,6 +79,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string; accountId: string }> }) {
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '');
+    
+    if (!token) {
+      return createApiResponse({ error: '缺少授权令牌' }, false, 401);
+    }
+    
     const decoded = verifyToken(token);
     
     if (!decoded) {
@@ -116,7 +126,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       return createApiResponse({ error: error.issues[0].message }, false, 400);
     }
 
-    if (error.message === 'Account not found') {
+    if (error instanceof Error && error.message === 'Account not found') {
       return createApiResponse({ error: '账户不存在' }, false, 404);
     }
 
@@ -128,6 +138,11 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string; accountId: string }> }) {
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '');
+    
+    if (!token) {
+      return createApiResponse({ error: '缺少授权令牌' }, false, 401);
+    }
+    
     const decoded = verifyToken(token);
     
     if (!decoded) {
@@ -163,11 +178,11 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     return createApiResponse({ message: '账户删除成功' }, true, 200);
 
   } catch (error) {
-    if (error.message === 'Account not found') {
+    if (error instanceof Error && error.message === 'Account not found') {
       return createApiResponse({ error: '账户不存在' }, false, 404);
     }
 
-    if (error.message.includes('services are bound to this account')) {
+    if (error instanceof Error && error.message.includes('services are bound to this account')) {
       return createApiResponse({ error: error.message }, false, 400);
     }
 

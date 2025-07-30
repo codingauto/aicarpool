@@ -5,7 +5,7 @@ import { verifyToken } from '@/lib/auth';
 // GET - 获取实时监控数据
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string; proxyId: string } }
+  { params }: { params: Promise<{ id: string; proxyId: string }> }
 ) {
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '');
@@ -18,8 +18,7 @@ export async function GET(
       return NextResponse.json({ success: false, error: '无效的认证令牌' }, { status: 401 });
     }
 
-    const groupId = params.id;
-    const proxyId = params.proxyId;
+    const { id: groupId, proxyId } = await params;
 
     // 验证用户是否为拼车组成员
     const membership = await prisma.groupMember.findFirst({
@@ -181,7 +180,7 @@ export async function GET(
 // POST - 更新代理状态（用于健康检查）
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string; proxyId: string } }
+  { params }: { params: Promise<{ id: string; proxyId: string }> }
 ) {
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '');
@@ -194,8 +193,7 @@ export async function POST(
       return NextResponse.json({ success: false, error: '无效的认证令牌' }, { status: 401 });
     }
 
-    const groupId = params.id;
-    const proxyId = params.proxyId;
+    const { id: groupId, proxyId } = await params;
 
     // 验证用户是否为拼车组管理员
     const membership = await prisma.groupMember.findFirst({

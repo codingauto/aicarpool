@@ -8,6 +8,11 @@ import { getErrorMessage, errorHasMessage, errorMessageIncludes } from '@/lib/ut
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string; accountId: string }> }) {
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '');
+    
+    if (!token) {
+      return createApiResponse({ error: '缺少授权令牌' }, false, 401);
+    }
+    
     const decoded = verifyToken(token);
     
     if (!decoded) {

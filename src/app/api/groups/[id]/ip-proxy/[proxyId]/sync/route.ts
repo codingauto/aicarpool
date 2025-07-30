@@ -6,7 +6,7 @@ import { prisma } from '@/lib/prisma'
 // GET - 获取成员配置同步状态
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string; proxyId: string } }
+  { params }: { params: Promise<{ id: string; proxyId: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -14,7 +14,7 @@ export async function GET(
       return NextResponse.json({ error: '未授权访问' }, { status: 401 })
     }
 
-    const { id: groupId, proxyId } = params
+    const { id: groupId, proxyId } = await params
 
     // 验证用户是否为该拼车组成员
     const membership = await prisma.groupMember.findFirst({
@@ -80,7 +80,7 @@ export async function GET(
 // POST - 触发配置同步
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string; proxyId: string } }
+  { params }: { params: Promise<{ id: string; proxyId: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -88,7 +88,7 @@ export async function POST(
       return NextResponse.json({ error: '未授权访问' }, { status: 401 })
     }
 
-    const { id: groupId, proxyId } = params
+    const { id: groupId, proxyId } = await params
     const body = await request.json()
     const { userIds, forceSync = false } = body
 
@@ -241,7 +241,7 @@ export async function POST(
 // PUT - 更新单个成员的配置同步状态
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string; proxyId: string } }
+  { params }: { params: Promise<{ id: string; proxyId: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -249,7 +249,7 @@ export async function PUT(
       return NextResponse.json({ error: '未授权访问' }, { status: 401 })
     }
 
-    const { id: groupId, proxyId } = params
+    const { id: groupId, proxyId } = await params
     const body = await request.json()
     const { userId, syncStatus, syncError } = body
 

@@ -4,15 +4,30 @@ import { withAuth, createApiResponse } from '@/lib/middleware';
 import { generateInviteToken } from '@/lib/auth';
 import { emailQueue } from '@/lib/email';
 
+// 序列化BigInt的辅助函数
+const serializeBigInt = (obj: any): any => {
+  if (obj === null || obj === undefined) return obj;
+  if (typeof obj === 'bigint') return Number(obj);
+  if (Array.isArray(obj)) return obj.map(serializeBigInt);
+  if (typeof obj === 'object') {
+    const result: any = {};
+    for (const [key, value] of Object.entries(obj)) {
+      result[key] = serializeBigInt(value);
+    }
+    return result;
+  }
+  return obj;
+};
+
 // 重新发送邀请
 async function postHandler(
   req: Request,
-  { params }: { params: { id: string; invitationId: string } }
+  { params }: { params: Promise<{ id: string; invitationId: string }> },
+  user: any
 ) {
   try {
     const userId = user.id;
-    const groupId = params.id;
-    const invitationId = params.invitationId;
+    const { id: groupId, invitationId } = await params;
 
     // 检查用户是否为该组管理员
     const membership = await prisma.groupMember.findFirst({
@@ -101,12 +116,12 @@ async function postHandler(
 // 撤销邀请
 async function deleteHandler(
   req: Request,
-  { params }: { params: { id: string; invitationId: string } }
+  { params }: { params: Promise<{ id: string; invitationId: string }> },
+  user: any
 ) {
   try {
     const userId = user.id;
-    const groupId = params.id;
-    const invitationId = params.invitationId;
+    const { id: groupId, invitationId } = await params;
 
     // 检查用户是否为该组管理员
     const membership = await prisma.groupMember.findFirst({

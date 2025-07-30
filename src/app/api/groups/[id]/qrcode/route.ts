@@ -4,10 +4,10 @@ import { withAuth, createApiResponse } from '@/lib/middleware';
 import QRCode from 'qrcode';
 
 // 生成邀请二维码
-async function getHandler(req: NextRequest, { params }: { params: { id: string } }) {
+async function getHandler(req: NextRequest, { params }: { params: Promise<{ id: string }> }, user: any) {
   try {
     const userId = user.id;
-    const groupId = params.id;
+    const { id: groupId } = await params;
     const { searchParams } = new URL(req.url);
     const linkId = searchParams.get('linkId'); // 可选：指定特定的邀请链接ID
 

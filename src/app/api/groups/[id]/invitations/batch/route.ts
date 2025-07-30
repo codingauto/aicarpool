@@ -9,13 +9,28 @@ const batchInvitationSchema = z.object({
   expiresInDays: z.number().min(1).max(30).default(7),
 });
 
+// 序列化BigInt的辅助函数
+const serializeBigInt = (obj: any): any => {
+  if (obj === null || obj === undefined) return obj;
+  if (typeof obj === 'bigint') return Number(obj);
+  if (Array.isArray(obj)) return obj.map(serializeBigInt);
+  if (typeof obj === 'object') {
+    const result: any = {};
+    for (const [key, value] of Object.entries(obj)) {
+      result[key] = serializeBigInt(value);
+    }
+    return result;
+  }
+  return obj;
+};
+
 // 批量创建邀请
-async function postHandler(req: Request, { params }: { params: { id: string } }) {
+async function postHandler(req: Request, { params }: { params: Promise<{ id: string }> }, user: any) {
   try {
     const body = await req.json();
     const validatedData = batchInvitationSchema.parse(body);
     const userId = user.id;
-    const groupId = params.id;
+    const { id: groupId } = await params;
 
     const { emails, expiresInDays } = validatedData;
 

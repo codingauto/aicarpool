@@ -54,8 +54,7 @@ export class QuotaManager {
   // 检查配额状态
   async checkQuota(
     groupId: string, 
-    aiServiceId: string, 
-    _userId?: string
+    aiServiceId: string
   ): Promise<QuotaStatus> {
     const config = await this.getQuotaConfig(groupId, aiServiceId);
     const usage = await this.getQuotaUsage(groupId, aiServiceId);

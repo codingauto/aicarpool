@@ -7,6 +7,11 @@ import { aiAccountService } from '@/lib/ai-accounts';
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string; accountId: string }> }) {
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '');
+    
+    if (!token) {
+      return createApiResponse({ error: '缺少授权令牌' }, false, 401);
+    }
+    
     const decoded = verifyToken(token);
     
     if (!decoded) {
