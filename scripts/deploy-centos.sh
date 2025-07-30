@@ -61,11 +61,15 @@ check_root() {
         # 检查是否有环境变量强制以root运行
         if [[ "$FORCE_ROOT" == "true" ]]; then
             log_info "检测到FORCE_ROOT=true，跳过交互确认"
+        elif [[ "$FORCE_ROOT" == "false" ]]; then
+            log_info "检测到FORCE_ROOT=false，安装已取消"
+            exit 0
         else
-            # 非交互式环境检测
-            if [[ ! -t 0 ]] || [[ -n "$CI" ]] || [[ -n "$GITHUB_ACTIONS" ]]; then
-                log_warn "检测到非交互式环境，自动以root用户继续安装"
-                log_info "如要取消，请设置环境变量: export FORCE_ROOT=false"
+            # 非交互式环境检测 - 检查标准输入是否为终端
+            if [[ ! -t 0 ]] || [[ ! -t 1 ]] || [[ -n "$CI" ]] || [[ -n "$GITHUB_ACTIONS" ]]; then
+                log_warn "检测到非交互式环境（curl|bash），自动以root用户继续安装"
+                log_info "如要取消安装，请设置环境变量: FORCE_ROOT=false"
+                sleep 2  # 给用户时间看到提示
             else
                 # 交互式环境询问用户
                 read -p "确认要以root用户继续安装吗？[y/N] " -n 1 -r
@@ -73,7 +77,7 @@ check_root() {
                 if [[ ! $REPLY =~ ^[Yy]$ ]]; then
                     log_info "安装已取消"
                     log_info "提示：可以通过以下方式绕过此检查："
-                    log_info "export FORCE_ROOT=true && curl -fsSL https://raw.githubusercontent.com/codingauto/aicarpool/main/scripts/deploy-centos.sh | bash"
+                    log_info "FORCE_ROOT=true curl -fsSL https://raw.githubusercontent.com/codingauto/aicarpool/main/scripts/deploy-centos.sh | bash"
                     exit 0
                 fi
             fi
@@ -172,11 +176,15 @@ check_github_access() {
         # 检查是否强制跳过网络检查
         if [[ "$SKIP_NETWORK_CHECK" == "true" ]]; then
             log_info "检测到SKIP_NETWORK_CHECK=true，跳过网络确认"
+        elif [[ "$SKIP_NETWORK_CHECK" == "false" ]]; then
+            log_info "检测到SKIP_NETWORK_CHECK=false，安装已取消"
+            exit 0
         else
             # 非交互式环境检测
-            if [[ ! -t 0 ]] || [[ -n "$CI" ]] || [[ -n "$GITHUB_ACTIONS" ]]; then
-                log_warn "检测到非交互式环境，尝试继续安装（可能因网络问题失败）"
-                log_info "如要跳过网络检查，请设置: export SKIP_NETWORK_CHECK=true"
+            if [[ ! -t 0 ]] || [[ ! -t 1 ]] || [[ -n "$CI" ]] || [[ -n "$GITHUB_ACTIONS" ]]; then
+                log_warn "检测到非交互式环境（curl|bash），尝试继续安装（可能因网络问题失败）"
+                log_info "如要跳过网络检查，请设置: SKIP_NETWORK_CHECK=true"
+                sleep 2  # 给用户时间看到提示
             else
                 # 交互式环境询问用户
                 read -p "是否继续安装？可能会因网络问题失败 [y/N] " -n 1 -r
@@ -184,7 +192,7 @@ check_github_access() {
                 if [[ ! $REPLY =~ ^[Yy]$ ]]; then
                     log_info "安装已取消"
                     log_info "提示：可以通过以下方式跳过网络检查："
-                    log_info "export SKIP_NETWORK_CHECK=true && curl -fsSL https://raw.githubusercontent.com/codingauto/aicarpool/main/scripts/deploy-centos.sh | bash"
+                    log_info "SKIP_NETWORK_CHECK=true curl -fsSL https://raw.githubusercontent.com/codingauto/aicarpool/main/scripts/deploy-centos.sh | bash"
                     exit 0
                 fi
             fi
