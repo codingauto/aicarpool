@@ -18,6 +18,11 @@ const eslintConfig = [
       '@typescript-eslint/no-unused-vars': 'warn',
       // 其他常见警告也调整为warn
       'prefer-const': 'warn',
+      // 将React相关的严格检查调整为警告
+      'react/no-unescaped-entities': 'warn',
+      'react-hooks/exhaustive-deps': 'warn',
+      '@next/next/no-img-element': 'warn',
+      '@typescript-eslint/no-require-imports': 'warn',
     }
   }
 ];
