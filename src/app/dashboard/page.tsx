@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { UserProfile } from '@/components/dashboard/user-profile';
 import { UsageStats } from '@/components/dashboard/usage-stats';
+import { EnhancedUsageStats } from '@/components/dashboard/enhanced-usage-stats';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { User } from '@/types';
 
@@ -194,9 +195,11 @@ export default function DashboardPage() {
             </Card>
           </div>
 
-          {/* Right Column - Usage Stats */}
+          {/* Right Column - Enhanced Usage Stats */}
           <div className="lg:col-span-2">
-            <UsageStats />
+            <EnhancedUsageStats 
+              title="个人使用统计"
+            />
           </div>
         </div>
       </main>

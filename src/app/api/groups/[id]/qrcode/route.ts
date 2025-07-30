@@ -4,7 +4,7 @@ import { withAuth, createApiResponse } from '@/lib/middleware';
 import QRCode from 'qrcode';
 
 // 生成邀请二维码
-async function getHandler(req: NextRequest & { params }: { params: { id: string } }) {
+async function getHandler(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const userId = user.id;
     const groupId = params.id;

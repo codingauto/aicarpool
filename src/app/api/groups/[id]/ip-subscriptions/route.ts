@@ -12,7 +12,7 @@ const createSubscriptionSchema = z.object({
 });
 
 // 获取拼车组的IP套餐订阅列表
-async function getHandler(req: { params }: { params: Promise<{ id: string }> }) {
+async function getHandler(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id: groupId } = await params;
 
@@ -39,7 +39,7 @@ async function getHandler(req: { params }: { params: Promise<{ id: string }> }) 
 }
 
 // 创建新的IP套餐订阅
-async function postHandler(req: { params }: { params: Promise<{ id: string }> }) {
+async function postHandler(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id: groupId } = await params;
     const body = await req.json();

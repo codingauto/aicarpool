@@ -10,7 +10,7 @@ const createInvitationSchema = z.object({
 });
 
 // 获取拼车组的邀请列表
-async function getHandler(req: { params }: { params: { id: string } }) {
+async function getHandler(req: Request, { params }: { params: { id: string } }) {
   try {
     const userId = user.id;
     const groupId = params.id;
@@ -55,7 +55,7 @@ async function getHandler(req: { params }: { params: { id: string } }) {
 }
 
 // 创建新邀请
-async function postHandler(req: { params }: { params: { id: string } }) {
+async function postHandler(req: Request, { params }: { params: { id: string } }) {
   try {
     const body = await req.json();
     const validatedData = createInvitationSchema.parse(body);
@@ -192,7 +192,7 @@ async function postHandler(req: { params }: { params: { id: string } }) {
 }
 
 // 撤销邀请
-async function deleteHandler(req: { params }: { params: { id: string } }) {
+async function deleteHandler(req: Request, { params }: { params: { id: string } }) {
   try {
     const body = await req.json();
     const { invitationId } = body;

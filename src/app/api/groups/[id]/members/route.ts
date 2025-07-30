@@ -9,7 +9,7 @@ const updateMemberSchema = z.object({
 });
 
 // 获取拼车组成员列表
-async function getHandler(req: { params }: { params: { id: string } }) {
+async function getHandler(req: Request, { params }: { params: { id: string } }) {
   try {
     const userId = user.id;
     const groupId = params.id;
@@ -91,7 +91,7 @@ async function getHandler(req: { params }: { params: { id: string } }) {
 }
 
 // 更新成员信息（角色、状态等）
-async function putHandler(req: { params }: { params: { id: string } }) {
+async function putHandler(req: Request, { params }: { params: { id: string } }) {
   try {
     const body = await req.json();
     const validatedData = updateMemberSchema.parse(body);

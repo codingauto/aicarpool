@@ -10,7 +10,7 @@ const batchInvitationSchema = z.object({
 });
 
 // 批量创建邀请
-async function postHandler(req: { params }: { params: { id: string } }) {
+async function postHandler(req: Request, { params }: { params: { id: string } }) {
   try {
     const body = await req.json();
     const validatedData = batchInvitationSchema.parse(body);

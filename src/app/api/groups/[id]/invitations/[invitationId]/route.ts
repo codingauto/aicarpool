@@ -6,7 +6,8 @@ import { emailQueue } from '@/lib/email';
 
 // 重新发送邀请
 async function postHandler(
-  req: { params }: { params: { id: string; invitationId: string } }
+  req: Request,
+  { params }: { params: { id: string; invitationId: string } }
 ) {
   try {
     const userId = user.id;
@@ -99,7 +100,8 @@ async function postHandler(
 
 // 撤销邀请
 async function deleteHandler(
-  req: { params }: { params: { id: string; invitationId: string } }
+  req: Request,
+  { params }: { params: { id: string; invitationId: string } }
 ) {
   try {
     const userId = user.id;

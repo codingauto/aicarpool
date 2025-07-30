@@ -26,7 +26,7 @@ import { toast } from 'sonner';
 
 interface DeploymentMode {
   id: string;
-  mode: 'centralized' | 'distributed' | 'hybrid';
+  mode: 'centralized' | 'distributed';
   config: any;
   isActive: boolean;
   description?: string;
@@ -42,9 +42,9 @@ interface DeploymentModeConfigProps {
 const deploymentModes = [
   {
     value: 'centralized',
-    label: '集中化代理模式',
+    label: 'IP代理模式',
     icon: Globe,
-    description: '通过中心化代理服务器统一转发请求',
+    description: '通过IP代理服务器转发请求，简单易用的部署方式',
     benefits: [
       '部署简单，单一服务器管理',
       '成本较低，适合中小规模',
@@ -66,7 +66,7 @@ const deploymentModes = [
   },
   {
     value: 'distributed',
-    label: '分布式边缘节点模式',
+    label: '边缘节点模式',
     icon: Network,
     description: '通过分布在不同地理位置的边缘节点就近处理请求',
     benefits: [
@@ -86,29 +86,6 @@ const deploymentModes = [
       maxUsers: 'unlimited',
       avgLatency: '10-50ms',
       availability: '99.9%'
-    }
-  },
-  {
-    value: 'hybrid',
-    label: '混合模式',
-    icon: Server,
-    description: '结合集中化和分布式的优势，智能选择最优路由',
-    benefits: [
-      '灵活性最高',
-      '可根据需求动态调整',
-      '兼容两种模式优势',
-      '平滑迁移'
-    ],
-    drawbacks: [
-      '配置较为复杂',
-      '需要更多技术了解'
-    ],
-    recommendedFor: '复杂业务场景，多地域服务',
-    techSpecs: {
-      maxGroups: 'unlimited',
-      maxUsers: 'unlimited',
-      avgLatency: '10-100ms',
-      availability: '99.95%'
     }
   }
 ];
@@ -279,7 +256,10 @@ export function DeploymentModeConfig({ groupId, isAdmin }: DeploymentModeConfigP
                 <div className="flex justify-end">
                   <Dialog open={configDialogOpen} onOpenChange={setConfigDialogOpen}>
                     <DialogTrigger asChild>
-                      <Button variant="outline">
+                      <Button 
+                        variant="outline"
+                        onClick={() => setSelectedMode('centralized')} // 默认选中IP代理模式
+                      >
                         <Settings className="w-4 h-4 mr-2" />
                         切换模式
                       </Button>
@@ -404,7 +384,10 @@ export function DeploymentModeConfig({ groupId, isAdmin }: DeploymentModeConfigP
               <AlertTriangle className="h-12 w-12 mx-auto text-gray-400 mb-4" />
               <p className="text-gray-500 mb-4">未配置部署模式</p>
               {isAdmin && (
-                <Button onClick={() => setConfigDialogOpen(true)}>
+                <Button onClick={() => {
+                  setSelectedMode('centralized'); // 默认选中IP代理模式
+                  setConfigDialogOpen(true);
+                }}>
                   <Settings className="w-4 h-4 mr-2" />
                   配置部署模式
                 </Button>
@@ -431,9 +414,8 @@ export function DeploymentModeConfig({ groupId, isAdmin }: DeploymentModeConfigP
               <thead>
                 <tr className="border-b">
                   <th className="text-left p-3">特性</th>
-                  <th className="text-center p-3">集中化</th>
-                  <th className="text-center p-3">分布式</th>
-                  <th className="text-center p-3">混合模式</th>
+                  <th className="text-center p-3">IP代理模式</th>
+                  <th className="text-center p-3">边缘节点模式</th>
                 </tr>
               </thead>
               <tbody>
@@ -441,31 +423,26 @@ export function DeploymentModeConfig({ groupId, isAdmin }: DeploymentModeConfigP
                   <td className="p-3 font-medium">部署复杂度</td>
                   <td className="p-3 text-center text-green-600">简单</td>
                   <td className="p-3 text-center text-red-600">复杂</td>
-                  <td className="p-3 text-center text-yellow-600">中等</td>
                 </tr>
                 <tr className="border-b">
                   <td className="p-3 font-medium">扩展性</td>
                   <td className="p-3 text-center text-yellow-600">垂直扩展</td>
                   <td className="p-3 text-center text-green-600">水平扩展</td>
-                  <td className="p-3 text-center text-green-600">优秀</td>
                 </tr>
                 <tr className="border-b">
                   <td className="p-3 font-medium">延迟</td>
                   <td className="p-3 text-center text-yellow-600">可能较高</td>
                   <td className="p-3 text-center text-green-600">很低</td>
-                  <td className="p-3 text-center text-green-600">低</td>
                 </tr>
                 <tr className="border-b">
                   <td className="p-3 font-medium">成本</td>
                   <td className="p-3 text-center text-green-600">低</td>
                   <td className="p-3 text-center text-red-600">高</td>
-                  <td className="p-3 text-center text-yellow-600">中等</td>
                 </tr>
                 <tr>
                   <td className="p-3 font-medium">运维复杂度</td>
                   <td className="p-3 text-center text-green-600">低</td>
                   <td className="p-3 text-center text-red-600">高</td>
-                  <td className="p-3 text-center text-yellow-600">中等</td>
                 </tr>
               </tbody>
             </table>

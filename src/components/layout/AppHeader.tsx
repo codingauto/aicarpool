@@ -10,7 +10,8 @@ import {
   Activity, 
   Server,
   Network,
-  LogOut
+  LogOut,
+  BookOpen
 } from 'lucide-react';
 
 interface NavigationItem {
@@ -32,6 +33,7 @@ const navigationItems: NavigationItem[] = [
   { label: 'IP管理', path: '/ip-management', icon: Network },
   { label: '监控中心', path: '/monitoring', icon: Activity },
   { label: '边缘节点', path: '/edge-nodes', icon: Server },
+  { label: '使用教程', path: '/tutorial', icon: BookOpen },
 ];
 
 interface AppHeaderProps {

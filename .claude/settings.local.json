@@ -12,7 +12,8 @@
       "Bash(npx prisma generate:*)",
       "Bash(npx tsc:*)",
       "Bash(npx tsc:*)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(git rm:*)"
     ],
     "deny": []
   }

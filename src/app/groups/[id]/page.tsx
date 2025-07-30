@@ -16,6 +16,7 @@ import { AppHeader } from '@/components/layout/AppHeader';
 import { EnhancedAiServiceConfig } from '@/components/groups/EnhancedAiServiceConfig';
 import { DeploymentModeConfig } from '@/components/groups/DeploymentModeConfig';
 import { IpProxyManagement } from '@/components/groups/IpProxyManagement';
+import { EnhancedUsageStats } from '@/components/dashboard/enhanced-usage-stats';
 import { 
   Users, 
   Key, 
@@ -236,6 +237,7 @@ export default function GroupDetailPage() {
       if (data.success) {
         setShowInviteDialog(false);
         setInviteEmail('');
+        setActiveTab('invitations'); // 跳转到邀请管理标签页
         fetchGroupDetail(); // 刷新数据
       } else {
         setInviteError(data.error || '邀请用户失败');
@@ -684,52 +686,10 @@ export default function GroupDetailPage() {
                     </CardDescription>
                   </div>
                   {isAdmin && (
-                    <Dialog open={showInviteDialog} onOpenChange={setShowInviteDialog}>
-                      <DialogTrigger asChild>
-                        <Button>
-                          <UserPlus className="w-4 h-4 mr-2" />
-                          邀请成员
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>邀请新成员</DialogTitle>
-                          <DialogDescription>
-                            输入要邀请的用户邮箱地址
-                          </DialogDescription>
-                        </DialogHeader>
-                        <form onSubmit={handleInviteUser} className="space-y-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="inviteEmail">邮箱地址</Label>
-                            <Input
-                              id="inviteEmail"
-                              type="email"
-                              value={inviteEmail}
-                              onChange={(e) => setInviteEmail(e.target.value)}
-                              required
-                              disabled={inviteLoading}
-                              placeholder="请输入邮箱地址"
-                            />
-                          </div>
-                          {inviteError && (
-                            <div className="text-red-500 text-sm">{inviteError}</div>
-                          )}
-                          <div className="flex space-x-2">
-                            <Button type="submit" disabled={inviteLoading}>
-                              {inviteLoading ? '邀请中...' : '发送邀请'}
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              onClick={() => setShowInviteDialog(false)}
-                              disabled={inviteLoading}
-                            >
-                              取消
-                            </Button>
-                          </div>
-                        </form>
-                      </DialogContent>
-                    </Dialog>
+                    <Button onClick={() => setActiveTab('invitations')}>
+                      <UserPlus className="w-4 h-4 mr-2" />
+                      邀请成员
+                    </Button>
                   )}
                 </div>
               </CardHeader>
@@ -1520,22 +1480,11 @@ export default function GroupDetailPage() {
 
           {/* 使用统计 */}
           <TabsContent value="usage" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>使用统计</CardTitle>
-                <CardDescription>
-                  查看拼车组的使用情况和成本分析
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8">
-                  <div className="text-gray-500 mb-4">使用统计功能开发中</div>
-                  <div className="text-sm text-gray-400">
-                    将显示详细的使用统计图表和成本分析
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <EnhancedUsageStats 
+              groupId={groupId}
+              title="拼车组使用统计"
+              showMemberUsage={true}
+            />
           </TabsContent>
         </Tabs>
       </main>
