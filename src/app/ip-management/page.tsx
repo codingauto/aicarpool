@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { AppHeader } from '@/components/layout/AppHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -272,8 +271,13 @@ export default function IPResourcePoolPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <AppHeader title="IP资源池" showUserInfo={false}>
+    <div className="p-6">
+      {/* Page Header */}
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">IP资源池</h1>
+          <p className="text-gray-600 mt-1">管理平台所有可用的IP代理资源</p>
+        </div>
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
@@ -404,9 +408,7 @@ export default function IPResourcePoolPage() {
             </DialogContent>
           </Dialog>
         </div>
-      </AppHeader>
-
-      <div className="p-6">
+      </div>
         {/* 功能说明卡片 */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
           <div className="flex items-start space-x-3">
@@ -537,7 +539,6 @@ export default function IPResourcePoolPage() {
             </Table>
           )}
         </div>
-      </div>
     </div>
   );
 }

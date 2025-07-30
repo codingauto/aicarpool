@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { AppHeader } from '@/components/layout/AppHeader';
 import { 
   Activity, 
   AlertTriangle, 
@@ -198,20 +197,27 @@ export default function MonitoringPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <AppHeader showUserInfo={false}>
-        <Button variant="outline" onClick={handleRefresh} disabled={refreshing}>
-          <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-          刷新
-        </Button>
-        <Button variant="outline">
-          <Settings className="w-4 h-4 mr-2" />
-          设置
-        </Button>
-      </AppHeader>
+    <div className="p-6">
+      {/* Page Header */}
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">监控中心</h1>
+          <p className="text-gray-600 mt-1">系统健康状态和性能监控</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={handleRefresh} disabled={refreshing}>
+            <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            刷新
+          </Button>
+          <Button variant="outline">
+            <Settings className="w-4 h-4 mr-2" />
+            设置
+          </Button>
+        </div>
+      </div>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div>
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="overview">系统概览</TabsTrigger>
@@ -542,7 +548,7 @@ export default function MonitoringPage() {
             </Card>
           </TabsContent>
         </Tabs>
-      </main>
+      </div>
     </div>
   );
 }

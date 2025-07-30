@@ -164,14 +164,16 @@ export function EnhancedAiServiceConfig({ groupId, isAdmin, onRefresh }: Enhance
       });
 
       const result = await response.json();
+
       if (result.success) {
         setServices(result.data);
+        toast.success(`成功加载 ${result.data.length} 个AI服务配置`);
       } else {
-        toast.error(result.message || '获取AI服务配置失败');
+        toast.error(result.error || result.message || '获取AI服务配置失败');
       }
     } catch (error) {
       console.error('Failed to fetch AI services:', error);
-      toast.error('获取AI服务配置失败');
+      toast.error('网络错误，获取AI服务配置失败');
     } finally {
       setLoading(false);
     }

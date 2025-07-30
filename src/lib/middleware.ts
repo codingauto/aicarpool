@@ -61,10 +61,17 @@ export function withGroupAuth(
 }
 
 export function createApiResponse(data: any, success: boolean = true, status: number = 200) {
-  return NextResponse.json(
-    { success, data, error: success ? undefined : undefined },
-    { status }
-  );
+  if (success) {
+    return NextResponse.json(
+      { success: true, data },
+      { status }
+    );
+  } else {
+    return NextResponse.json(
+      { success: false, error: data },
+      { status }
+    );
+  }
 }
 
 export function createErrorResponse(error: string, status: number = 400) {

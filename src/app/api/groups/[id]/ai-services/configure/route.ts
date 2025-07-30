@@ -132,7 +132,22 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       });
     }
 
-    return createApiResponse(result, true, 200);
+    // 序列化BigInt的辅助函数
+    const serializeBigInt = (obj: any): any => {
+      if (obj === null || obj === undefined) return obj;
+      if (typeof obj === 'bigint') return Number(obj);
+      if (Array.isArray(obj)) return obj.map(serializeBigInt);
+      if (typeof obj === 'object') {
+        const result: any = {};
+        for (const [key, value] of Object.entries(obj)) {
+          result[key] = serializeBigInt(value);
+        }
+        return result;
+      }
+      return obj;
+    };
+
+    return createApiResponse(serializeBigInt(result), true, 200);
 
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -260,7 +275,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   } catch (error) {
     console.error('Get AI service configuration error:', error);
-    console.error('Error details:', error.message, error.stack);
-    return createApiResponse({ error: '获取AI服务配置失败', details: error.message }, false, 500);
+    return createApiResponse({ error: '获取AI服务配置失败' }, false, 500);
   }
 }

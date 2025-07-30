@@ -11,7 +11,6 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { AppHeader } from '@/components/layout/AppHeader';
 import { 
   Server, 
   Plus, 
@@ -224,13 +223,19 @@ export default function EdgeNodesPage() {
   const totalConnections = activeNodes.reduce((sum, node) => sum + node.currentLoad.connections, 0);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <AppHeader showUserInfo={false}>
-        <Button variant="outline" onClick={handleRefresh} disabled={refreshing}>
-          <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-          刷新
-        </Button>
-        <Dialog open={showRegisterDialog} onOpenChange={setShowRegisterDialog}>
+    <div className="p-6">
+      {/* Page Header */}
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">边缘节点</h1>
+          <p className="text-gray-600 mt-1">管理分布式边缘节点和负载均衡</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={handleRefresh} disabled={refreshing}>
+            <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            刷新
+          </Button>
+          <Dialog open={showRegisterDialog} onOpenChange={setShowRegisterDialog}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="w-4 h-4 mr-2" />
@@ -364,10 +369,11 @@ export default function EdgeNodesPage() {
                   </form>
           </DialogContent>
         </Dialog>
-      </AppHeader>
+        </div>
+      </div>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div>
         {/* 统计卡片 */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <Card>
@@ -569,7 +575,7 @@ export default function EdgeNodesPage() {
             </Card>
           </TabsContent>
         </Tabs>
-      </main>
+      </div>
     </div>
   );
 }

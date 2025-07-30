@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { AppHeader } from '@/components/layout/AppHeader';
 import { 
   BookOpen,
   Download,
@@ -79,10 +78,14 @@ export default function TutorialPage() {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <AppHeader title="使用教程" />
+    <div className="p-6">
+      {/* Page Header */}
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-gray-900">使用教程</h1>
+        <p className="text-gray-600 mt-1">快速开始使用 Claude Code 的完整指南</p>
+      </div>
       
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-6xl mx-auto">
         {/* 头部介绍 */}
         <div className="mb-8">
           <div className="flex items-center space-x-3 mb-4">
@@ -490,7 +493,7 @@ source ~/.bashrc</CodeBlock>
             </Button>
           </CardContent>
         </Card>
-      </main>
+      </div>
     </div>
   );
 }

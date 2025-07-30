@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { GroupList } from '@/components/groups/group-list';
-import { AppHeader } from '@/components/layout/AppHeader';
 
 export default function GroupsPage() {
   const [loading, setLoading] = useState(true);
@@ -32,13 +31,15 @@ export default function GroupsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <AppHeader showUserInfo={false} />
+    <div className="p-6">
+      {/* Page Header */}
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-gray-900">拼车组</h1>
+        <p className="text-gray-600 mt-1">管理您的拼车组，邀请成员共享AI资源</p>
+      </div>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <GroupList />
-      </main>
+      <GroupList />
     </div>
   );
 }

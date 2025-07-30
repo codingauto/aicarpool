@@ -2,9 +2,10 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withAuth, createApiResponse } from '@/lib/middleware';
 
-async function handler(req: NextRequest, user: any, params: { id: string }) {
+async function handler(req: NextRequest, user: any, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const groupId = params.id;
+    const resolvedParams = await params;
+    const groupId = resolvedParams.id;
     const { searchParams } = new URL(req.url);
     
     // 获取查询参数
@@ -200,4 +201,20 @@ async function handler(req: NextRequest, user: any, params: { id: string }) {
   }
 }
 
-export const GET = withAuth(handler);
+// 修复 withAuth 包装器以支持额外参数
+function withAuthAndParams(handler: (req: NextRequest, user: any, context: any) => Promise<any>) {
+  return withAuth(async (req: NextRequest, user: any) => {
+    // 从 URL 中提取参数
+    const url = new URL(req.url);
+    const pathSegments = url.pathname.split('/');
+    const id = pathSegments[pathSegments.length - 2]; // usage-stats 之前的是 id
+    
+    const context = {
+      params: Promise.resolve({ id })
+    };
+    
+    return handler(req, user, context);
+  });
+}
+
+export const GET = withAuthAndParams(handler);

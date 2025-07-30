@@ -8,7 +8,6 @@ import { Badge } from '@/components/ui/badge';
 import { UserProfile } from '@/components/dashboard/user-profile';
 import { UsageStats } from '@/components/dashboard/usage-stats';
 import { EnhancedUsageStats } from '@/components/dashboard/enhanced-usage-stats';
-import { AppHeader } from '@/components/layout/AppHeader';
 import { User } from '@/types';
 
 interface UserData extends User {
@@ -104,11 +103,15 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <AppHeader />
+    <div className="p-6">
+      {/* Page Header */}
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-gray-900">仪表盘</h1>
+        <p className="text-gray-600 mt-1">查看您的使用统计和拼车组信息</p>
+      </div>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left Column - Profile and Groups */}
           <div className="lg:col-span-1 space-y-6">
@@ -202,7 +205,7 @@ export default function DashboardPage() {
             />
           </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

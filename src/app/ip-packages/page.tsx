@@ -6,7 +6,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { AppHeader } from '@/components/layout/AppHeader';
 import { 
   Globe, 
   Server, 
@@ -188,11 +187,7 @@ export default function IpPackagesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <AppHeader showUserInfo={false} />
-
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="browse">浏览套餐</TabsTrigger>
@@ -404,7 +399,6 @@ export default function IpPackagesPage() {
             )}
           </TabsContent>
         </Tabs>
-      </main>
     </div>
   );
 }
