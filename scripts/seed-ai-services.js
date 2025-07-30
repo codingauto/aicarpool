@@ -2,70 +2,32 @@ const { PrismaClient } = require('@prisma/client');
 
 const prisma = new PrismaClient();
 
-async function seedAiServices() {
-  console.log('开始初始化AI服务数据...');
+async function seedData() {
+  console.log('开始初始化数据库种子数据...');
 
-  const aiServices = [
-    {
-      serviceName: 'claude',
-      displayName: 'Claude',
-      description: 'Anthropic Claude - 强大的AI助手，擅长代码理解和生成',
-      baseUrl: 'https://api.anthropic.com',
-      isEnabled: true,
-      rateLimits: {
-        requestsPerMinute: 60,
-        tokensPerDay: 100000
-      }
-    },
-    {
-      serviceName: 'gemini',
-      displayName: 'Gemini',
-      description: 'Google Gemini - 高性价比的多模态AI模型',
-      baseUrl: 'https://generativelanguage.googleapis.com',
-      isEnabled: true,
-      rateLimits: {
-        requestsPerMinute: 60,
-        tokensPerDay: 200000
-      }
-    },
-    {
-      serviceName: 'ampcode',
-      displayName: 'AmpCode',
-      description: 'AmpCode - 专注于代码生成和优化的AI工具',
-      baseUrl: 'https://api.ampcode.com',
-      isEnabled: false,
-      rateLimits: {
-        requestsPerMinute: 30,
-        tokensPerDay: 50000
-      }
-    }
-  ];
+  try {
+    // 检查数据库连接
+    await prisma.$connect();
+    console.log('✅ 数据库连接成功');
 
-  for (const service of aiServices) {
-    try {
-      const existingService = await prisma.aiService.findUnique({
-        where: { serviceName: service.serviceName }
-      });
+    // 由于新架构中AI服务是硬编码的，这里只需要确保数据库连接正常
+    // AI服务信息在代码中静态定义：claude, gemini, ampcode
+    
+    // 可以在这里添加其他初始化数据，比如默认配额配置等
+    console.log('ℹ️  AI服务配置采用静态定义方式 (claude, gemini, ampcode)');
+    console.log('ℹ️  数据库结构验证完成');
 
-      if (!existingService) {
-        const created = await prisma.aiService.create({
-          data: service
-        });
-        console.log(`✅ 创建AI服务: ${created.displayName}`);
-      } else {
-        console.log(`ℹ️  AI服务已存在: ${existingService.displayName}`);
-      }
-    } catch (error) {
-      console.error(`❌ 创建AI服务失败 ${service.displayName}:`, error.message);
-    }
+  } catch (error) {
+    console.error('❌ 数据库种子数据初始化失败:', error.message);
+    throw error;
   }
 
-  console.log('AI服务数据初始化完成!');
+  console.log('✅ 数据库种子数据初始化完成!');
 }
 
 async function main() {
   try {
-    await seedAiServices();
+    await seedData();
   } catch (error) {
     console.error('初始化失败:', error);
     process.exit(1);

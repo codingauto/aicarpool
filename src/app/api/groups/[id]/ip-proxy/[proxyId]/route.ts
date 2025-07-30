@@ -167,7 +167,7 @@ async function putHandler(req: NextRequest, user: any, { params }: { params: Pro
 
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return createErrorResponse('数据验证失败: ' + error.errors[0].message, 400);
+      return createErrorResponse('数据验证失败: ' + error.issues[0].message, 400);
     }
 
     console.error('更新IP代理配置失败:', error);

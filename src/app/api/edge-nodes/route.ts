@@ -1,7 +1,6 @@
-import { NextRequest } from 'next/server';
 import { createApiResponse } from '@/lib/middleware';
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
     // 模拟边缘节点数据，匹配前端 EdgeNode 接口
     const mockEdgeNodes = [

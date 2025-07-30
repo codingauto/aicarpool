@@ -155,3 +155,41 @@ export async function checkGroupPermission(
     return false;
   }
 }
+
+// 生成邀请令牌
+export function generateInviteToken(payload: Record<string, any>): string {
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
+}
+
+// 验证邀请令牌
+export function verifyInviteToken(token: string): any {
+  try {
+    return jwt.verify(token, JWT_SECRET);
+  } catch (error) {
+    return null;
+  }
+}
+
+// NextAuth 配置选项（兼容性导出）
+export const authOptions = {
+  secret: JWT_SECRET,
+  session: {
+    strategy: 'jwt' as const,
+  },
+  callbacks: {
+    async jwt({ token, user }: any) {
+      if (user) {
+        token.userId = user.id;
+        token.role = user.role;
+      }
+      return token;
+    },
+    async session({ session, token }: any) {
+      if (token) {
+        session.user.id = token.userId;
+        session.user.role = token.role;
+      }
+      return session;
+    },
+  },
+};

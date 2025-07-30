@@ -157,7 +157,7 @@ async function deleteHandler(
       },
     });
 
-    return createApiResponse(true(updatedInvitation), '邀请已撤销');
+    return createApiResponse(updatedInvitation, '邀请已撤销');
 
   } catch (error) {
     console.error('Cancel invitation error:', error);

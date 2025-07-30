@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { createApiResponse } from '@/lib/middleware';
 import { verifyToken } from '@/lib/auth';
 import { aiAccountService } from '@/lib/ai-accounts';
+import { getErrorMessage, errorHasMessage, errorMessageIncludes } from '@/lib/utils';
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string; accountId: string }> }) {
   try {
@@ -48,26 +49,26 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }, true, 200);
 
   } catch (error) {
-    if (error.message === 'Account not found') {
+    if (errorHasMessage(error, 'Account not found')) {
       return createApiResponse({ error: '账户不存在' }, false, 404);
     }
 
-    if (error.message === 'Account not found or not OAuth account') {
+    if (errorHasMessage(error, 'Account not found or not OAuth account')) {
       return createApiResponse({ error: '账户不是OAuth类型' }, false, 400);
     }
 
-    if (error.message === 'No refresh token available') {
+    if (errorHasMessage(error, 'No refresh token available')) {
       return createApiResponse({ error: '没有可用的刷新令牌' }, false, 400);
     }
 
-    if (error.message.includes('not supported for service type')) {
+    if (errorMessageIncludes(error, 'not supported for service type')) {
       return createApiResponse({ error: '此服务类型不支持token刷新' }, false, 400);
     }
 
     console.error('Refresh token error:', error);
     return createApiResponse({ 
       error: 'Token刷新失败', 
-      details: error.message 
+      details: getErrorMessage(error)
     }, false, 500);
   }
 }

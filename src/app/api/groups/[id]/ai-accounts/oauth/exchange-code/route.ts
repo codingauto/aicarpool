@@ -83,7 +83,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return createApiResponse({ error: error.errors[0].message }, false, 400);
+      return createApiResponse({ error: error.issues[0].message }, false, 400);
     }
 
     console.error('Exchange OAuth code error:', error);

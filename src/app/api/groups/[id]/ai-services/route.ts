@@ -258,7 +258,7 @@ async function postHandler(req: NextRequest, user: any, { params }: { params: Pr
 
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return createErrorResponse(error.errors[0].message, 400);
+      return createErrorResponse(error.issues[0].message, 400);
     }
 
     console.error('Add group AI service error:', error);
@@ -367,7 +367,7 @@ async function putHandler(req: NextRequest, user: any, { params }: { params: Pro
 
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return createErrorResponse(error.errors[0].message, 400);
+      return createErrorResponse(error.issues[0].message, 400);
     }
 
     console.error('Update group AI service error:', error);

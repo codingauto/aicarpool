@@ -19,7 +19,7 @@ export interface AiService {
   description?: string;
   baseUrl: string;
   isEnabled: boolean;
-  rateLimits?: Record<string, any>;
+  rateLimits?: Record<string, number | string>;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -31,7 +31,7 @@ export interface Group {
   description?: string;
   maxMembers: number;
   status: 'active' | 'inactive' | 'suspended';
-  settings?: Record<string, any>;
+  settings?: Record<string, unknown>;
   createdById: string;
   createdAt: Date;
   updatedAt: Date;
@@ -51,9 +51,9 @@ export interface GroupAiService {
   groupId: string;
   aiServiceId: string;
   isEnabled: boolean;
-  quota?: Record<string, any>;
-  authConfig?: Record<string, any>;
-  proxySettings?: Record<string, any>;
+  quota?: Record<string, number | string>;
+  authConfig?: Record<string, unknown>;
+  proxySettings?: Record<string, unknown>;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -128,11 +128,11 @@ export interface UsageStat {
   responseTime?: number;
   status: 'success' | 'error' | 'timeout';
   errorCode?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 // API响应类型
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;
   error?: string;

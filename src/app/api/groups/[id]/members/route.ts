@@ -187,7 +187,7 @@ async function putHandler(req: Request, { params }: { params: { id: string } }) 
 
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return createApiResponse(false, null, error.errors[0].message, 400);
+      return createApiResponse(false, null, error.issues[0].message, 400);
     }
 
     console.error('Update member error:', error);

@@ -46,7 +46,7 @@ async function handler(req: NextRequest, user: any) {
 
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return createApiResponse(false, null, error.errors[0].message, 400);
+      return createApiResponse(false, null, error.issues[0].message, 400);
     }
 
     console.error('Change password error:', error);

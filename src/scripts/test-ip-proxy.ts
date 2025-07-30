@@ -73,7 +73,7 @@ class IpProxyTester {
         return null;
       }
     } catch (error) {
-      this.addTestResult('创建IP代理配置', false, `网络错误: ${error.message}`);
+      this.addTestResult('创建IP代理配置', false, `网络错误: ${error instanceof Error ? error.message : String(error)}`);
       return null;
     }
   }
@@ -91,7 +91,7 @@ class IpProxyTester {
         return [];
       }
     } catch (error) {
-      this.addTestResult('获取代理配置列表', false, `网络错误: ${error.message}`);
+      this.addTestResult('获取代理配置列表', false, `网络错误: ${error instanceof Error ? error.message : String(error)}`);
       return [];
     }
   }
@@ -122,7 +122,7 @@ class IpProxyTester {
         return null;
       }
     } catch (error) {
-      this.addTestResult('更新代理配置', false, `网络错误: ${error.message}`);
+      this.addTestResult('更新代理配置', false, `网络错误: ${error instanceof Error ? error.message : String(error)}`);
       return null;
     }
   }
@@ -142,7 +142,7 @@ class IpProxyTester {
         return null;
       }
     } catch (error) {
-      this.addTestResult('获取使用统计', false, `网络错误: ${error.message}`);
+      this.addTestResult('获取使用统计', false, `网络错误: ${error instanceof Error ? error.message : String(error)}`);
       return null;
     }
   }
@@ -162,7 +162,7 @@ class IpProxyTester {
         return null;
       }
     } catch (error) {
-      this.addTestResult('获取同步状态', false, `网络错误: ${error.message}`);
+      this.addTestResult('获取同步状态', false, `网络错误: ${error instanceof Error ? error.message : String(error)}`);
       return null;
     }
   }
@@ -188,7 +188,7 @@ class IpProxyTester {
         return null;
       }
     } catch (error) {
-      this.addTestResult('配置同步', false, `网络错误: ${error.message}`);
+      this.addTestResult('配置同步', false, `网络错误: ${error instanceof Error ? error.message : String(error)}`);
       return null;
     }
   }
@@ -208,7 +208,7 @@ class IpProxyTester {
         return null;
       }
     } catch (error) {
-      this.addTestResult('获取实时监控数据', false, `网络错误: ${error.message}`);
+      this.addTestResult('获取实时监控数据', false, `网络错误: ${error instanceof Error ? error.message : String(error)}`);
       return null;
     }
   }
@@ -241,7 +241,7 @@ class IpProxyTester {
         return null;
       }
     } catch (error) {
-      this.addTestResult('健康检查', false, `网络错误: ${error.message}`);
+      this.addTestResult('健康检查', false, `网络错误: ${error instanceof Error ? error.message : String(error)}`);
       return null;
     }
   }
@@ -264,7 +264,7 @@ class IpProxyTester {
         return false;
       }
     } catch (error) {
-      this.addTestResult('删除代理配置', false, `网络错误: ${error.message}`);
+      this.addTestResult('删除代理配置', false, `网络错误: ${error instanceof Error ? error.message : String(error)}`);
       return false;
     }
   }

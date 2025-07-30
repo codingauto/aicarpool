@@ -110,7 +110,7 @@ export class MonitoringManager {
     metricName: string;
     tags: Record<string, any>;
   }>> {
-    let whereClause: any = {};
+    const whereClause: Record<string, unknown> = {};
 
     if (filter.component) whereClause.component = filter.component;
     if (filter.metricName) whereClause.metricName = filter.metricName;
@@ -147,11 +147,11 @@ export class MonitoringManager {
         groupId: rule.groupId,
         ruleName: rule.ruleName,
         description: rule.description,
-        condition: rule.condition,
+        condition: rule.condition as any,
         severity: rule.severity,
         isEnabled: rule.isEnabled,
         cooldown: rule.cooldown,
-        actions: rule.actions,
+        actions: rule.actions as any,
       },
     });
 
@@ -200,7 +200,13 @@ export class MonitoringManager {
     const updated = await prisma.alertRule.update({
       where: { id: ruleId },
       data: {
-        ...updates,
+        ...(updates.ruleName && { ruleName: updates.ruleName }),
+        ...(updates.description !== undefined && { description: updates.description }),
+        ...(updates.condition && { condition: updates.condition as any }),
+        ...(updates.severity && { severity: updates.severity }),
+        ...(updates.isEnabled !== undefined && { isEnabled: updates.isEnabled }),
+        ...(updates.cooldown !== undefined && { cooldown: updates.cooldown }),
+        ...(updates.actions && { actions: updates.actions as any }),
         updatedAt: new Date(),
       },
     });
@@ -237,7 +243,7 @@ export class MonitoringManager {
       endTime?: Date;
     } = {}
   ): Promise<AlertIncidentInfo[]> {
-    let whereClause: any = {};
+    const whereClause: Record<string, unknown> = {};
 
     if (filter.ruleId) whereClause.ruleId = filter.ruleId;
     if (filter.status) whereClause.status = filter.status;

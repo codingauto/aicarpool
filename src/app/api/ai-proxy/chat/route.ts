@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { createApiResponse } from '@/lib/middleware';
 import { AIServiceFactory, SupportedAIService } from '@/lib/ai-services/factory';
 import { ChatRequest } from '@/lib/ai-services/base';
-import { aiServiceRouter } from '@/lib/ai-services/router';
+// import { aiServiceRouter } from '@/lib/ai-services/router'; // 暂时未使用
 
 const chatRequestSchema = z.object({
   messages: z.array(z.object({
@@ -210,7 +210,7 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return createApiResponse({ error: error.errors[0].message }, false, 400);
+      return createApiResponse({ error: error.issues[0].message }, false, 400);
     }
 
     console.error('Chat proxy error:', error);

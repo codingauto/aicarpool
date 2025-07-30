@@ -240,7 +240,7 @@ async function postHandler(req: NextRequest, user: any, { params }: { params: Pr
 
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return createErrorResponse(error.errors[0].message, 400);
+      return createErrorResponse(error.issues[0].message, 400);
     }
 
     console.error('Create API key error:', error);

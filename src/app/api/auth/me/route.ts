@@ -1,7 +1,8 @@
 import { NextRequest } from 'next/server';
 import { withAuth, createApiResponse, createErrorResponse } from '@/lib/middleware';
+import { AuthUser } from '@/lib/auth';
 
-async function handler(request: NextRequest, user: any) {
+async function handler(request: NextRequest, user: AuthUser) {
   try {
     // 返回当前用户信息
     return createApiResponse(user);

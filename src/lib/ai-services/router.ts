@@ -89,7 +89,7 @@ export class AiServiceRouter {
       throw new Error('所有AI服务都不可用');
     }
 
-    let selectedRoute: ServiceRoute | null = null;
+    const selectedRoute: ServiceRoute | null = null;
     let attempts = 0;
     const maxAttempts = Math.min(config.maxRetries, availableRoutes.length);
 

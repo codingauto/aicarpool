@@ -76,7 +76,7 @@ export async function GET(
       return createApiResponse(false, null, '拼车组已满', 400);
     }
 
-    return createApiResponse(true(inviteLink), '邀请链接有效');
+    return createApiResponse(inviteLink, '邀请链接有效');
 
   } catch (error) {
     console.error('Verify invite link error:', error);

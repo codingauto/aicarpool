@@ -55,7 +55,7 @@ export class QuotaManager {
   async checkQuota(
     groupId: string, 
     aiServiceId: string, 
-    userId?: string
+    _userId?: string
   ): Promise<QuotaStatus> {
     const config = await this.getQuotaConfig(groupId, aiServiceId);
     const usage = await this.getQuotaUsage(groupId, aiServiceId);
@@ -226,7 +226,7 @@ export class QuotaManager {
   // 检查并发送警告
   private async checkAndSendWarnings(groupId: string, aiServiceId: string): Promise<void> {
     const status = await this.checkQuota(groupId, aiServiceId);
-    const { config, usage, percentages } = status;
+    const { usage, percentages } = status;
 
     const warnings: Array<{
       type: keyof QuotaUsage['warningsSent'];
@@ -300,10 +300,15 @@ export class QuotaManager {
         },
       });
 
-      const aiService = await prisma.aiService.findUnique({
-        where: { id: aiServiceId },
-        select: { displayName: true },
-      });
+      // 获取 AI 服务的显示名称
+      const getServiceDisplayName = (serviceId: string): string => {
+        const serviceMap: Record<string, string> = {
+          'claude': 'Claude AI',
+          'gemini': 'Gemini AI',
+          'ampcode': 'AmpCode AI'
+        };
+        return serviceMap[serviceId] || serviceId;
+      };
 
       // 向每个管理员发送警告邮件
       for (const admin of admins) {
@@ -312,7 +317,7 @@ export class QuotaManager {
           alertType: 'quota_warning',
           details: {
             groupName: admin.group.name,
-            serviceName: aiService?.displayName || 'Unknown Service',
+            serviceName: getServiceDisplayName(aiServiceId),
             currentUsage: Math.round(percentage),
             limit: 100,
             message,
@@ -347,8 +352,8 @@ export class QuotaManager {
   // 重置配额（通常在每日/每月重置时调用）
   async resetQuota(groupId: string, aiServiceId: string, resetType: 'daily' | 'monthly'): Promise<void> {
     const now = new Date();
-    const dateKey = this.getDateKey(now);
-    const monthKey = this.getMonthKey(now);
+    // const dateKey = this.getDateKey(now);  // 暂时未使用
+    // const monthKey = this.getMonthKey(now);  // 暂时未使用
 
     if (resetType === 'daily') {
       await prisma.$executeRaw`

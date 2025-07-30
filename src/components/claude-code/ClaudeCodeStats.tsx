@@ -13,7 +13,7 @@ import {
   Clock,
   TrendingUp,
   AlertCircle,
-  Refresh
+  RefreshCw
 } from 'lucide-react';
 
 interface ClaudeCodeStatsProps {
@@ -80,7 +80,7 @@ export function ClaudeCodeStats({ stats, onRefresh }: ClaudeCodeStatsProps) {
           variant="outline"
           size="sm"
         >
-          <Refresh className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
           刷新
         </Button>
       </div>

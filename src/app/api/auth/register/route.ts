@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
         }
 
         groupId = invitation.groupId;
-      } catch (error) {
+      } catch {
         return createApiResponse(false, null, '无效的邀请码', 400);
       }
     }
@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return createApiResponse(false, null, error.errors[0].message, 400);
+      return createApiResponse(false, null, error.issues[0].message, 400);
     }
 
     console.error('Registration error:', error);

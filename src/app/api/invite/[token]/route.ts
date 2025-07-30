@@ -61,7 +61,7 @@ export async function GET(
       return createApiResponse(false, null, '拼车组已满', 400);
     }
 
-    return createApiResponse(true(invitation), '邀请有效');
+    return createApiResponse(invitation, '邀请有效');
 
   } catch (error) {
     console.error('Verify invitation error:', error);
