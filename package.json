@@ -1,10 +1,14 @@
 {
   "name": "aicarpool-拼车",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "private": true,
   "scripts": {
     "dev": "next dev --port 4000",
     "build": "next build",
+    "build:centos": "npx tsc --noEmit --project tsconfig.production.json && next build",
+    "build:strict": "npx tsc --noEmit --strict && next build",
+    "type-check": "npx tsc --noEmit",
+    "type-check:strict": "npx tsc --noEmit --project tsconfig.production.json",
     "start": "next start",
     "lint": "next lint",
     "db:seed": "tsx prisma/seed.ts"
