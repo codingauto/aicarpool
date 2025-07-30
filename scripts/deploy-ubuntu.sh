@@ -401,19 +401,31 @@ SET GLOBAL validate_password.mixed_case_count=0;
 SET GLOBAL validate_password.number_count=0;
 SET GLOBAL validate_password.special_char_count=0;
 
--- 创建数据库和用户
+-- 创建数据库
 CREATE DATABASE IF NOT EXISTS aicarpool CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER IF NOT EXISTS 'aicarpool'@'localhost' IDENTIFIED BY '$DB_PASSWORD';
+
+-- 删除可能存在的用户（避免冲突）
+DROP USER IF EXISTS 'aicarpool'@'localhost';
+
+-- 创建新用户并授权
+CREATE USER 'aicarpool'@'localhost' IDENTIFIED BY '$DB_PASSWORD';
 GRANT ALL PRIVILEGES ON aicarpool.* TO 'aicarpool'@'localhost';
 FLUSH PRIVILEGES;
 
--- 恢复默认密码策略（可选）
-SET GLOBAL validate_password.policy=MEDIUM;
-SET GLOBAL validate_password.length=8;
-SET GLOBAL validate_password.mixed_case_count=1;
-SET GLOBAL validate_password.number_count=1;
-SET GLOBAL validate_password.special_char_count=1;
+-- 验证用户创建是否成功
+SELECT user, host FROM mysql.user WHERE user = 'aicarpool';
 EOF
+    
+    # 测试數据库连接
+    log_info "测试数据库连接..."
+    if mysql -u aicarpool -p"$DB_PASSWORD" -e "USE aicarpool; SELECT 1;" >/dev/null 2>&1; then
+        log_info "数据库连接测试成功"
+    else
+        log_error "数据库连接测试失败，请检查配置"
+        # 显示详细错误信息
+        mysql -u aicarpool -p"$DB_PASSWORD" -e "USE aicarpool; SELECT 1;" || true
+        exit 1
+    fi
     
     log_info "数据库配置完成"
 }
