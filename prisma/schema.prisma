@@ -43,6 +43,7 @@ model Group {
   updatedAt     DateTime         @updatedAt
   apiKeys       ApiKey[]
   aiServices    GroupAiService[]
+  aiServiceAccounts AiServiceAccount[]
   members       GroupMember[]
   createdBy     User             @relation("GroupCreator", fields: [createdById], references: [id], onDelete: Cascade)
   invitations   Invitation[]
@@ -81,15 +82,18 @@ model GroupAiService {
   id            String    @id @default(cuid())
   groupId       String
   aiServiceId   String    // 现在直接使用服务名称作为标识
+  accountId     String?   // 绑定的AI服务账户ID
   isEnabled     Boolean   @default(true)
   quota         Json?
-  authConfig    Json?
+  authConfig    Json?     // 保留向后兼容
   proxySettings Json?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   group         Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  account       AiServiceAccount? @relation(fields: [accountId], references: [id], onDelete: SetNull)
 
   @@unique([groupId, aiServiceId])
+  @@index([accountId])
   @@map("group_ai_services")
 }
 
@@ -270,6 +274,50 @@ model UserQuotaUsage {
   @@map("user_quota_usage")
 }
 
+// AI服务账户表
+model AiServiceAccount {
+  id            String  @id @default(cuid())
+  groupId       String
+  serviceType   String  // 'claude', 'gemini', 'ampcode'
+  name          String
+  description   String?
+  accountType   String  @default("shared") // 'shared', 'dedicated'
+  
+  // 认证配置
+  authType      String  // 'oauth', 'api_key'
+  encryptedCredentials String // JSON格式的加密凭证
+  
+  // OAuth特有字段
+  oauthAccessToken   String?
+  oauthRefreshToken  String?
+  oauthExpiresAt     DateTime?
+  oauthScopes        String?
+  
+  // 代理配置
+  proxyType     String? // 'socks5', 'http', 'https'
+  proxyHost     String?
+  proxyPort     Int?
+  proxyUsername String?
+  proxyPassword String?
+  
+  // Gemini特有
+  projectId     String?
+  
+  // 状态信息
+  status        String  @default("active") // 'active', 'inactive', 'error'
+  isEnabled     Boolean @default(true)
+  lastUsedAt    DateTime?
+  errorMessage  String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  group         Group   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  groupAiServices GroupAiService[]
+  
+  @@unique([groupId, name])
+  @@index([groupId, serviceType])
+  @@map("ai_service_accounts")
+}
 
 // IP代理配置表 - 简化版本
 model IpProxyConfig {
