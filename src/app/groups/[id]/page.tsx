@@ -87,7 +87,7 @@ export default function GroupDetailPage() {
     token: string;
     usedCount: number;
     maxUses: number;
-    status: string;
+    status: 'active' | 'expired' | 'disabled';
     expiresAt?: string;
     creator: { name: string };
   }>>([]);

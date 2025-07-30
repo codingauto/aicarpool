@@ -357,7 +357,7 @@ export default function AiAccountForm({ account, serviceType, groupId, onClose, 
                   <Label className="text-sm font-semibold text-gray-700">平台</Label>
                   <RadioGroup
                     value={formData.serviceType}
-                    onValueChange={(value: 'claude' | 'gemini' | 'ampcode') => updateFormData({ serviceType: value })}
+                    onValueChange={(value) => updateFormData({ serviceType: value as 'claude' | 'gemini' | 'ampcode' })}
                     className="flex gap-6"
                   >
                     <div className="flex items-center space-x-2">
