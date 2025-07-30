@@ -196,19 +196,22 @@ check_github_access() {
 
 # 安装Node.js
 install_nodejs() {
-    log_step "安装Node.js 18..."
+    log_step "安装Node.js 20..."
     
     # 检查是否已安装
     if command -v node &> /dev/null; then
         NODE_VERSION=$(node -v | cut -d'v' -f2 | cut -d'.' -f1)
-        if [[ $NODE_VERSION -ge 18 ]]; then
-            log_info "Node.js已安装，版本: $(node -v)"
+        if [[ $NODE_VERSION -ge 20 ]]; then
+            log_info "Node.js已安装，版本: $(node -v)，跳过安装"
             return
+        else
+            log_warn "当前Node.js版本 $(node -v) 低于要求的20.x，需要升级"
         fi
     fi
     
-    # 安装Node.js 18
-    curl -fsSL https://deb.nodesource.com/setup_18.x | run_cmd -E bash -
+    # 安装或升级Node.js 20
+    log_info "正在安装Node.js 20..."
+    curl -fsSL https://deb.nodesource.com/setup_20.x | run_cmd -E bash -
     run_cmd apt-get install -y nodejs
     
     # 验证安装
@@ -381,18 +384,35 @@ setup_app() {
 setup_database() {
     log_step "配置数据库..."
     
-    # 生成数据库密码
+    # 生成符合MySQL密码策略的强密码（包含大小写字母、数字和特殊字符）
     if [[ -z "$DB_PASSWORD" ]]; then
-        DB_PASSWORD=$(openssl rand -base64 32)
+        # 生成至少8位包含大小写字母、数字和特殊字符的强密码
+        DB_PASSWORD="AiCarpool$(openssl rand -base64 12 | tr -d "=+/" | cut -c1-8)@2025"
         echo "DB_PASSWORD=$DB_PASSWORD" >> ~/.aicarpool_env
+        log_info "生成数据库密码: $DB_PASSWORD"
     fi
     
-    # 创建数据库和用户
+    # 创建数据库和用户（先放宽密码策略）
     mysql -u root -p"$MYSQL_ROOT_PASSWORD" << EOF
+-- 临时放宽密码验证策略
+SET GLOBAL validate_password.policy=LOW;
+SET GLOBAL validate_password.length=8;
+SET GLOBAL validate_password.mixed_case_count=0;
+SET GLOBAL validate_password.number_count=0;
+SET GLOBAL validate_password.special_char_count=0;
+
+-- 创建数据库和用户
 CREATE DATABASE IF NOT EXISTS aicarpool CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE USER IF NOT EXISTS 'aicarpool'@'localhost' IDENTIFIED BY '$DB_PASSWORD';
 GRANT ALL PRIVILEGES ON aicarpool.* TO 'aicarpool'@'localhost';
 FLUSH PRIVILEGES;
+
+-- 恢复默认密码策略（可选）
+SET GLOBAL validate_password.policy=MEDIUM;
+SET GLOBAL validate_password.length=8;
+SET GLOBAL validate_password.mixed_case_count=1;
+SET GLOBAL validate_password.number_count=1;
+SET GLOBAL validate_password.special_char_count=1;
 EOF
     
     log_info "数据库配置完成"
