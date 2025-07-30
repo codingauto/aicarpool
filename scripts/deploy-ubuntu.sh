@@ -428,21 +428,21 @@ setup_env() {
     JWT_SECRET=$(openssl rand -base64 64)
     NEXTAUTH_SECRET=$(openssl rand -base64 32)
     
-    # 创建.env.local文件
-    cat > .env.local << EOF
+    # 创建.env文件（主配置文件）
+    cat > .env << EOF
 # 数据库配置
 DATABASE_URL="mysql://aicarpool:$DB_PASSWORD@localhost:3306/aicarpool"
 
 # Redis配置
 REDIS_URL="redis://localhost:6379"
 
-# JWT配置
-NEXTAUTH_SECRET="$NEXTAUTH_SECRET"
-NEXTAUTH_URL="http://localhost:4000"
-
 # 应用配置
 NODE_ENV="production"
 PORT=4000
+
+# JWT配置
+NEXTAUTH_SECRET="$NEXTAUTH_SECRET"
+NEXTAUTH_URL="http://localhost:4000"
 
 # 邮件配置（需要手动配置）
 # SMTP_HOST=""
@@ -454,8 +454,11 @@ PORT=4000
 # CLAUDE_API_KEY=""
 # OPENAI_API_KEY=""
 EOF
+
+    # 同时创建.env.local作为备份
+    cp .env .env.local
     
-    # 保存密钥信息
+    # 保存密钥信息到系统配置文件
     cat >> ~/.aicarpool_env << EOF
 JWT_SECRET=$JWT_SECRET
 NEXTAUTH_SECRET=$NEXTAUTH_SECRET
@@ -475,11 +478,6 @@ init_database() {
     
     # 运行数据库迁移
     npx prisma migrate deploy
-    
-    # 确保Prisma能找到环境变量（创建.env文件链接到.env.local）
-    if [[ -f .env.local ]] && [[ ! -f .env ]]; then
-        ln -sf .env.local .env
-    fi
     
     # 初始化种子数据
     if [[ -f "scripts/seed-ai-services.js" ]]; then
