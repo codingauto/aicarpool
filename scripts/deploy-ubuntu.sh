@@ -476,6 +476,11 @@ init_database() {
     # 运行数据库迁移
     npx prisma migrate deploy
     
+    # 确保Prisma能找到环境变量（创建.env文件链接到.env.local）
+    if [[ -f .env.local ]] && [[ ! -f .env ]]; then
+        ln -sf .env.local .env
+    fi
+    
     # 初始化种子数据
     if [[ -f "scripts/seed-ai-services.js" ]]; then
         npm run seed 2>/dev/null || node scripts/seed-ai-services.js
