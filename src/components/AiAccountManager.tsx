@@ -145,7 +145,7 @@ export default function AiAccountManager({ groupId, serviceType, onAccountSelect
       gemini: 'bg-blue-100 text-blue-800',
       ampcode: 'bg-purple-100 text-purple-800',
     };
-    return colors[type] || 'bg-gray-100 text-gray-800';
+    return colors[type as keyof typeof colors] || 'bg-gray-100 text-gray-800';
   };
 
   const getStatusBadge = (account: AiAccount) => {

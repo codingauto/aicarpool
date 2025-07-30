@@ -382,7 +382,7 @@ export default function AiAccountForm({ account, serviceType, groupId, onClose, 
                   <Label className="text-sm font-semibold text-gray-700">添加方式</Label>
                   <RadioGroup
                     value={formData.authType}
-                    onValueChange={(value: 'oauth' | 'api_key') => updateFormData({ authType: value })}
+                    onValueChange={(value) => updateFormData({ authType: value as 'oauth' | 'api_key' })}
                     className="flex gap-6"
                   >
                     <div className="flex items-center space-x-2">
@@ -434,7 +434,7 @@ export default function AiAccountForm({ account, serviceType, groupId, onClose, 
                 <Label className="text-sm font-semibold text-gray-700">账户类型</Label>
                 <RadioGroup
                   value={formData.accountType}
-                  onValueChange={(value: 'shared' | 'dedicated') => updateFormData({ accountType: value })}
+                  onValueChange={(value) => updateFormData({ accountType: value as 'shared' | 'dedicated' })}
                   className="flex gap-6"
                 >
                   <div className="flex items-center space-x-2">
@@ -634,7 +634,7 @@ export default function AiAccountForm({ account, serviceType, groupId, onClose, 
                 <Label className="text-sm font-semibold text-gray-700">账户类型</Label>
                 <RadioGroup
                   value={formData.accountType}
-                  onValueChange={(value: 'shared' | 'dedicated') => updateFormData({ accountType: value })}
+                  onValueChange={(value) => updateFormData({ accountType: value as 'shared' | 'dedicated' })}
                   className="flex gap-6"
                 >
                   <div className="flex items-center space-x-2">

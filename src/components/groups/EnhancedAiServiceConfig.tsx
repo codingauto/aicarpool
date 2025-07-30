@@ -118,6 +118,7 @@ export function EnhancedAiServiceConfig({ groupId, isAdmin, onRefresh }: Enhance
     apiKey: '',
     refreshToken: '', // 新增refreshToken字段
     useAccountAuth: false, // 是否使用账户认证
+    accountId: '', // 选择的账户ID
     routingStrategy: 'priority',
     enableProxy: false,
     proxyType: 'none',
@@ -1078,7 +1079,7 @@ export function EnhancedAiServiceConfig({ groupId, isAdmin, onRefresh }: Enhance
                       </h4>
                       <RadioGroup
                         value={formData.authType}
-                        onValueChange={(value: 'oauth' | 'api_key') => setFormData(prev => ({ ...prev, authType: value }))}
+                        onValueChange={(value) => setFormData(prev => ({ ...prev, authType: value as 'oauth' | 'api_key' }))}
                         className="flex gap-6"
                       >
                         <div className="flex items-center space-x-2">
@@ -1112,7 +1113,7 @@ export function EnhancedAiServiceConfig({ groupId, isAdmin, onRefresh }: Enhance
                           <Label>账户类型</Label>
                           <RadioGroup
                             value={formData.accountType}
-                            onValueChange={(value: 'shared' | 'dedicated') => setFormData(prev => ({ ...prev, accountType: value }))}
+                            onValueChange={(value) => setFormData(prev => ({ ...prev, accountType: value as 'shared' | 'dedicated' }))}
                             className="flex gap-4"
                           >
                             <div className="flex items-center space-x-2">
@@ -1401,7 +1402,7 @@ export function EnhancedAiServiceConfig({ groupId, isAdmin, onRefresh }: Enhance
                           <Label>账户类型</Label>
                           <RadioGroup
                             value={formData.accountType}
-                            onValueChange={(value: 'shared' | 'dedicated') => setFormData(prev => ({ ...prev, accountType: value }))}
+                            onValueChange={(value) => setFormData(prev => ({ ...prev, accountType: value as 'shared' | 'dedicated' }))}
                             className="flex gap-4"
                           >
                             <div className="flex items-center space-x-2">
@@ -1544,7 +1545,7 @@ export function EnhancedAiServiceConfig({ groupId, isAdmin, onRefresh }: Enhance
                               const token = localStorage.getItem('token');
                               if (!token) return;
 
-                              const response = await fetch(`/api/groups/${groupId}/ai-services/${selectedService.aiService.id}/unbind-account`, {
+                              const response = await fetch(`/api/groups/${groupId}/ai-services/${selectedService?.aiService?.id}/unbind-account`, {
                                 method: 'DELETE',
                                 headers: {
                                   Authorization: `Bearer ${token}`,

@@ -242,7 +242,7 @@ class AiAccountService {
     const refreshToken = decryptSensitiveData(account.oauthRefreshToken);
     
     try {
-      let newTokens;
+      let newTokens: { accessToken: string; refreshToken?: string; expiresAt: string } | null = null;
       
       if (account.serviceType === 'claude') {
         newTokens = await this.refreshClaudeToken(refreshToken, account);
@@ -252,6 +252,10 @@ class AiAccountService {
         newTokens = await this.refreshAmpcodeToken(refreshToken, account);
       } else {
         throw new Error(`Token refresh not supported for service type: ${account.serviceType}`);
+      }
+
+      if (!newTokens) {
+        throw new Error('Failed to refresh tokens');
       }
 
       // 更新数据库中的token
@@ -278,7 +282,7 @@ class AiAccountService {
         where: { id: accountId },
         data: {
           status: 'error',
-          errorMessage: error.message,
+          errorMessage: error instanceof Error ? error.message : String(error),
         },
       });
       
@@ -309,7 +313,7 @@ class AiAccountService {
         redirect_uri: 'https://claude.ai/oauth/callback',
         scope: 'user:inference',
         state,
-        code_challenge: codeChallenge,
+        code_challenge: codeChallenge || '',
         code_challenge_method: 'S256',
       });
 
@@ -494,19 +498,19 @@ class AiAccountService {
   }
 
   // Claude Token刷新（占位符实现）
-  private async refreshClaudeToken(refreshToken: string, account: any) {
+  private async refreshClaudeToken(refreshToken: string, account: any): Promise<{ accessToken: string; refreshToken?: string; expiresAt: string }> {
     // 实际实现需要调用Claude API
     throw new Error('Claude token refresh not implemented');
   }
 
   // Gemini Token刷新（占位符实现）
-  private async refreshGeminiToken(refreshToken: string, account: any) {
+  private async refreshGeminiToken(refreshToken: string, account: any): Promise<{ accessToken: string; refreshToken?: string; expiresAt: string }> {
     // 实际实现需要调用Google OAuth API
     throw new Error('Gemini token refresh not implemented');
   }
 
   // AMPCode Token刷新（占位符实现）
-  private async refreshAmpcodeToken(refreshToken: string, account: any) {
+  private async refreshAmpcodeToken(refreshToken: string, account: any): Promise<{ accessToken: string; refreshToken?: string; expiresAt: string }> {
     // 实际实现需要调用AMPCode API
     throw new Error('AMPCode token refresh not implemented');
   }

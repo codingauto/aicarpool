@@ -117,8 +117,8 @@ export class MonitoringManager {
     if (filter.groupId) whereClause.groupId = filter.groupId;
     if (filter.startTime || filter.endTime) {
       whereClause.timestamp = {};
-      if (filter.startTime) whereClause.timestamp.gte = filter.startTime;
-      if (filter.endTime) whereClause.timestamp.lte = filter.endTime;
+      if (filter.startTime) (whereClause.timestamp as any).gte = filter.startTime;
+      if (filter.endTime) (whereClause.timestamp as any).lte = filter.endTime;
     }
 
     const metrics = await prisma.systemMetric.findMany({
@@ -160,7 +160,7 @@ export class MonitoringManager {
       groupId: created.groupId || undefined,
       ruleName: created.ruleName,
       description: created.description || undefined,
-      condition: created.condition as AlertCondition,
+      condition: created.condition as unknown as AlertCondition,
       severity: created.severity as any,
       isEnabled: created.isEnabled,
       cooldown: created.cooldown,
@@ -182,7 +182,7 @@ export class MonitoringManager {
       groupId: rule.groupId || undefined,
       ruleName: rule.ruleName,
       description: rule.description || undefined,
-      condition: rule.condition as AlertCondition,
+      condition: rule.condition as unknown as AlertCondition,
       severity: rule.severity as any,
       isEnabled: rule.isEnabled,
       cooldown: rule.cooldown,
@@ -216,7 +216,7 @@ export class MonitoringManager {
       groupId: updated.groupId || undefined,
       ruleName: updated.ruleName,
       description: updated.description || undefined,
-      condition: updated.condition as AlertCondition,
+      condition: updated.condition as unknown as AlertCondition,
       severity: updated.severity as any,
       isEnabled: updated.isEnabled,
       cooldown: updated.cooldown,
@@ -250,8 +250,8 @@ export class MonitoringManager {
     if (filter.severity) whereClause.severity = filter.severity;
     if (filter.startTime || filter.endTime) {
       whereClause.startTime = {};
-      if (filter.startTime) whereClause.startTime.gte = filter.startTime;
-      if (filter.endTime) whereClause.startTime.lte = filter.endTime;
+      if (filter.startTime) (whereClause.startTime as any).gte = filter.startTime;
+      if (filter.endTime) (whereClause.startTime as any).lte = filter.endTime;
     }
 
     const incidents = await prisma.alertIncident.findMany({
@@ -442,7 +442,7 @@ export class MonitoringManager {
     });
 
     for (const rule of rules) {
-      const condition = rule.condition as AlertCondition;
+      const condition = rule.condition as unknown as AlertCondition;
       
       // 检查指标是否匹配规则
       if (condition.metric === metric.metricName) {
@@ -501,7 +501,7 @@ export class MonitoringManager {
         metadata: {
           metric: metric.metricName,
           value: metric.value,
-          threshold: (rule.condition as AlertCondition).threshold,
+          threshold: (rule.condition as unknown as AlertCondition).threshold,
           component: metric.component,
           tags: metric.tags,
         },

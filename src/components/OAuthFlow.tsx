@@ -85,7 +85,7 @@ export default function OAuthFlow({ platform, proxy, onSuccess, onBack }: OAuthF
     }
   };
 
-  const colors = colorClasses[config.color];
+  const colors = colorClasses[config.color as keyof typeof colorClasses];
 
   // 生成授权URL
   const generateAuthUrl = async () => {

@@ -74,7 +74,6 @@ export class EdgeNodeManager {
     const node = await prisma.edgeNode.create({
       data: {
         nodeId,
-        serverId: registration.serverId,
         nodeName: registration.nodeName,
         location: registration.location,
         endpoint: registration.endpoint,

@@ -107,11 +107,15 @@ export function EnhancedUsageStats({
       // 构建查询参数
       const params = new URLSearchParams();
       
-      if (timeRange.option === 'custom' && timeRange.startDate && timeRange.endDate) {
-        const start = new Date(timeRange.startDate);
-        const end = new Date(timeRange.endDate);
-        const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-        params.append('days', days.toString());
+      if ((timeRange as any).option === 'custom' && 'startDate' in timeRange && 'endDate' in timeRange) {
+        const startDate = (timeRange as any).startDate;
+        const endDate = (timeRange as any).endDate;
+        if (startDate && endDate) {
+          const start = new Date(startDate);
+          const end = new Date(endDate);
+          const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+          params.append('days', days.toString());
+        }
       } else {
         const daysMap = {
           '1d': '1',
@@ -244,7 +248,7 @@ export function EnhancedUsageStats({
             <div className="flex flex-col md:flex-row items-stretch md:items-center space-y-2 md:space-y-0 md:space-x-3">
               <TimeRangeSelector
                 value={timeRange}
-                onChange={setTimeRange}
+                onChange={(value: any) => setTimeRange(value)}
               />
               <div className="flex space-x-2">
                 <Button

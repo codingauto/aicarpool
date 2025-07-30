@@ -35,7 +35,7 @@ export class AiServiceRouter {
         isEnabled: true,
       },
       include: {
-        aiService: true,
+        account: true,
       },
       orderBy: {
         createdAt: 'asc',
@@ -44,7 +44,7 @@ export class AiServiceRouter {
 
     const routes: ServiceRoute[] = groupServices.map((service, index) => ({
       serviceId: service.aiServiceId,
-      serviceName: service.aiService.serviceName,
+      serviceName: service.aiServiceId,
       priority: index + 1,
       isEnabled: service.isEnabled,
       healthScore: 100,
@@ -323,7 +323,7 @@ export class AiServiceRouter {
         isEnabled: true,
       },
       include: {
-        aiService: true,
+        account: true,
       },
     });
 
@@ -338,11 +338,21 @@ export class AiServiceRouter {
 
     const serviceConfig: AIServiceConfig = {
       apiKey: authConfig.apiKey,
-      baseUrl: groupService.aiService.baseUrl,
+      baseUrl: this.getServiceBaseUrl(serviceId),
       timeout: 30000,
     };
 
     return AIServiceFactory.create(serviceName as SupportedAIService, serviceConfig);
+  }
+
+  // 获取服务基础URL
+  private getServiceBaseUrl(serviceId: string): string {
+    const serviceUrls: Record<string, string> = {
+      'claude': 'https://api.anthropic.com',
+      'gemini': 'https://generativelanguage.googleapis.com',
+      'ampcode': 'https://api.ampcode.ai',
+    };
+    return serviceUrls[serviceId] || 'https://api.default.com';
   }
 
   // 获取路由状态
