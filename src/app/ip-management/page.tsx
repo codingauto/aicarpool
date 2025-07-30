@@ -72,7 +72,7 @@ const initialFormData: ProxyFormData = {
   provider: '',
 };
 
-export default function IpManagementPage() {
+export default function IPResourcePoolPage() {
   const { user, token } = useAuth();
   const [proxyResources, setProxyResources] = useState<ProxyResource[]>([]);
   const [loading, setLoading] = useState(true);
@@ -273,7 +273,7 @@ export default function IpManagementPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <AppHeader title="IP管理" showUserInfo={false}>
+      <AppHeader title="IP资源池" showUserInfo={false}>
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
@@ -407,11 +407,31 @@ export default function IpManagementPage() {
       </AppHeader>
 
       <div className="p-6">
+        {/* 功能说明卡片 */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+          <div className="flex items-start space-x-3">
+            <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
+              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-blue-800 mb-2">IP资源池管理说明</h3>
+              <div className="text-sm text-blue-700 space-y-1">
+                <p>• <strong>平台级别管理</strong>：这里统一管理所有可用的IP代理资源</p>
+                <p>• <strong>资源池概念</strong>：添加的IP资源供各个拼车组选择使用</p>
+                <p>• <strong>与拼车组IP代理的区别</strong>：拼车组内的"IP代理"是从此资源池中选择配置</p>
+                <p>• <strong>权限说明</strong>：只有平台管理员可以添加、删除和测试IP资源</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div className="bg-white rounded-lg shadow">
           <div className="p-6 border-b">
-            <h2 className="text-lg font-semibold">代理资源列表</h2>
+            <h2 className="text-lg font-semibold">IP代理资源池</h2>
             <p className="text-sm text-gray-600 mt-1">
-              管理您的静态IP代理配置，包括SOCKS5、HTTP等类型的代理服务器
+              管理平台所有可用的IP代理资源，为拼车组提供可选择的代理服务器
             </p>
           </div>
 

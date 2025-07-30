@@ -30,7 +30,7 @@ interface User {
 const navigationItems: NavigationItem[] = [
   { label: '仪表盘', path: '/dashboard', icon: LayoutDashboard },
   { label: '拼车组', path: '/groups', icon: Users },
-  { label: 'IP管理', path: '/ip-management', icon: Network },
+  { label: 'IP资源池', path: '/ip-management', icon: Network },
   { label: '监控中心', path: '/monitoring', icon: Activity },
   { label: '边缘节点', path: '/edge-nodes', icon: Server },
   { label: '使用教程', path: '/tutorial', icon: BookOpen },
