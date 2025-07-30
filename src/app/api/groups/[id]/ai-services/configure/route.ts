@@ -31,6 +31,9 @@ const aiServiceConfigSchema = z.object({
 });
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = await params;
+  const groupId = resolvedParams.id;
+  
   try {
     console.log('🔍 PUT /api/groups/[id]/ai-services/configure - 开始处理请求');
     
@@ -45,9 +48,6 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       console.log('❌ Token验证失败');
       return createApiResponse({ error: '未授权访问' }, false, 401);
     }
-
-    const resolvedParams = await params;
-    const groupId = resolvedParams.id;
     console.log('📋 请求参数:', { groupId, userId: (decoded as any).userId });
     
     // 验证用户是否为组管理员
