@@ -92,9 +92,9 @@ export default function GroupDetailPage() {
     creator: { name: string };
   }>>([]);
 
-  // Check if current user is admin
+  // Check if current user is admin or owner
   const isAdmin = group?.members.find(m => 
-    m.user.id === currentUser?.id && m.role === 'admin'
+    m.user.id === currentUser?.id && (m.role === 'admin' || m.role === 'owner')
   ) !== undefined;
 
   const fetchGroupDetail = async () => {

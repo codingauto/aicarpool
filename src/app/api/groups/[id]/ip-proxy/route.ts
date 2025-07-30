@@ -90,12 +90,22 @@ async function postHandler(
         groupId,
         userId: user.id,
         status: 'active',
-        role: { in: ['admin'] }
+        role: { in: ['admin', 'owner'] }
       }
     });
 
     if (!membership) {
-      return createErrorResponse('无权限管理该拼车组的IP代理', 403);
+      // 检查是否是组创建者
+      const group = await prisma.group.findFirst({
+        where: {
+          id: groupId,
+          createdById: user.id
+        }
+      });
+
+      if (!group) {
+        return createErrorResponse('无权限管理该拼车组的IP代理', 403);
+      }
     }
 
     // 验证请求数据

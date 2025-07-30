@@ -17,8 +17,8 @@ const aiServiceConfigSchema = z.object({
     userMonthlyTokenLimit: z.number().int().min(0).optional(),
   }).optional(),
   authConfig: z.object({
-    apiKey: z.string().min(1),
-  }),
+    apiKey: z.string(),
+  }).optional(),
   proxySettings: z.object({
     enableProxy: z.boolean().default(false),
     proxyType: z.enum(['none', 'static', 'pool']).default('none'),
@@ -31,18 +31,23 @@ const aiServiceConfigSchema = z.object({
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    console.log('🔍 PUT /api/groups/[id]/ai-services/configure - 开始处理请求');
+    
     const token = request.headers.get('authorization')?.replace('Bearer ', '');
     if (!token) {
+      console.log('❌ 未提供授权令牌');
       return createApiResponse({ error: '未提供授权令牌' }, false, 401);
     }
-    const decoded = verifyToken(token);
+    const decoded = await verifyToken(token);
     
     if (!decoded) {
+      console.log('❌ Token验证失败');
       return createApiResponse({ error: '未授权访问' }, false, 401);
     }
 
     const resolvedParams = await params;
     const groupId = resolvedParams.id;
+    console.log('📋 请求参数:', { groupId, userId: (decoded as any).userId });
     
     // 验证用户是否为组管理员
     const groupMember = await prisma.groupMember.findFirst({
@@ -55,11 +60,23 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     });
 
     if (!groupMember) {
-      return createApiResponse({ error: '权限不足' }, false, 403);
+      // 检查是否是组创建者
+      const group = await prisma.group.findFirst({
+        where: {
+          id: groupId,
+          createdById: (decoded as any).userId
+        }
+      });
+
+      if (!group) {
+        return createApiResponse({ error: '权限不足' }, false, 403);
+      }
     }
 
     const body = await request.json();
+    console.log('📋 请求体:', body);
     const validatedData = aiServiceConfigSchema.parse(body);
+    console.log('✅ 数据验证通过:', validatedData);
 
     // 验证AI服务ID是否为支持的服务
     const supportedServices = ['claude', 'gemini', 'ampcode'];
@@ -84,7 +101,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         where: { id: existingConfig.id },
         data: {
           isEnabled: validatedData.isEnabled,
-          authConfig: validatedData.authConfig,
+          authConfig: validatedData.authConfig || { apiKey: '' },
           proxySettings: validatedData.proxySettings,
           quota: validatedData.quota,
         },
@@ -96,7 +113,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
           groupId: groupId,
           aiServiceId: validatedData.aiServiceId,
           isEnabled: validatedData.isEnabled,
-          authConfig: validatedData.authConfig,
+          authConfig: validatedData.authConfig || { apiKey: '' },
           proxySettings: validatedData.proxySettings,
           quota: validatedData.quota,
         },
@@ -150,14 +167,16 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       return obj;
     };
 
+    console.log('✅ AI服务配置成功:', result);
     return createApiResponse(serializeBigInt(result), true, 200);
 
   } catch (error) {
     if (error instanceof z.ZodError) {
+      console.log('❌ 数据验证失败:', error.issues);
       return createApiResponse({ error: error.issues[0].message }, false, 400);
     }
 
-    console.error('Configure AI service error:', error);
+    console.error('❌ Configure AI service error:', error);
     return createApiResponse({ error: '配置AI服务失败' }, false, 500);
   }
 }
@@ -168,7 +187,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     if (!token) {
       return createApiResponse({ error: '未提供授权令牌' }, false, 401);
     }
-    const decoded = verifyToken(token);
+    const decoded = await verifyToken(token);
     
     if (!decoded) {
       return createApiResponse({ error: '未授权访问' }, false, 401);
@@ -187,7 +206,17 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     });
 
     if (!groupMember) {
-      return createApiResponse({ error: '权限不足' }, false, 403);
+      // 检查是否是组创建者
+      const group = await prisma.group.findFirst({
+        where: {
+          id: groupId,
+          createdById: (decoded as any).userId
+        }
+      });
+
+      if (!group) {
+        return createApiResponse({ error: '权限不足' }, false, 403);
+      }
     }
 
     // 获取组的AI服务配置

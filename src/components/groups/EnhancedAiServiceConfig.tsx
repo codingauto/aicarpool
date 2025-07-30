@@ -507,12 +507,16 @@ export function EnhancedAiServiceConfig({ groupId, isAdmin, onRefresh }: Enhance
             {isAdmin && (
               <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button onClick={() => {
-                    setSelectedNewService('');
-                    setAvailableServices(getAvailableServices());
-                  }}>
+                  <Button 
+                    onClick={() => {
+                      setSelectedNewService('');
+                      setAvailableServices(getAvailableServices());
+                    }}
+                    disabled={getAvailableServices().length === 0}
+                    title={getAvailableServices().length === 0 ? "所有AI服务都已配置" : "添加新的AI服务"}
+                  >
                     <Plus className="mr-2 w-4 h-4" />
-                    添加服务
+                    {getAvailableServices().length === 0 ? "已配置所有服务" : "添加服务"}
                   </Button>
                 </DialogTrigger>
                 <DialogContent>
@@ -523,28 +527,34 @@ export function EnhancedAiServiceConfig({ groupId, isAdmin, onRefresh }: Enhance
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4">
-                    <div>
-                      <Label>选择服务</Label>
-                      <Select value={selectedNewService} onValueChange={setSelectedNewService}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="选择AI服务" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {getAvailableServices().length > 0 ? (
-                            getAvailableServices().map((service) => (
+                    {getAvailableServices().length > 0 ? (
+                      <div>
+                        <Label>选择服务</Label>
+                        <Select value={selectedNewService} onValueChange={setSelectedNewService}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="选择AI服务" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {getAvailableServices().map((service) => (
                               <SelectItem key={service.id} value={service.id}>
                                 {service.displayName} ({service.serviceName})
                               </SelectItem>
-                            ))
-                          ) : (
-                            <SelectItem value="no-services" disabled>
-                              暂无可用服务
-                            </SelectItem>
-                          )}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    {selectedNewService && (
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    ) : (
+                      <div className="py-4 text-center">
+                        <CheckCircle className="mx-auto mb-2 w-8 h-8 text-green-500" />
+                        <p className="text-sm text-gray-500">
+                          所有支持的AI服务都已配置完成
+                        </p>
+                        <p className="text-xs text-gray-400 mt-1">
+                          支持的服务：Claude Code、Gemini CLI、AmpCode
+                        </p>
+                      </div>
+                    )}
+                    {getAvailableServices().length > 0 && (
                       <div className="flex justify-end space-x-2">
                         <Button variant="outline" onClick={() => {
                           setAddDialogOpen(false);
@@ -552,12 +562,19 @@ export function EnhancedAiServiceConfig({ groupId, isAdmin, onRefresh }: Enhance
                         }}>
                           取消
                         </Button>
-                        <Button onClick={async () => {
-                          if (!selectedNewService) return;
+                        <Button 
+                          onClick={async () => {
+                          if (!selectedNewService) {
+                            toast.error('请选择要添加的AI服务');
+                            return;
+                          }
                           
                           try {
                             const token = localStorage.getItem('token');
-                            if (!token) return;
+                            if (!token) {
+                              toast.error('用户未登录，请重新登录');
+                              return;
+                            }
 
                             const payload = {
                               aiServiceId: selectedNewService,
@@ -568,9 +585,6 @@ export function EnhancedAiServiceConfig({ groupId, isAdmin, onRefresh }: Enhance
                                 monthlyTokenLimit: 3000000,
                                 dailyCostLimit: 10.0,
                                 monthlyCostLimit: 300.0,
-                              },
-                              authConfig: {
-                                apiKey: '',
                               },
                               proxySettings: {
                                 enableProxy: false,
@@ -591,7 +605,23 @@ export function EnhancedAiServiceConfig({ groupId, isAdmin, onRefresh }: Enhance
                               body: JSON.stringify(payload),
                             });
 
-                            const result = await response.json();
+                            console.log('Raw response status:', response.status);
+                            console.log('Raw response headers:', Object.fromEntries(response.headers.entries()));
+                            
+                            const responseText = await response.text();
+                            console.log('Raw response text:', responseText);
+                            
+                            let result;
+                            try {
+                              result = JSON.parse(responseText);
+                            } catch (parseError) {
+                              console.error('JSON parse error:', parseError);
+                              toast.error('服务器响应格式错误');
+                              return;
+                            }
+                            
+                            console.log('Parsed result:', result);
+                            
                             if (result.success) {
                               toast.success('AI服务添加成功');
                               setAddDialogOpen(false);
@@ -599,7 +629,9 @@ export function EnhancedAiServiceConfig({ groupId, isAdmin, onRefresh }: Enhance
                               fetchServices();
                               onRefresh?.();
                             } else {
-                              toast.error(result.message || '添加失败');
+                              const errorMsg = result.error || result.message || `未知错误 (状态码: ${response.status})`;
+                              console.error('Add service failed:', { result, errorMsg, status: response.status });
+                              toast.error(`添加失败: ${errorMsg}`);
                             }
                           } catch (error) {
                             console.error('Failed to add service:', error);
@@ -736,13 +768,17 @@ export function EnhancedAiServiceConfig({ groupId, isAdmin, onRefresh }: Enhance
               <Activity className="mx-auto mb-4 w-12 h-12 text-gray-400" />
               <p className="mb-4 text-gray-500">还没有配置AI服务</p>
               {isAdmin && (
-                <Button onClick={() => {
-                  setSelectedNewService('');
-                  setAddDialogOpen(true);
-                  setAvailableServices(getAvailableServices());
-                }}>
+                <Button 
+                  onClick={() => {
+                    setSelectedNewService('');
+                    setAddDialogOpen(true);
+                    setAvailableServices(getAvailableServices());
+                  }}
+                  disabled={getAvailableServices().length === 0}
+                  title={getAvailableServices().length === 0 ? "所有AI服务都已配置" : "添加新的AI服务"}
+                >
                   <Plus className="mr-2 w-4 h-4" />
-                  添加AI服务
+                  {getAvailableServices().length === 0 ? "已配置所有服务" : "添加AI服务"}
                 </Button>
               )}
             </div>
