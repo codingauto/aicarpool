@@ -131,6 +131,19 @@ check_system() {
 # 更新系统
 update_system() {
     log_step "更新系统包..."
+    
+    # 清理可能有问题的MySQL缓存
+    run_cmd $PACKAGE_MANAGER clean packages || true
+    
+    # 如果存在有问题的MySQL仓库配置，先清理
+    if [[ -f /etc/yum.repos.d/mysql-community.repo ]] && dnf repolist | grep -q mysql; then
+        log_warn "检测到可能有问题的MySQL仓库配置，先清理..."
+        run_cmd $PACKAGE_MANAGER remove -y mysql80-community-release --nogpgcheck || true
+        rm -f /etc/yum.repos.d/mysql-community*.repo || true
+        rm -f /etc/pki/rpm-gpg/RPM-GPG-KEY-mysql* || true
+        run_cmd $PACKAGE_MANAGER clean all || true
+    fi
+    
     run_cmd $PACKAGE_MANAGER update -y
     run_cmd $PACKAGE_MANAGER install -y curl wget git gcc gcc-c++ make python3 python3-pip openssl-devel bc
     
