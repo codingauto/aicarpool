@@ -1,6 +1,6 @@
 {
   "name": "aicarpool-edge-client",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "AI Carpool 分布式边缘节点客户端",
   "main": "dist/index.js",
   "type": "module",

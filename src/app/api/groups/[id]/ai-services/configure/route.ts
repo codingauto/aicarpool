@@ -31,10 +31,12 @@ const aiServiceConfigSchema = z.object({
 });
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const resolvedParams = await params;
-  const groupId = resolvedParams.id;
+  let groupId: string;
   
   try {
+    const resolvedParams = await params;
+    groupId = resolvedParams.id;
+    
     console.log('🔍 PUT /api/groups/[id]/ai-services/configure - 开始处理请求');
     
     const token = request.headers.get('authorization')?.replace('Bearer ', '');
@@ -183,13 +185,6 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       console.log('❌ 数据验证失败:', error.issues);
       return createApiResponse({ error: error.issues[0].message }, false, 400);
     }
-
-    // 详细错误日志
-    console.error('❌ Configure AI service error details:', {
-      error: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined,
-      groupId
-    });
     
     return createApiResponse({ 
       error: '配置AI服务失败',
