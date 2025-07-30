@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
+import { Decimal } from '@prisma/client/runtime/library';
 import { prisma } from '@/lib/prisma';
 import { createApiResponse } from '@/lib/middleware';
 import { verifyToken } from '@/lib/auth';
@@ -122,40 +123,47 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     // 创建或更新配额配置
     if (validatedData.quota) {
-      await prisma.quotaConfig.upsert({
-        where: {
-          groupId_aiServiceId: {
+      try {
+        await prisma.quotaConfig.upsert({
+          where: {
+            groupId_aiServiceId: {
+              groupId: groupId,
+              aiServiceId: validatedData.aiServiceId,
+            },
+          },
+          update: {
+            dailyTokenLimit: BigInt(validatedData.quota.dailyTokenLimit || 100000),
+            monthlyTokenLimit: BigInt(validatedData.quota.monthlyTokenLimit || 3000000),
+            dailyCostLimit: new Decimal(validatedData.quota.dailyCostLimit || 10.0),
+            monthlyCostLimit: new Decimal(validatedData.quota.monthlyCostLimit || 300.0),
+            userDailyTokenLimit: validatedData.quota.userDailyTokenLimit ? BigInt(validatedData.quota.userDailyTokenLimit) : null,
+            userMonthlyTokenLimit: validatedData.quota.userMonthlyTokenLimit ? BigInt(validatedData.quota.userMonthlyTokenLimit) : null,
+            isEnabled: validatedData.isEnabled,
+          },
+          create: {
             groupId: groupId,
             aiServiceId: validatedData.aiServiceId,
+            dailyTokenLimit: BigInt(validatedData.quota.dailyTokenLimit || 100000),
+            monthlyTokenLimit: BigInt(validatedData.quota.monthlyTokenLimit || 3000000),
+            dailyCostLimit: new Decimal(validatedData.quota.dailyCostLimit || 10.0),
+            monthlyCostLimit: new Decimal(validatedData.quota.monthlyCostLimit || 300.0),
+            userDailyTokenLimit: validatedData.quota.userDailyTokenLimit ? BigInt(validatedData.quota.userDailyTokenLimit) : null,
+            userMonthlyTokenLimit: validatedData.quota.userMonthlyTokenLimit ? BigInt(validatedData.quota.userMonthlyTokenLimit) : null,
+            isEnabled: validatedData.isEnabled,
           },
-        },
-        update: {
-          dailyTokenLimit: BigInt(validatedData.quota.dailyTokenLimit || 100000),
-          monthlyTokenLimit: BigInt(validatedData.quota.monthlyTokenLimit || 3000000),
-          dailyCostLimit: validatedData.quota.dailyCostLimit || 10.0,
-          monthlyCostLimit: validatedData.quota.monthlyCostLimit || 300.0,
-          userDailyTokenLimit: validatedData.quota.userDailyTokenLimit ? BigInt(validatedData.quota.userDailyTokenLimit) : null,
-          userMonthlyTokenLimit: validatedData.quota.userMonthlyTokenLimit ? BigInt(validatedData.quota.userMonthlyTokenLimit) : null,
-          isEnabled: validatedData.isEnabled,
-        },
-        create: {
-          groupId: groupId,
-          aiServiceId: validatedData.aiServiceId,
-          dailyTokenLimit: BigInt(validatedData.quota.dailyTokenLimit || 100000),
-          monthlyTokenLimit: BigInt(validatedData.quota.monthlyTokenLimit || 3000000),
-          dailyCostLimit: validatedData.quota.dailyCostLimit || 10.0,
-          monthlyCostLimit: validatedData.quota.monthlyCostLimit || 300.0,
-          userDailyTokenLimit: validatedData.quota.userDailyTokenLimit ? BigInt(validatedData.quota.userDailyTokenLimit) : null,
-          userMonthlyTokenLimit: validatedData.quota.userMonthlyTokenLimit ? BigInt(validatedData.quota.userMonthlyTokenLimit) : null,
-          isEnabled: validatedData.isEnabled,
-        },
-      });
+        });
+        console.log('✅ 配额配置更新成功');
+      } catch (quotaError) {
+        console.error('❌ 配额配置更新失败:', quotaError);
+        // 配额配置失败不影响主要配置的成功
+      }
     }
 
-    // 序列化BigInt的辅助函数
+    // 序列化BigInt和Decimal的辅助函数
     const serializeBigInt = (obj: any): any => {
       if (obj === null || obj === undefined) return obj;
       if (typeof obj === 'bigint') return Number(obj);
+      if (obj instanceof Decimal) return Number(obj.toString());
       if (Array.isArray(obj)) return obj.map(serializeBigInt);
       if (typeof obj === 'object') {
         const result: any = {};
@@ -176,8 +184,17 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       return createApiResponse({ error: error.issues[0].message }, false, 400);
     }
 
-    console.error('❌ Configure AI service error:', error);
-    return createApiResponse({ error: '配置AI服务失败' }, false, 500);
+    // 详细错误日志
+    console.error('❌ Configure AI service error details:', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      groupId
+    });
+    
+    return createApiResponse({ 
+      error: '配置AI服务失败',
+      details: error instanceof Error ? error.message : String(error)
+    }, false, 500);
   }
 }
 
