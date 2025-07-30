@@ -2,9 +2,20 @@
 
 # AiCarpool CentOS/RHEL 一键部署脚本
 # 支持 CentOS 8+, RHEL 8+, Rocky Linux 8+, AlmaLinux 8+
-# 使用方法: curl -fsSL https://raw.githubusercontent.com/codingauto/aicarpool/main/scripts/deploy-centos.sh | bash
+# 
+# 使用方法:
+# 1. 默认安装（推荐普通用户）: curl -fsSL https://raw.githubusercontent.com/codingauto/aicarpool/main/scripts/deploy-centos.sh | bash
+# 2. 强制root用户安装: FORCE_ROOT=true curl -fsSL https://raw.githubusercontent.com/codingauto/aicarpool/main/scripts/deploy-centos.sh | bash
+# 3. 跳过网络检查: SKIP_NETWORK_CHECK=true curl -fsSL https://raw.githubusercontent.com/codingauto/aicarpool/main/scripts/deploy-centos.sh | bash
+# 4. 完全非交互式: FORCE_ROOT=true SKIP_NETWORK_CHECK=true curl -fsSL https://raw.githubusercontent.com/codingauto/aicarpool/main/scripts/deploy-centos.sh | bash
 
 set -e
+
+# 环境变量说明
+# FORCE_ROOT=true          - 强制允许root用户运行，跳过确认
+# SKIP_NETWORK_CHECK=true  - 跳过GitHub网络连接检查
+# MYSQL_ROOT_PASSWORD      - 自定义MySQL root密码
+# DB_PASSWORD              - 自定义应用数据库密码
 
 # 颜色定义
 RED='\033[0;31m'
@@ -46,12 +57,28 @@ check_root() {
         log_warn "建议使用普通用户运行以提高安全性"
         log_info "建议创建普通用户: useradd -m aicarpool && usermod -aG wheel aicarpool"
         echo ""
-        read -p "确认要以root用户继续安装吗？[y/N] " -n 1 -r
-        echo ""
-        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-            log_info "安装已取消"
-            exit 0
+        
+        # 检查是否有环境变量强制以root运行
+        if [[ "$FORCE_ROOT" == "true" ]]; then
+            log_info "检测到FORCE_ROOT=true，跳过交互确认"
+        else
+            # 非交互式环境检测
+            if [[ ! -t 0 ]] || [[ -n "$CI" ]] || [[ -n "$GITHUB_ACTIONS" ]]; then
+                log_warn "检测到非交互式环境，自动以root用户继续安装"
+                log_info "如要取消，请设置环境变量: export FORCE_ROOT=false"
+            else
+                # 交互式环境询问用户
+                read -p "确认要以root用户继续安装吗？[y/N] " -n 1 -r
+                echo ""
+                if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                    log_info "安装已取消"
+                    log_info "提示：可以通过以下方式绕过此检查："
+                    log_info "export FORCE_ROOT=true && curl -fsSL https://raw.githubusercontent.com/codingauto/aicarpool/main/scripts/deploy-centos.sh | bash"
+                    exit 0
+                fi
+            fi
         fi
+        
         log_info "继续以root用户安装..."
         # 设置标志表示使用root用户
         export USING_ROOT=true
@@ -142,11 +169,25 @@ check_github_access() {
         echo "git config --global https.proxy https://proxy-server:port"
         echo ""
         
-        read -p "是否继续安装？可能会因网络问题失败 [y/N] " -n 1 -r
-        echo ""
-        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-            log_info "安装已取消"
-            exit 0
+        # 检查是否强制跳过网络检查
+        if [[ "$SKIP_NETWORK_CHECK" == "true" ]]; then
+            log_info "检测到SKIP_NETWORK_CHECK=true，跳过网络确认"
+        else
+            # 非交互式环境检测
+            if [[ ! -t 0 ]] || [[ -n "$CI" ]] || [[ -n "$GITHUB_ACTIONS" ]]; then
+                log_warn "检测到非交互式环境，尝试继续安装（可能因网络问题失败）"
+                log_info "如要跳过网络检查，请设置: export SKIP_NETWORK_CHECK=true"
+            else
+                # 交互式环境询问用户
+                read -p "是否继续安装？可能会因网络问题失败 [y/N] " -n 1 -r
+                echo ""
+                if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                    log_info "安装已取消"
+                    log_info "提示：可以通过以下方式跳过网络检查："
+                    log_info "export SKIP_NETWORK_CHECK=true && curl -fsSL https://raw.githubusercontent.com/codingauto/aicarpool/main/scripts/deploy-centos.sh | bash"
+                    exit 0
+                fi
+            fi
         fi
     else
         log_info "GitHub连接正常"
