@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { withAuth, createApiResponse } from '@/lib/middleware';
+import { createApiResponse } from '@/lib/middleware';
+import { verifyToken } from '@/lib/auth';
 import QRCode from 'qrcode';
 
 // 生成邀请二维码
@@ -50,7 +51,7 @@ async function getHandler(req: NextRequest, { params }: { params: Promise<{ id: 
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + 7);
 
-      const token = generateInviteToken(groupId, `qr_${Date.now()}`);
+      const token = generateInviteToken({ groupId, identifier: `qr_${Date.now()}` });
 
       const inviteLink = await prisma.inviteLink.create({
         data: {
@@ -78,11 +79,11 @@ async function getHandler(req: NextRequest, { params }: { params: Promise<{ id: 
       },
     });
 
-    return createApiResponse(true, {
+    return createApiResponse({
       qrCode: qrCodeDataUrl,
       inviteUrl,
       size: 256,
-    }, '二维码生成成功');
+    }, true, 200);
 
   } catch (error) {
     console.error('Generate QR code error:', error);
@@ -90,4 +91,26 @@ async function getHandler(req: NextRequest, { params }: { params: Promise<{ id: 
   }
 }
 
-export const GET = withAuth(getHandler);
+
+function withAuthAndParams(handler: (req: NextRequest, context: any, user: any) => Promise<any>) {
+  return async (req: NextRequest, context: any) => {
+    try {
+      const token = req.headers.get('authorization')?.replace('Bearer ', '');
+      if (!token) {
+        return createApiResponse({ error: '未提供授权令牌' }, false, 401);
+      }
+      
+      const decoded = await verifyToken(token);
+      if (!decoded) {
+        return createApiResponse({ error: '未授权访问' }, false, 401);
+      }
+
+      return await handler(req, context, decoded);
+    } catch (error) {
+      console.error('Auth error:', error);
+      return createApiResponse({ error: '认证失败' }, false, 500);
+    }
+  };
+}
+
+export const GET = withAuthAndParams(getHandler);

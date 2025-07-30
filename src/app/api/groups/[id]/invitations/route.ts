@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { withAuth, createApiResponse } from '@/lib/middleware';
-import { generateInviteToken } from '@/lib/auth';
+import { generateInviteToken, verifyToken } from '@/lib/auth';
+import { NextRequest } from 'next/server';
 import { emailQueue } from '@/lib/email';
 
 const createInvitationSchema = z.object({
@@ -25,7 +26,7 @@ const serializeBigInt = (obj: any): any => {
 };
 
 // 获取拼车组的邀请列表
-async function getHandler(req: Request, { params }: { params: Promise<{ id: string }> }, user: any) {
+async function getHandler(req: NextRequest, { params }: { params: Promise<{ id: string }> }, user: any) {
   try {
     const userId = user.id;
     const { id: groupId } = await params;
@@ -61,7 +62,7 @@ async function getHandler(req: Request, { params }: { params: Promise<{ id: stri
       },
     });
 
-    return createApiResponse(true, invitations);
+    return createApiResponse(invitations, true, 200);
 
   } catch (error) {
     console.error('Get invitations error:', error);
@@ -70,7 +71,7 @@ async function getHandler(req: Request, { params }: { params: Promise<{ id: stri
 }
 
 // 创建新邀请
-async function postHandler(req: Request, { params }: { params: Promise<{ id: string }> }, user: any) {
+async function postHandler(req: NextRequest, { params }: { params: Promise<{ id: string }> }, user: any) {
   try {
     const body = await req.json();
     const validatedData = createInvitationSchema.parse(body);
@@ -148,7 +149,7 @@ async function postHandler(req: Request, { params }: { params: Promise<{ id: str
     expiresAt.setDate(expiresAt.getDate() + expiresInDays);
 
     // 生成邀请令牌
-    const token = generateInviteToken(groupId, email);
+    const token = generateInviteToken({ groupId, email });
 
     // 创建邀请
     const invitation = await prisma.invitation.create({
@@ -194,7 +195,7 @@ async function postHandler(req: Request, { params }: { params: Promise<{ id: str
       inviteUrl,
     };
 
-    return createApiResponse(true, result, '邀请创建成功，邮件已发送');
+    return createApiResponse(result, true, 201);
 
   } catch (error) {
     if (error && typeof error === 'object' && 'issues' in error) {
@@ -207,7 +208,7 @@ async function postHandler(req: Request, { params }: { params: Promise<{ id: str
 }
 
 // 撤销邀请
-async function deleteHandler(req: Request, { params }: { params: Promise<{ id: string }> }, user: any) {
+async function deleteHandler(req: NextRequest, { params }: { params: Promise<{ id: string }> }, user: any) {
   try {
     const body = await req.json();
     const { invitationId } = body;
@@ -275,6 +276,28 @@ async function deleteHandler(req: Request, { params }: { params: Promise<{ id: s
   }
 }
 
-export const GET = withAuth(getHandler);
-export const POST = withAuth(postHandler);
-export const DELETE = withAuth(deleteHandler);
+// 添加withAuthAndParams函数
+function withAuthAndParams(handler: (req: NextRequest, context: any, user: any) => Promise<any>) {
+  return async (req: NextRequest, context: any) => {
+    try {
+      const token = req.headers.get('authorization')?.replace('Bearer ', '');
+      if (!token) {
+        return createApiResponse({ error: '未提供授权令牌' }, false, 401);
+      }
+      
+      const decoded = await verifyToken(token);
+      if (!decoded) {
+        return createApiResponse({ error: '未授权访问' }, false, 401);
+      }
+
+      return await handler(req, context, decoded);
+    } catch (error) {
+      console.error('Auth error:', error);
+      return createApiResponse({ error: '认证失败' }, false, 500);
+    }
+  };
+}
+
+export const GET = withAuthAndParams(getHandler);
+export const POST = withAuthAndParams(postHandler);
+export const DELETE = withAuthAndParams(deleteHandler);

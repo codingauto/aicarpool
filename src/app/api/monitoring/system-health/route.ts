@@ -55,10 +55,10 @@ export async function GET(req: NextRequest) {
       }
     };
 
-    return createApiResponse(true, systemHealth);
+    return createApiResponse(systemHealth, true, 200);
 
   } catch (error) {
     console.error('Get system health error:', error);
-    return createApiResponse(false, null, 'Failed to get system health', 500);
+    return createApiResponse({ error: 'Failed to get system health' }, false, 500);
   }
 }

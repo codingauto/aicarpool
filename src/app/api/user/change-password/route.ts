@@ -13,24 +13,24 @@ async function handler(req: NextRequest, user: any) {
   try {
     const body = await req.json();
     const validatedData = changePasswordSchema.parse(body);
-    const userId = user.id;
+    const userId: string = user.id;
 
     const { currentPassword, newPassword } = validatedData;
 
     // 获取用户当前密码
-    const user = await prisma.user.findUnique({
+    const userRecord = await prisma.user.findUnique({
       where: { id: userId },
       select: { id: true, password: true },
     });
 
-    if (!user) {
-      return createApiResponse(false, null, '用户不存在', 404);
+    if (!userRecord) {
+      return createApiResponse({ error: '用户不存在' }, false, 404);
     }
 
     // 验证当前密码
-    const isCurrentPasswordValid = await verifyPassword(currentPassword, user.password);
+    const isCurrentPasswordValid = await verifyPassword(currentPassword, userRecord.password);
     if (!isCurrentPasswordValid) {
-      return createApiResponse(false, null, '当前密码错误', 400);
+      return createApiResponse({ error: '当前密码错误' }, false, 400);
     }
 
     // 哈希新密码
@@ -42,7 +42,7 @@ async function handler(req: NextRequest, user: any) {
       data: { password: hashedNewPassword },
     });
 
-    return createApiResponse(true, null, '密码修改成功');
+    return createApiResponse({ message: '密码修改成功' }, true, 200);
 
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -50,7 +50,7 @@ async function handler(req: NextRequest, user: any) {
     }
 
     console.error('Change password error:', error);
-    return createApiResponse(false, null, '修改密码失败', 500);
+    return createApiResponse({ error: '修改密码失败' }, false, 500);
   }
 }
 

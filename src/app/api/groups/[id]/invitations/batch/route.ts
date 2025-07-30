@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { withAuth, createApiResponse } from '@/lib/middleware';
-import { generateInviteToken } from '@/lib/auth';
+import { generateInviteToken, verifyToken } from '@/lib/auth';
+import { NextRequest } from 'next/server';
 import { emailQueue } from '@/lib/email';
 
 const batchInvitationSchema = z.object({
@@ -118,7 +119,7 @@ async function postHandler(req: Request, { params }: { params: Promise<{ id: str
     for (const email of emailsToInvite) {
       try {
         // 生成邀请令牌
-        const token = generateInviteToken(groupId, email);
+        const token = generateInviteToken({ groupId, email });
 
         // 创建邀请
         const invitation = await prisma.invitation.create({
@@ -190,7 +191,7 @@ async function postHandler(req: Request, { params }: { params: Promise<{ id: str
       message += `，跳过 ${existingMemberEmails.length + existingInvitationEmails.length} 个已存在的邮箱`;
     }
 
-    return createApiResponse(true, result, message);
+    return createApiResponse(result, true, 200);
 
   } catch (error) {
     if (error && typeof error === 'object' && 'issues' in error) {
@@ -202,4 +203,26 @@ async function postHandler(req: Request, { params }: { params: Promise<{ id: str
   }
 }
 
-export const POST = withAuth(postHandler);
+// 添加withAuthAndParams函数
+function withAuthAndParams(handler: (req: NextRequest, context: any, user: any) => Promise<any>) {
+  return async (req: NextRequest, context: any) => {
+    try {
+      const token = req.headers.get('authorization')?.replace('Bearer ', '');
+      if (!token) {
+        return createApiResponse({ error: '未提供授权令牌' }, false, 401);
+      }
+      
+      const decoded = await verifyToken(token);
+      if (!decoded) {
+        return createApiResponse({ error: '未授权访问' }, false, 401);
+      }
+
+      return await handler(req, context, decoded);
+    } catch (error) {
+      console.error('Auth error:', error);
+      return createApiResponse({ error: '认证失败' }, false, 500);
+    }
+  };
+}
+
+export const POST = withAuthAndParams(postHandler);

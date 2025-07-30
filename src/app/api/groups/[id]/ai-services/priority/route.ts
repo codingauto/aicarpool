@@ -17,7 +17,10 @@ export async function PUT(
 ) {
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '');
-    const decoded = verifyToken(token);
+    if (!token) {
+      return createApiResponse(false, null, '未提供授权令牌', 401);
+    }
+    const decoded = await verifyToken(token);
     
     if (!decoded) {
       return createApiResponse(false, null, '未授权访问', 401);
@@ -28,7 +31,7 @@ export async function PUT(
     // 验证用户是否为组管理员
     const groupMember = await prisma.groupMember.findFirst({
       where: {
-        userId: decoded.userId,
+        userId: decoded.id,
         groupId: groupId,
         status: 'active',
         role: { in: ['admin', 'owner'] },
@@ -59,7 +62,7 @@ export async function PUT(
 
     await prisma.$transaction(updatePromises);
 
-    return createApiResponse(true, { message: '优先级更新成功' });
+    return createApiResponse({ message: '优先级更新成功' }, true, 200);
 
   } catch (error) {
     if (error instanceof z.ZodError) {

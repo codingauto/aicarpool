@@ -16,6 +16,9 @@ const exchangeCodeSchema = z.object({
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '');
+    if (!token) {
+      return createApiResponse({ error: '未提供授权令牌' }, false, 401);
+    }
     const decoded = verifyToken(token);
     
     if (!decoded) {
@@ -87,6 +90,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     console.error('Exchange OAuth code error:', error);
-    return createApiResponse({ error: '授权码交换失败: ' + error.message }, false, 500);
+    return createApiResponse({ 
+      error: '授权码交换失败: ' + (error instanceof Error ? error.message : '未知错误') 
+    }, false, 500);
   }
 }

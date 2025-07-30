@@ -52,7 +52,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }, true, 200);
 
   } catch (error) {
-    if (error.message === 'Account not found') {
+    if (error instanceof Error && error.message === 'Account not found') {
       return createApiResponse({ error: '账户不存在' }, false, 404);
     }
 

@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { withAuth, createApiResponse } from '@/lib/middleware';
-import { generateInviteToken } from '@/lib/auth';
+import { generateInviteToken, verifyToken } from '@/lib/auth';
+import { NextRequest } from 'next/server';
 import { emailQueue } from '@/lib/email';
 
 // 序列化BigInt的辅助函数
@@ -105,7 +106,7 @@ async function postHandler(
       inviteUrl,
     };
 
-    return createApiResponse(true, result, '邀请已重新发送');
+    return createApiResponse(result, true, 200);
 
   } catch (error) {
     console.error('Resend invitation error:', error);
@@ -180,5 +181,26 @@ async function deleteHandler(
   }
 }
 
-export const POST = withAuth(postHandler);
-export const DELETE = withAuth(deleteHandler);
+function withAuthAndParams(handler: (req: NextRequest, context: any, user: any) => Promise<any>) {
+  return async (req: NextRequest, context: any) => {
+    try {
+      const token = req.headers.get('authorization')?.replace('Bearer ', '');
+      if (!token) {
+        return createApiResponse({ error: '未提供授权令牌' }, false, 401);
+      }
+      
+      const decoded = await verifyToken(token);
+      if (!decoded) {
+        return createApiResponse({ error: '未授权访问' }, false, 401);
+      }
+
+      return await handler(req, context, decoded);
+    } catch (error) {
+      console.error('Auth error:', error);
+      return createApiResponse({ error: '认证失败' }, false, 500);
+    }
+  };
+}
+
+export const POST = withAuthAndParams(postHandler);
+export const DELETE = withAuthAndParams(deleteHandler);

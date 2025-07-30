@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
     const deletedOldInvitations = await prisma.invitation.deleteMany({
       where: {
         status: { in: ['expired', 'cancelled'] },
-        updatedAt: { lt: thirtyDaysAgo },
+        createdAt: { lt: thirtyDaysAgo },
       },
     });
 
@@ -77,11 +77,11 @@ export async function POST(req: NextRequest) {
 
     console.log('Cleanup completed:', result);
 
-    return createApiResponse(true, result, '清理任务执行完成');
+    return createApiResponse({ ...result, message: '清理任务执行完成' }, true, 200);
 
   } catch (error) {
     console.error('Cleanup error:', error);
-    return createApiResponse(false, null, '清理任务执行失败', 500);
+    return createApiResponse({ error: '清理任务执行失败' }, false, 500);
   }
 }
 
@@ -205,10 +205,10 @@ export async function GET(req: NextRequest) {
       })),
     };
 
-    return createApiResponse(true, result, '统计数据获取成功');
+    return createApiResponse({ ...result, message: '统计数据获取成功' }, true, 200);
 
   } catch (error) {
     console.error('Get invitation stats error:', error);
-    return createApiResponse(false, null, '获取统计数据失败', 500);
+    return createApiResponse({ error: '获取统计数据失败' }, false, 500);
   }
 }

@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { withAuth, createApiResponse } from '@/lib/middleware';
+import { verifyToken } from '@/lib/auth';
+import { NextRequest } from 'next/server';
 
 const updateMemberSchema = z.object({
   memberId: z.string(),
@@ -9,7 +11,7 @@ const updateMemberSchema = z.object({
 });
 
 // 获取拼车组成员列表
-async function getHandler(req: Request, { params }: { params: Promise<{ id: string }> }, user: any) {
+async function getHandler(req: NextRequest, { params }: { params: Promise<{ id: string }> }, user: any) {
   try {
     const userId = user.id;
     const { id: groupId } = await params;
@@ -82,7 +84,7 @@ async function getHandler(req: Request, { params }: { params: Promise<{ id: stri
       })
     );
 
-    return createApiResponse(true, memberStats);
+    return createApiResponse(memberStats, true, 200);
 
   } catch (error) {
     console.error('Get group members error:', error);
@@ -91,7 +93,7 @@ async function getHandler(req: Request, { params }: { params: Promise<{ id: stri
 }
 
 // 更新成员信息（角色、状态等）
-async function putHandler(req: Request, { params }: { params: Promise<{ id: string }> }, user: any) {
+async function putHandler(req: NextRequest, { params }: { params: Promise<{ id: string }> }, user: any) {
   try {
     const body = await req.json();
     const validatedData = updateMemberSchema.parse(body);
@@ -183,7 +185,7 @@ async function putHandler(req: Request, { params }: { params: Promise<{ id: stri
       },
     });
 
-    return createApiResponse(true, updatedMember, '成员信息更新成功');
+    return createApiResponse(updatedMember, true, 200);
 
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -195,5 +197,27 @@ async function putHandler(req: Request, { params }: { params: Promise<{ id: stri
   }
 }
 
-export const GET = withAuth(getHandler);
-export const PUT = withAuth(putHandler);
+// 添加withAuthAndParams函数
+function withAuthAndParams(handler: (req: NextRequest, context: any, user: any) => Promise<any>) {
+  return async (req: NextRequest, context: any) => {
+    try {
+      const token = req.headers.get('authorization')?.replace('Bearer ', '');
+      if (!token) {
+        return createApiResponse({ error: '未提供授权令牌' }, false, 401);
+      }
+      
+      const decoded = await verifyToken(token);
+      if (!decoded) {
+        return createApiResponse({ error: '未授权访问' }, false, 401);
+      }
+
+      return await handler(req, context, decoded);
+    } catch (error) {
+      console.error('Auth error:', error);
+      return createApiResponse({ error: '认证失败' }, false, 500);
+    }
+  };
+}
+
+export const GET = withAuthAndParams(getHandler);
+export const PUT = withAuthAndParams(putHandler);

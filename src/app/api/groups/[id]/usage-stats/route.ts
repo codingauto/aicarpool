@@ -22,7 +22,7 @@ async function handler(req: NextRequest, user: any, { params }: { params: Promis
     });
 
     if (!groupMember) {
-      return createApiResponse(null, false, 403, '没有权限访问该拼车组');
+      return createApiResponse({ error: '没有权限访问该拼车组' }, false, 403);
     }
 
     // 计算时间范围
@@ -193,11 +193,11 @@ async function handler(req: NextRequest, user: any, { params }: { params: Promis
       ],
     };
 
-    return createApiResponse(result, true);
+    return createApiResponse(result, true, 200);
 
   } catch (error) {
     console.error('Get group usage stats error:', error);
-    return createApiResponse(null, false, 500, '获取拼车组统计数据失败');
+    return createApiResponse({ error: '获取拼车组统计数据失败' }, false, 500);
   }
 }
 

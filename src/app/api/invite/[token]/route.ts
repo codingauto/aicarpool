@@ -1,7 +1,21 @@
-import { NextRequest } from 'next/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { createApiResponse } from '@/lib/middleware';
+
+// 序列化BigInt的辅助函数
+const serializeBigInt = (obj: any): any => {
+  if (obj === null || obj === undefined) return obj;
+  if (typeof obj === 'bigint') return Number(obj);
+  if (Array.isArray(obj)) return obj.map(serializeBigInt);
+  if (typeof obj === 'object') {
+    const result: any = {};
+    for (const [key, value] of Object.entries(obj)) {
+      result[key] = serializeBigInt(value);
+    }
+    return result;
+  }
+  return obj;
+};
 
 // 验证邀请token
 export async function GET(
@@ -192,25 +206,17 @@ export async function POST(
 
     // 生成登录token
     const { generateToken } = await import('@/lib/auth');
-    const authToken = generateToken({
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      status: user.status,
-      emailVerified: user.emailVerified,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt
-    });
+    const authToken = generateToken(user.id);
 
-    return createApiResponse(true, {
+    return createApiResponse({
       member: serializeBigInt(result),
       authToken,
-      isNewUser: user.createdAt.getTime() > Date.now() - 60000 // 刚刚创建的用户
-    }, '成功加入拼车组');
+      isNewUser: user.createdAt.getTime() > Date.now() - 60000, // 刚刚创建的用户
+      message: '成功加入拼车组'
+    }, true, 200);
 
   } catch (error) {
     console.error('Accept invitation error:', error);
-    return createApiResponse(false, null, '接受邀请失败', 500);
+    return createApiResponse({ error: '接受邀请失败' }, false, 500);
   }
 }

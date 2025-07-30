@@ -57,15 +57,16 @@ export async function GET(
           gte: oneHourAgo
         }
       },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        }
-      },
+      // 注释掉user关系，因为schema中没有定义
+      // include: {
+      //   user: {
+      //     select: {
+      //       id: true,
+      //       name: true,
+      //       email: true
+      //     }
+      //   }
+      // },
       orderBy: {
         startTime: 'desc'
       },
@@ -106,12 +107,12 @@ export async function GET(
     }
 
     // 用户连接统计
-    const userStats = {};
+    const userStats: Record<string, any> = {};
     recentLogs.forEach(log => {
-      const userId = log.userId;
+      const userId = log.userId || 'anonymous';
       if (!userStats[userId]) {
         userStats[userId] = {
-          user: log.user,
+          user: null, // 由于没有user关系，设为null
           connections: 0,
           successfulConnections: 0,
           bytes: 0
@@ -139,7 +140,7 @@ export async function GET(
       recentLogs: recentLogs.slice(0, 10).map(log => ({
         id: log.id,
         userId: log.userId,
-        user: log.user,
+        user: null, // 由于没有user关系，设为null
         targetHost: log.targetHost,
         targetPort: log.targetPort,
         status: log.status,

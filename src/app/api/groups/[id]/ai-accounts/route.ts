@@ -31,6 +31,9 @@ const createAccountSchema = z.object({
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '');
+    if (!token) {
+      return createApiResponse({ error: '未提供授权令牌' }, false, 401);
+    }
     const decoded = verifyToken(token);
     
     if (!decoded) {
@@ -77,6 +80,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '');
+    if (!token) {
+      return createApiResponse({ error: '未提供授权令牌' }, false, 401);
+    }
     const decoded = verifyToken(token);
     
     if (!decoded) {
