@@ -246,13 +246,20 @@ install_mysql() {
         echo "MYSQL_ROOT_PASSWORD=$MYSQL_ROOT_PASSWORD" >> ~/.aicarpool_env
     fi
     
+    # 清理可能存在的MySQL缓存问题
+    run_cmd $PACKAGE_MANAGER clean packages || true
+    
     # 安装MySQL仓库
     if [[ ! -f /etc/yum.repos.d/mysql-community.repo ]]; then
         # 下载并安装MySQL仓库包
         run_cmd $PACKAGE_MANAGER install -y https://dev.mysql.com/get/mysql80-community-release-el8-1.noarch.rpm --nogpgcheck || true
         # 导入最新的MySQL GPG密钥
-        run_cmd rpm --import https://repo.mysql.com/RPM-GPG-KEY-mysql-2022
-        run_cmd rpm --import https://repo.mysql.com/RPM-GPG-KEY-mysql
+        run_cmd rpm --import https://repo.mysql.com/RPM-GPG-KEY-mysql-2022 || true
+        run_cmd rpm --import https://repo.mysql.com/RPM-GPG-KEY-mysql || true
+    else
+        log_info "MySQL仓库配置已存在，尝试更新GPG密钥..."
+        # 如果仓库已存在但有GPG问题，尝试更新或重新安装仓库包
+        run_cmd $PACKAGE_MANAGER reinstall -y mysql80-community-release --nogpgcheck || true
     fi
     
     # 更新MySQL仓库GPG密钥（解决密钥过期问题）
