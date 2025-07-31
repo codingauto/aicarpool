@@ -45,6 +45,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const body = await request.json();
     const validatedData = exchangeCodeSchema.parse(body);
 
+    // 先获取session，再进行token交换
+    const session = await aiAccountService.getOAuthSession(validatedData.sessionId);
+    if (!session) {
+      return createApiResponse({ error: 'OAuth会话不存在或已过期' }, false, 400);
+    }
+    const serviceType = session.serviceType;
+
     // 交换OAuth授权码获取tokens
     const tokenResult = await aiAccountService.exchangeOAuthCode(
       validatedData.sessionId,
@@ -54,13 +61,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     if (!tokenResult.success) {
       return createApiResponse({ error: '授权码交换失败' }, false, 400);
     }
-
-    // 从session中获取服务类型
-    const session = aiAccountService.getOAuthSession(validatedData.sessionId);
-    if (!session) {
-      return createApiResponse({ error: 'OAuth会话不存在或已过期' }, false, 400);
-    }
-    const serviceType = session.serviceType;
 
     // 创建账户
     const account = await aiAccountService.createAccount({

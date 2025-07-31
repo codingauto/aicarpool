@@ -18,19 +18,21 @@ const generateAuthUrlSchema = z.object({
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const resolvedParams = await params;
+    const groupId = resolvedParams.id;
+    
+    
+    // 认证检查
     const token = request.headers.get('authorization')?.replace('Bearer ', '');
     if (!token) {
       return createApiResponse({ error: '未提供授权令牌' }, false, 401);
     }
-    const decoded = verifyToken(token);
     
+    const decoded = verifyToken(token);
     if (!decoded) {
       return createApiResponse({ error: '未授权访问' }, false, 401);
     }
 
-    const resolvedParams = await params;
-    const groupId = resolvedParams.id;
-    
     // 验证用户是否为组管理员
     const groupMember = await prisma.groupMember.findFirst({
       where: {
@@ -45,13 +47,30 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return createApiResponse({ error: '权限不足' }, false, 403);
     }
 
-    const body = await request.json();
-    const validatedData = generateAuthUrlSchema.parse(body);
+    let body;
+    try {
+      body = await request.json();
+    } catch (parseError) {
+      return createApiResponse({ error: '请求格式错误' }, false, 400);
+    }
+    
+    let validatedData;
+    try {
+      validatedData = generateAuthUrlSchema.parse(body);
+    } catch (validationError) {
+      return createApiResponse({ error: '请求参数无效' }, false, 400);
+    }
 
-    const authInfo = await aiAccountService.generateOAuthUrl(
-      validatedData.serviceType,
-      validatedData.proxy
-    );
+    let authInfo;
+    try {
+      authInfo = await aiAccountService.generateOAuthUrl(
+        validatedData.serviceType,
+        validatedData.proxy
+      );
+    } catch (serviceError) {
+      console.error('Generate OAuth URL failed:', serviceError);
+      return createApiResponse({ error: serviceError instanceof Error ? serviceError.message : '服务错误' }, false, 500);
+    }
 
     return createApiResponse(authInfo, true, 200);
 

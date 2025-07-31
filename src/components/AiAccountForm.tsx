@@ -198,7 +198,6 @@ export default function AiAccountForm({ account, serviceType, groupId, onClose, 
         throw new Error(result.error || '创建账户失败');
       }
     } catch (error) {
-      console.error('Create account error:', error);
       // TODO: 显示错误提示
     } finally {
       setLoading(false);
@@ -247,7 +246,6 @@ export default function AiAccountForm({ account, serviceType, groupId, onClose, 
         throw new Error(result.error || '创建账户失败');
       }
     } catch (error) {
-      console.error('Create account error:', error);
       // TODO: 显示错误提示
     } finally {
       setLoading(false);
@@ -297,7 +295,6 @@ export default function AiAccountForm({ account, serviceType, groupId, onClose, 
         throw new Error(result.error || '更新账户失败');
       }
     } catch (error) {
-      console.error('Update account error:', error);
       // TODO: 显示错误提示
     } finally {
       setLoading(false);
@@ -589,6 +586,7 @@ export default function AiAccountForm({ account, serviceType, groupId, onClose, 
             <OAuthFlow
               platform={formData.serviceType}
               proxy={formData.proxy}
+              groupId={groupId}
               onSuccess={handleOAuthSuccess}
               onBack={() => setOauthStep(1)}
             />

@@ -11,17 +11,88 @@ import { ProxyConfigData } from './ProxyConfig';
 interface OAuthFlowProps {
   platform: 'claude' | 'gemini' | 'ampcode';
   proxy?: ProxyConfigData;
+  groupId: string;
   onSuccess: (tokenInfo: any) => void;
   onBack: () => void;
 }
 
-export default function OAuthFlow({ platform, proxy, onSuccess, onBack }: OAuthFlowProps) {
+export default function OAuthFlow({ platform, proxy, groupId, onSuccess, onBack }: OAuthFlowProps) {
+  
   const [loading, setLoading] = useState(false);
   const [exchanging, setExchanging] = useState(false);
   const [authUrl, setAuthUrl] = useState('');
   const [authCode, setAuthCode] = useState('');
   const [copied, setCopied] = useState(false);
   const [sessionId, setSessionId] = useState('');
+  const [error, setError] = useState('');
+
+  // 格式化错误消息
+  const formatErrorMessage = (error: any, defaultMessage: string): string => {
+    let message = '';
+    
+    if (typeof error === 'string') {
+      message = error;
+    } else if (error instanceof Error) {
+      message = error.message;
+    } else {
+      return defaultMessage;
+    }
+    
+    // 尝试解析JSON错误
+    try {
+      if (message.includes('{') && message.includes('}')) {
+        const jsonStart = message.indexOf('{');
+        const jsonPart = message.substring(jsonStart);
+        const parsed = JSON.parse(jsonPart);
+        message = parsed.error || parsed.message || message;
+      }
+    } catch {
+      // JSON解析失败，继续处理字符串
+    }
+    
+    // 清理常见的错误格式
+    message = message
+      .replace(/^HTTP \d+:\s*/, '')
+      .replace(/^Error:\s*/, '')
+      .replace(/^\{.*\}$/, '')
+      .trim();
+    
+    // 处理常见的错误情况
+    if (message.includes('Invalid \'code\' in request')) {
+      return '授权码无效，请检查是否复制了完整正确的授权码';
+    }
+    
+    if (message.includes('OAuth session') || message.includes('expired')) {
+      return '授权会话已过期，请重新生成授权链接';
+    }
+    
+    if (message.includes('Network Error') || message.includes('fetch')) {
+      return '网络连接失败，请检查网络连接后重试';
+    }
+    
+    if (message.includes('401') || message.includes('Unauthorized')) {
+      return '认证失败，请重新登录后重试';
+    }
+    
+    if (message.includes('403') || message.includes('Forbidden')) {
+      return '权限不足，请检查账户权限设置';
+    }
+    
+    if (message.includes('500') || message.includes('Internal Server Error')) {
+      return '服务器内部错误，请稍后重试';
+    }
+    
+    // 如果消息太长、为空或包含技术细节，使用默认消息
+    if (!message || message.length > 200 || 
+        message.includes('stack') || 
+        message.includes('TypeError') ||
+        message.includes('undefined') ||
+        /^[{[].*[}\]]$/.test(message)) {
+      return defaultMessage;
+    }
+    
+    return message || defaultMessage;
+  };
 
   // 平台配置
   const platformConfig = {
@@ -90,31 +161,74 @@ export default function OAuthFlow({ platform, proxy, onSuccess, onBack }: OAuthF
   // 生成授权URL
   const generateAuthUrl = async () => {
     setLoading(true);
+    setError('');
+    
+    // 检查必要参数
+    if (!groupId) {
+      setError('groupId 参数缺失');
+      setLoading(false);
+      return;
+    }
+    
+    if (!platform) {
+      setError('platform 参数缺失');
+      setLoading(false);
+      return;
+    }
+    
     try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('未找到认证 token，请重新登录');
+      }
+      
       const proxyConfig = proxy?.enabled ? { proxy } : {};
       
-      const response = await fetch(`/api/groups/{groupId}/ai-accounts/oauth/generate-auth-url`, {
+      const apiUrl = `/api/groups/${groupId}/ai-accounts/oauth/generate-auth-url`;
+      const requestHeaders = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      };
+      
+      const requestBody = {
+        serviceType: platform,
+        ...proxyConfig,
+      };
+      
+      const response = await fetch(apiUrl, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify({
-          serviceType: platform,
-          ...proxyConfig,
-        }),
+        headers: requestHeaders,
+        body: JSON.stringify(requestBody),
       });
 
+      if (!response.ok) {
+        let errorText = '';
+        try {
+          errorText = await response.text();
+          // 尝试解析JSON错误
+          try {
+            const errorData = JSON.parse(errorText);
+            throw new Error(errorData.error || errorData.message || `请求失败 (${response.status})`);
+          } catch {
+            // 如果不是JSON，使用原始错误文本
+            throw new Error(errorText || `请求失败 (${response.status})`);
+          }
+        } catch (textError) {
+          throw new Error(`请求失败 (${response.status})`);
+        }
+      }
+
       const data = await response.json();
-      if (data.success) {
+
+      if (data.success && data.data?.authUrl) {
         setAuthUrl(data.data.authUrl);
         setSessionId(data.data.sessionId);
       } else {
-        throw new Error(data.error || '生成授权链接失败');
+        throw new Error(data.error || data.message || '生成授权链接失败');
       }
     } catch (error) {
-      console.error('Generate auth URL error:', error);
-      // TODO: 显示错误提示
+      const errorMessage = formatErrorMessage(error, '生成授权链接失败');
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -124,6 +238,7 @@ export default function OAuthFlow({ platform, proxy, onSuccess, onBack }: OAuthF
   const regenerateAuthUrl = () => {
     setAuthUrl('');
     setAuthCode('');
+    setError('');
     generateAuthUrl();
   };
 
@@ -163,7 +278,6 @@ export default function OAuthFlow({ platform, proxy, onSuccess, onBack }: OAuthF
         
         if (code && code !== authCode) {
           setAuthCode(code);
-          // TODO: 显示成功提示
         }
       } catch (error) {
         // URL解析失败，保持原值
@@ -176,11 +290,12 @@ export default function OAuthFlow({ platform, proxy, onSuccess, onBack }: OAuthF
     if (!authUrl || !authCode.trim()) return;
     
     setExchanging(true);
+    setError('');
     try {
       const data: any = {
         sessionId,
-        accountName: '', // 这个将在父组件中设置
-        description: '',
+        accountName: `${config.name} Account ${Date.now()}`, // 生成默认账户名
+        description: `通过OAuth授权创建的${config.name}账户`,
         accountType: 'shared',
       };
 
@@ -192,7 +307,7 @@ export default function OAuthFlow({ platform, proxy, onSuccess, onBack }: OAuthF
         data.authCodeOrUrl = authCode.trim();
       }
 
-      const response = await fetch(`/api/groups/{groupId}/ai-accounts/oauth/exchange-code`, {
+      const response = await fetch(`/api/groups/${groupId}/ai-accounts/oauth/exchange-code`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -201,15 +316,32 @@ export default function OAuthFlow({ platform, proxy, onSuccess, onBack }: OAuthF
         body: JSON.stringify(data),
       });
 
+      if (!response.ok) {
+        let errorText = '';
+        try {
+          errorText = await response.text();
+          // 尝试解析JSON错误
+          try {
+            const errorData = JSON.parse(errorText);
+            throw new Error(errorData.error || errorData.message || `授权请求失败 (${response.status})`);
+          } catch {
+            // 如果不是JSON，使用原始错误文本
+            throw new Error(errorText || `授权请求失败 (${response.status})`);
+          }
+        } catch (textError) {
+          throw new Error(`授权请求失败 (${response.status})`);
+        }
+      }
+
       const result = await response.json();
       if (result.success) {
         onSuccess(result.data);
       } else {
-        throw new Error(result.error || '授权失败');
+        throw new Error(result.error || result.message || '授权失败');
       }
     } catch (error) {
-      console.error('Exchange code error:', error);
-      // TODO: 显示错误提示
+      const errorMessage = formatErrorMessage(error, '授权失败');
+      setError(errorMessage);
     } finally {
       setExchanging(false);
     }
@@ -278,16 +410,35 @@ export default function OAuthFlow({ platform, proxy, onSuccess, onBack }: OAuthF
                           <Copy className="w-4 h-4" />
                         )}
                       </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => window.open(authUrl, '_blank')}
+                        title="打开链接"
+                      >
+                        <Link className="w-4 h-4" />
+                      </Button>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={regenerateAuthUrl}
-                      className={`text-xs ${colors.button}`}
-                    >
-                      <RefreshCw className="w-3 h-3 mr-1" />
-                      重新生成
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={regenerateAuthUrl}
+                        className={`text-xs ${colors.button}`}
+                      >
+                        <RefreshCw className="w-3 h-3 mr-1" />
+                        重新生成
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => window.open(authUrl, '_blank')}
+                        className={`text-xs ${colors.button}`}
+                      >
+                        <Link className="w-3 h-3 mr-1" />
+                        直接打开
+                      </Button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -395,6 +546,57 @@ export default function OAuthFlow({ platform, proxy, onSuccess, onBack }: OAuthF
                     </p>
                   )}
                 </div>
+                
+                {/* 错误提示 - 放在第三步下方 */}
+                {error && (
+                  <div className="mt-4 bg-red-50 border border-red-200 p-4 rounded-lg">
+                    <div className="flex items-start gap-3">
+                      <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <p className="text-red-800 font-medium mb-1">
+                          {exchanging || (!authUrl && !loading) ? '授权失败' : '生成授权链接失败'}
+                        </p>
+                        <p className="text-red-700 text-sm mb-3">{error}</p>
+                        <div className="flex gap-2">
+                          {!authUrl ? (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setError('');
+                                generateAuthUrl();
+                              }}
+                              disabled={loading}
+                              className="text-xs"
+                            >
+                              {loading ? '重试中...' : '重试'}
+                            </Button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setError('');
+                                setAuthCode('');
+                              }}
+                              className="text-xs"
+                            >
+                              重新输入
+                            </Button>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setError('')}
+                            className="text-xs"
+                          >
+                            关闭
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { EnhancedAiServiceConfig } from '@/components/groups/EnhancedAiServiceConfig';
+import { AiServiceConfig } from '@/components/groups/AiServiceConfig';
 import { DeploymentModeConfig } from '@/components/groups/DeploymentModeConfig';
 import { IpProxyManagement } from '@/components/groups/IpProxyManagement';
 import { EnhancedUsageStats } from '@/components/dashboard/enhanced-usage-stats';
@@ -249,7 +249,7 @@ export default function GroupDetailPage() {
         </TabsContent>
 
         <TabsContent value="services" className="space-y-6">
-          <EnhancedAiServiceConfig
+          <AiServiceConfig
             groupId={groupId}
             isAdmin={isAdmin}
             onRefresh={fetchGroupDetail}

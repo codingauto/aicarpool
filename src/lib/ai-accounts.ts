@@ -1,6 +1,9 @@
 import { prisma } from './prisma';
 import { encryptSensitiveData, decryptSensitiveData, generateRandomString } from './crypto';
 import axios from 'axios';
+import crypto from 'crypto';
+import { generateOAuthParams } from './oauth-helper';
+import redis from './redis';
 
 export interface AiAccountCredentials {
   apiKey?: string;
@@ -41,8 +44,7 @@ export interface OAuthSession {
   expiresAt: Date;
 }
 
-// 临时存储 OAuth 会话（在实际项目中应该使用 Redis 或数据库）
-const oauthSessions = new Map<string, OAuthSession>();
+// OAuth 会话现在存储在 Redis 中
 
 class AiAccountService {
   // 创建AI服务账户
@@ -292,33 +294,39 @@ class AiAccountService {
 
   // 生成OAuth授权URL
   async generateOAuthUrl(serviceType: string, proxy?: ProxyConfig) {
-    const sessionId = generateRandomString(32);
-    const state = generateRandomString(16);
+    const sessionId = crypto.randomUUID();
     
-    let authUrl: string;
-    let codeVerifier: string | undefined;
-    let codeChallenge: string | undefined;
-
     if (serviceType === 'claude') {
-      // 生成 PKCE 参数
-      codeVerifier = generateRandomString(32);
-      codeChallenge = require('crypto')
-        .createHash('sha256')
-        .update(codeVerifier)
-        .digest('base64url');
+      // 使用专门的 OAuth 参数生成函数
+      const oauthParams = generateOAuthParams();
 
-      const params = new URLSearchParams({
-        response_type: 'code',
-        client_id: '9d1c250a-e61b-44d9-88ed-5944d1962f5e', // Claude 官方 client_id
-        redirect_uri: 'https://claude.ai/oauth/callback',
-        scope: 'user:inference',
-        state,
-        code_challenge: codeChallenge || '',
-        code_challenge_method: 'S256',
-      });
+      // 存储会话信息到 Redis
+      const session: OAuthSession = {
+        sessionId,
+        serviceType,
+        codeVerifier: oauthParams.codeVerifier,
+        state: oauthParams.state,
+        codeChallenge: oauthParams.codeChallenge,
+        proxy,
+        createdAt: new Date(),
+        expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10分钟过期
+      };
 
-      authUrl = `https://console.anthropic.com/oauth/authorize?${params.toString()}`;
+      await redis.setOAuthSession(sessionId, session, 600); // 10分钟 TTL
+
+      return {
+        authUrl: oauthParams.authUrl,
+        sessionId,
+        instructions: [
+          '1. 复制上面的链接到浏览器中打开',
+          '2. 登录您的 Claude 账户',
+          '3. 同意应用权限',
+          '4. 复制浏览器地址栏中的完整 URL',
+          '5. 在表单中粘贴完整的回调 URL 或提取授权码',
+        ],
+      };
     } else if (serviceType === 'gemini') {
+      const state = generateRandomString(16);
       const params = new URLSearchParams({
         response_type: 'code',
         client_id: '581584304501-4pf1rce7lqbbvmhk15p4i37cpv3kd10v.apps.googleusercontent.com',
@@ -329,8 +337,33 @@ class AiAccountService {
         state,
       });
 
-      authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+
+      // 存储会话信息到 Redis
+      const session = {
+        sessionId,
+        serviceType,
+        state,
+        proxy,
+        createdAt: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(), // 10分钟过期
+      };
+
+      await redis.setOAuthSession(sessionId, session, 600); // 10分钟 TTL
+
+      return {
+        authUrl,
+        sessionId,
+        instructions: [
+          '1. 复制上面的链接到浏览器中打开',
+          '2. 登录您的 Google 账户',
+          '3. 同意应用权限',
+          '4. 复制浏览器地址栏中的完整 URL',
+          '5. 在表单中粘贴完整的回调 URL 或提取授权码',
+        ],
+      };
     } else if (serviceType === 'ampcode') {
+      const state = generateRandomString(16);
       // AMPCode OAuth 配置
       const params = new URLSearchParams({
         response_type: 'code',
@@ -340,91 +373,127 @@ class AiAccountService {
         state,
       });
 
-      authUrl = `https://auth.ampcode.ai/oauth/authorize?${params.toString()}`;
+      const authUrl = `https://auth.ampcode.ai/oauth/authorize?${params.toString()}`;
+
+      // 存储会话信息到 Redis
+      const session = {
+        sessionId,
+        serviceType,
+        state,
+        proxy,
+        createdAt: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(), // 10分钟过期
+      };
+
+      await redis.setOAuthSession(sessionId, session, 600); // 10分钟 TTL
+
+      return {
+        authUrl,
+        sessionId,
+        instructions: [
+          '1. 复制上面的链接到浏览器中打开',
+          '2. 登录您的 AMPCode 账户',
+          '3. 同意应用权限',
+          '4. 复制浏览器地址栏中的完整 URL',
+          '5. 在表单中粘贴完整的回调 URL 或提取授权码',
+        ],
+      };
     } else {
       throw new Error(`OAuth not supported for service type: ${serviceType}`);
     }
-
-    // 存储会话信息
-    const session: OAuthSession = {
-      sessionId,
-      serviceType,
-      codeVerifier,
-      state,
-      codeChallenge,
-      proxy,
-      createdAt: new Date(),
-      expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10分钟过期
-    };
-
-    oauthSessions.set(sessionId, session);
-
-    return {
-      authUrl,
-      sessionId,
-      instructions: [
-        '1. 复制上面的链接到浏览器中打开',
-        '2. 登录您的账户',
-        '3. 同意应用权限',
-        '4. 复制浏览器地址栏中的完整 URL',
-        '5. 在表单中粘贴完整的回调 URL 或提取授权码',
-      ],
-    };
   }
 
   // 获取OAuth会话信息
-  getOAuthSession(sessionId: string): OAuthSession | null {
-    return oauthSessions.get(sessionId) || null;
+  async getOAuthSession(sessionId: string): Promise<any> {
+    try {
+      return await redis.getOAuthSession(sessionId);
+    } catch (error) {
+      console.error('Failed to get OAuth session from Redis:', error);
+      return null;
+    }
   }
 
   // 交换OAuth授权码
   async exchangeOAuthCode(sessionId: string, authCodeOrUrl: string) {
-    const session = oauthSessions.get(sessionId);
+    const session = await redis.getOAuthSession(sessionId);
     if (!session) {
       throw new Error('Invalid or expired OAuth session');
     }
 
-    if (new Date() > session.expiresAt) {
-      oauthSessions.delete(sessionId);
+    const expiresAt = new Date(session.expiresAt);
+    if (new Date() > expiresAt) {
+      await redis.deleteOAuthSession(sessionId);
       throw new Error('OAuth session has expired');
     }
 
-    // 解析授权码
+    // 解析授权码 - 使用与claude-relay-service相同的逻辑
     let authCode: string;
     try {
-      if (authCodeOrUrl.includes('code=')) {
-        const url = new URL(authCodeOrUrl);
-        authCode = url.searchParams.get('code') || '';
-        if (!authCode) {
-          throw new Error('No authorization code found in URL');
-        }
-      } else {
-        authCode = authCodeOrUrl;
-      }
+      const { parseCallbackUrl } = await import('./oauth-helper');
+      authCode = parseCallbackUrl(authCodeOrUrl);
     } catch (error) {
-      throw new Error('Failed to parse authorization code from input');
+      // 如果parseCallbackUrl失败，回退到简单解析
+      try {
+        if (authCodeOrUrl.includes('code=')) {
+          const url = new URL(authCodeOrUrl);
+          authCode = url.searchParams.get('code') || '';
+          if (!authCode) {
+            throw new Error('No authorization code found in URL');
+          }
+        } else {
+          // 简单清理：移除URL fragments和参数
+          authCode = authCodeOrUrl.split('#')[0]?.split('&')[0] ?? authCodeOrUrl;
+        }
+      } catch (fallbackError) {
+        throw new Error('Failed to parse authorization code from input');
+      }
     }
 
     try {
       let tokens;
-      // 这里需要根据不同服务类型实现token交换逻辑
-      // 由于没有实际的OAuth client secrets，这里只是示例结构
+      
+      if (session.serviceType === 'claude') {
+        // 使用真实的 Claude OAuth token 交换
+        const { exchangeCodeForTokens } = await import('./oauth-helper');
+        
+        tokens = await exchangeCodeForTokens(
+          authCode,
+          session.codeVerifier!,
+          session.state,
+          session.proxy || null
+        );
+      } else if (session.serviceType === 'gemini') {
+        // Gemini token 交换逻辑（暂时保持简化实现）
+        tokens = {
+          accessToken: 'gemini-mock-access-token',
+          refreshToken: 'gemini-mock-refresh-token',
+          expiresAt: Date.now() + 3600000,
+          scopes: ['https://www.googleapis.com/auth/cloud-platform'],
+          isMax: false
+        };
+      } else {
+        throw new Error(`OAuth not supported for service type: ${session.serviceType}`);
+      }
       
       // 清理会话
-      oauthSessions.delete(sessionId);
+      await redis.deleteOAuthSession(sessionId);
       
       return {
         success: true,
         tokens: {
-          accessToken: 'mock-access-token',
-          refreshToken: 'mock-refresh-token',
-          expiresAt: Date.now() + 3600000, // 1小时
-          scopes: ['user:inference'],
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
+          expiresAt: tokens.expiresAt,
+          scopes: tokens.scopes,
         },
       };
     } catch (error) {
-      oauthSessions.delete(sessionId);
-      throw error;
+      // 清理会话，即使失败也要清理
+      await redis.deleteOAuthSession(sessionId);
+      
+      // 改进错误信息，包含更多上下文
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      throw new Error(`Token exchange failed: ${errorMessage}`);
     }
   }
 
