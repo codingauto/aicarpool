@@ -43,7 +43,6 @@ export function AppLayout({ children, title, actions }: AppLayoutProps) {
     const routeTitles: Record<string, string> = {
       '/dashboard': '仪表盘',
       '/groups': '拼车组',
-      '/ip-management': 'IP资源池', 
       '/monitoring': '监控中心',
       '/edge-nodes': '边缘节点',
       '/tutorial': '使用教程',

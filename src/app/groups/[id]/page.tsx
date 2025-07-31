@@ -5,7 +5,6 @@ import { useParams, useRouter } from 'next/navigation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AiServiceConfig } from '@/components/groups/AiServiceConfig';
 import { DeploymentModeConfig } from '@/components/groups/DeploymentModeConfig';
-import { IpProxyManagement } from '@/components/groups/IpProxyManagement';
 import { EnhancedUsageStats } from '@/components/dashboard/enhanced-usage-stats';
 import { GroupHeader } from '@/components/groups/GroupHeader';
 import { MembersTab } from '@/components/groups/MembersTab';
@@ -228,12 +227,11 @@ export default function GroupDetailPage() {
       <GroupHeader group={group} isAdmin={isAdmin} />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-8">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="members">成员管理</TabsTrigger>
           <TabsTrigger value="services">AI服务</TabsTrigger>
           <TabsTrigger value="api-keys">API密钥</TabsTrigger>
           <TabsTrigger value="deployment">部署模式</TabsTrigger>
-          <TabsTrigger value="ip-proxy">IP代理</TabsTrigger>
           <TabsTrigger value="edge-nodes">边缘节点</TabsTrigger>
           <TabsTrigger value="invitations">邀请管理</TabsTrigger>
           <TabsTrigger value="usage">使用统计</TabsTrigger>
@@ -271,9 +269,6 @@ export default function GroupDetailPage() {
           />
         </TabsContent>
 
-        <TabsContent value="ip-proxy" className="space-y-6">
-          <IpProxyManagement groupId={groupId} isAdmin={isAdmin} />
-        </TabsContent>
 
         <TabsContent value="edge-nodes" className="space-y-6">
           <EdgeNodesTab isAdmin={isAdmin} />

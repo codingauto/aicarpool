@@ -32,10 +32,9 @@ class RedisClient {
         port: REDIS_CONFIG.port,
         password: REDIS_CONFIG.password,
         db: REDIS_CONFIG.db,
-        retryDelayOnFailover: REDIS_CONFIG.retryDelayOnFailover,
         maxRetriesPerRequest: REDIS_CONFIG.maxRetriesPerRequest,
         lazyConnect: REDIS_CONFIG.lazyConnect,
-        tls: REDIS_CONFIG.enableTLS ? {} : false
+        ...(REDIS_CONFIG.enableTLS ? { tls: {} } : {})
       });
 
       this.client.on('connect', () => {
@@ -127,7 +126,7 @@ class RedisClient {
           data.proxy = JSON.parse(data.proxy);
         } catch (error) {
           // 如果解析失败，设置为 null
-          data.proxy = null;
+          data.proxy = '';
         }
       }
 

@@ -25,7 +25,6 @@ model User {
   usageStats    UsageStat[]
   userQuotaUsage UserQuotaUsage[]
   inviteLinks   InviteLink[]
-  ipProxyConfigs IpProxyMemberConfig[]
 
   @@map("users")
 }
@@ -52,7 +51,6 @@ model Group {
   quotaConfigs  QuotaConfig[]
   quotaUsage    QuotaUsage[]
   userQuotaUsage UserQuotaUsage[]
-  ipProxyConfigs IpProxyConfig[]
   edgeNodeGroups EdgeNodeGroup[]
   deploymentModes DeploymentMode[]
   systemMetrics SystemMetric[]
@@ -319,80 +317,9 @@ model AiServiceAccount {
   @@map("ai_service_accounts")
 }
 
-// IP代理配置表 - 简化版本
-model IpProxyConfig {
-  id            String  @id @default(cuid())
-  groupId       String
-  name          String
-  description   String?
-  proxyType     String  // http, https, socks5
-  host          String
-  port          Int
-  username      String?
-  password      String?
-  location      String?
-  isEnabled     Boolean @default(true)
-  maxConnections Int    @default(10)
-  currentConnections Int @default(0)
-  trafficUsed   BigInt  @default(0) // 已使用流量(MB)
-  trafficLimit  BigInt? // 流量限制(MB)，null表示无限制
-  status        String  @default("active") // active, inactive, error
-  lastCheckAt   DateTime?
-  responseTime  Int?    // 响应时间(ms)
-  errorMessage  String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  group         Group   @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  usageLogs     IpUsageLog[]
-  memberConfigs IpProxyMemberConfig[]
-
-  @@unique([groupId, name])
-  @@map("ip_proxy_configs")
-}
 
 
-// IP代理使用日志表
-model IpUsageLog {
-  id           String   @id @default(cuid())
-  proxyId      String
-  userId       String?
-  sessionId    String?  // 会话标识
-  sourceIp     String   // 用户源IP
-  targetHost   String   // 目标主机
-  targetPort   Int      // 目标端口
-  bytesIn      BigInt   @default(0) // 入站流量
-  bytesOut     BigInt   @default(0) // 出站流量
-  duration     Int      @default(0) // 连接时长(秒)
-  status       String   // success, failed, timeout
-  errorCode    String?  // 错误代码
-  startTime    DateTime @default(now())
-  endTime      DateTime?
-  metadata     Json?    // 额外元数据
-  proxy        IpProxyConfig @relation(fields: [proxyId], references: [id], onDelete: Cascade)
 
-  @@index([proxyId, startTime])
-  @@index([userId, startTime])
-  @@map("ip_usage_logs")
-}
-
-// IP代理成员配置表
-model IpProxyMemberConfig {
-  id         String   @id @default(cuid())
-  proxyId    String
-  userId     String
-  configData Json     // 代理配置数据
-  syncStatus String   @default("pending") // pending, synced, failed
-  lastSyncAt DateTime?
-  syncError  String?  // 同步错误信息
-  isEnabled  Boolean  @default(true)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  proxy      IpProxyConfig @relation(fields: [proxyId], references: [id], onDelete: Cascade)
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([proxyId, userId])
-  @@map("ip_proxy_member_configs")
-}
 
 // 分布式边缘节点表
 model EdgeNode {
