@@ -1,6 +1,6 @@
 {
   "name": "aicarpool-拼车",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "private": true,
   "scripts": {
     "dev": "next dev --port 4000",
@@ -34,6 +34,9 @@
     "bcryptjs": "^3.0.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "critters": "^0.0.23",
+    "https-proxy-agent": "^7.0.5",
+    "ioredis": "^5.3.2",
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.525.0",
     "mysql2": "^3.14.2",
@@ -46,9 +49,7 @@
     "react-dom": "19.1.0",
     "react-email": "^4.2.3",
     "recharts": "^3.1.0",
-    "ioredis": "^5.3.2",
     "socks-proxy-agent": "^8.0.4",
-    "https-proxy-agent": "^7.0.5",
     "sonner": "^2.0.6",
     "tailwind-merge": "^3.3.1",
     "zod": "^4.0.5"

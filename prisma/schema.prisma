@@ -716,8 +716,8 @@ model BudgetAllocation {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   
-  @@unique([entityType, entityId, budgetPeriod, periodStart])
   @@index([entityType, entityId])
+  @@index([budgetPeriod, periodStart])
   @@map("budget_allocations")
 }
 
@@ -738,9 +738,9 @@ model UserEnterpriseRole {
   // 关联关系  
   role       EnterpriseRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
   
-  @@unique([userId, enterpriseId, roleId, scope, resourceId])
   @@index([userId])
   @@index([enterpriseId])
+  @@index([roleId])
   @@map("user_enterprise_roles")
 }
 

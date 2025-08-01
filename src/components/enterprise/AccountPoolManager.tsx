@@ -72,6 +72,9 @@ export function AccountPoolManager({ enterpriseId, isAdmin }: AccountPoolManager
   const [error, setError] = useState('');
   const [selectedPool, setSelectedPool] = useState<AccountPool | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [editingPool, setEditingPool] = useState<AccountPool | null>(null);
+  const [bindingDialogOpen, setBindingDialogOpen] = useState(false);
+  const [availableAccounts, setAvailableAccounts] = useState<any[]>([]);
 
   // 新建账号池表单状态
   const [newPool, setNewPool] = useState({
@@ -125,15 +128,7 @@ export function AccountPoolManager({ enterpriseId, isAdmin }: AccountPoolManager
       if (data.success) {
         await fetchPools();
         setCreateDialogOpen(false);
-        setNewPool({
-          name: '',
-          description: '',
-          poolType: 'shared',
-          loadBalanceStrategy: 'round_robin',
-          maxLoadPerAccount: 80,
-          priority: 1,
-          accountIds: []
-        });
+        resetNewPoolForm();
         alert('账号池创建成功');
       } else {
         alert(data.error || '创建账号池失败');
@@ -142,6 +137,118 @@ export function AccountPoolManager({ enterpriseId, isAdmin }: AccountPoolManager
       console.error('创建账号池失败:', error);
       alert('创建账号池失败');
     }
+  };
+
+  const handleUpdatePool = async () => {
+    if (!isAdmin || !editingPool) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/enterprises/${enterpriseId}/account-pools/${editingPool.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: newPool.name,
+          description: newPool.description,
+          poolType: newPool.poolType,
+          loadBalanceStrategy: newPool.loadBalanceStrategy,
+          maxLoadPerAccount: newPool.maxLoadPerAccount,
+          priority: newPool.priority
+        }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        await fetchPools();
+        setEditingPool(null);
+        resetNewPoolForm();
+        alert('账号池更新成功');
+      } else {
+        alert(data.error || '更新账号池失败');
+      }
+    } catch (error) {
+      console.error('更新账号池失败:', error);
+      alert('更新账号池失败');
+    }
+  };
+
+  const handleDeletePool = async (pool: AccountPool) => {
+    if (!isAdmin) return;
+
+    if (!confirm(`确定要删除账号池"${pool.name}"吗？`)) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/enterprises/${enterpriseId}/account-pools/${pool.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        await fetchPools();
+        alert('账号池删除成功');
+      } else {
+        alert(data.error || '删除账号池失败');
+      }
+    } catch (error) {
+      console.error('删除账号池失败:', error);
+      alert('删除账号池失败');
+    }
+  };
+
+  const fetchAvailableAccounts = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/enterprises/${enterpriseId}/ai-accounts`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setAvailableAccounts(data.data || []);
+      }
+    } catch (error) {
+      console.error('获取可用账号失败:', error);
+    }
+  };
+
+  const resetNewPoolForm = () => {
+    setNewPool({
+      name: '',
+      description: '',
+      poolType: 'shared',
+      loadBalanceStrategy: 'round_robin',
+      maxLoadPerAccount: 80,
+      priority: 1,
+      accountIds: []
+    });
+  };
+
+  const openEditDialog = (pool: AccountPool) => {
+    setEditingPool(pool);
+    setNewPool({
+      name: pool.name,
+      description: pool.description || '',
+      poolType: pool.poolType,
+      loadBalanceStrategy: pool.loadBalanceStrategy,
+      maxLoadPerAccount: pool.maxLoadPerAccount,
+      priority: pool.priority,
+      accountIds: pool.accountBindings.map(binding => binding.account.id)
+    });
+  };
+
+  const openBindingDialog = (pool: AccountPool) => {
+    setSelectedPool(pool);
+    setBindingDialogOpen(true);
+    fetchAvailableAccounts();
   };
 
   useEffect(() => {
@@ -167,20 +274,33 @@ export function AccountPoolManager({ enterpriseId, isAdmin }: AccountPoolManager
           <p className="text-gray-600">管理企业级AI账号池，实现智能负载均衡和资源分配</p>
         </div>
         {isAdmin && (
-          <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="w-4 h-4 mr-2" />
-                创建账号池
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>创建新账号池</DialogTitle>
-                <DialogDescription>
-                  配置账号池的基本信息和负载均衡策略
-                </DialogDescription>
-              </DialogHeader>
+          <Button onClick={() => setCreateDialogOpen(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            创建账号池
+          </Button>
+        )}
+      </div>
+
+      {/* 创建/编辑账号池对话框 */}
+      <Dialog 
+        open={createDialogOpen || !!editingPool} 
+        onOpenChange={(open) => {
+          if (!open) {
+            setCreateDialogOpen(false);
+            setEditingPool(null);
+            resetNewPoolForm();
+          }
+        }}
+      >
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              {editingPool ? '编辑账号池' : '创建新账号池'}
+            </DialogTitle>
+            <DialogDescription>
+              {editingPool ? '修改账号池配置' : '配置新账号池的基本信息和负载均衡策略'}
+            </DialogDescription>
+          </DialogHeader>
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
@@ -257,18 +377,26 @@ export function AccountPoolManager({ enterpriseId, isAdmin }: AccountPoolManager
                 </div>
 
                 <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      setCreateDialogOpen(false);
+                      setEditingPool(null);
+                      resetNewPoolForm();
+                    }}
+                  >
                     取消
                   </Button>
-                  <Button onClick={handleCreatePool} disabled={!newPool.name}>
-                    创建
+                  <Button 
+                    onClick={editingPool ? handleUpdatePool : handleCreatePool} 
+                    disabled={!newPool.name}
+                  >
+                    {editingPool ? '更新' : '创建'}
                   </Button>
                 </div>
               </div>
             </DialogContent>
           </Dialog>
-        )}
-      </div>
 
       {error && (
         <Alert variant="destructive">
@@ -329,14 +457,30 @@ export function AccountPoolManager({ enterpriseId, isAdmin }: AccountPoolManager
               </div>
 
               {isAdmin && (
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" className="flex-1">
+                <div className="grid grid-cols-3 gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => openEditDialog(pool)}
+                  >
                     <Settings className="w-4 h-4 mr-1" />
-                    配置
+                    编辑
                   </Button>
-                  <Button variant="outline" size="sm" className="flex-1">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => openBindingDialog(pool)}
+                  >
                     <Users className="w-4 h-4 mr-1" />
                     绑定
+                  </Button>
+                  <Button 
+                    variant="destructive" 
+                    size="sm"
+                    onClick={() => handleDeletePool(pool)}
+                    disabled={pool._count.groupBindings > 0}
+                  >
+                    删除
                   </Button>
                 </div>
               )}
@@ -364,6 +508,110 @@ export function AccountPoolManager({ enterpriseId, isAdmin }: AccountPoolManager
           </CardContent>
         </Card>
       )}
+
+      {/* 账号绑定对话框 */}
+      <Dialog open={bindingDialogOpen} onOpenChange={setBindingDialogOpen}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>管理账号绑定</DialogTitle>
+            <DialogDescription>
+              为账号池 "{selectedPool?.name}" 配置AI账号绑定
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {selectedPool && (
+              <Tabs defaultValue="bound" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="bound">已绑定账号</TabsTrigger>
+                  <TabsTrigger value="available">可用账号</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="bound" className="space-y-4">
+                  <div className="text-sm text-gray-600 mb-4">
+                    当前绑定了 {selectedPool.accountBindings.length} 个AI账号
+                  </div>
+                  <div className="grid gap-3">
+                    {selectedPool.accountBindings.map(binding => (
+                      <Card key={binding.id} className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <Badge variant="outline">
+                              {binding.account.serviceType}
+                            </Badge>
+                            <div>
+                              <div className="font-medium">{binding.account.name}</div>
+                              <div className="text-sm text-gray-600">
+                                权重: {binding.weight} | 最大负载: {binding.maxLoadPercentage}%
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant={binding.account.status === 'active' ? 'default' : 'secondary'}>
+                              {binding.account.status === 'active' ? '活跃' : '停用'}
+                            </Badge>
+                            <Button variant="outline" size="sm">
+                              解绑
+                            </Button>
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
+                    {selectedPool.accountBindings.length === 0 && (
+                      <div className="text-center py-8 text-gray-500">
+                        暂无绑定的账号
+                      </div>
+                    )}
+                  </div>
+                </TabsContent>
+                
+                <TabsContent value="available" className="space-y-4">
+                  <div className="text-sm text-gray-600 mb-4">
+                    可绑定 {availableAccounts.length} 个可用账号
+                  </div>
+                  <div className="grid gap-3">
+                    {availableAccounts.map(account => (
+                      <Card key={account.id} className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <Badge variant="outline">
+                              {account.serviceType}
+                            </Badge>
+                            <div>
+                              <div className="font-medium">{account.name}</div>
+                              <div className="text-sm text-gray-600">
+                                ID: {account.id}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant={account.status === 'active' ? 'default' : 'secondary'}>
+                              {account.status === 'active' ? '可用' : '不可用'}
+                            </Badge>
+                            <Button variant="outline" size="sm" disabled={account.status !== 'active'}>
+                              绑定
+                            </Button>
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
+                    {availableAccounts.length === 0 && (
+                      <div className="text-center py-8 text-gray-500">
+                        暂无可用账号
+                      </div>
+                    )}
+                  </div>
+                </TabsContent>
+              </Tabs>
+            )}
+            
+            <div className="flex justify-end">
+              <Button variant="outline" onClick={() => setBindingDialogOpen(false)}>
+                关闭
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -688,9 +688,10 @@ export default function AiAccountForm({ account, serviceType, groupId, onClose, 
           )}
 
           {/* 步骤2: OAuth授权 */}
-          {oauthStep === 2 && formData.authType === 'oauth' && !isEdit && (
+          {oauthStep === 2 && formData.authType === 'oauth' && !isEdit && 
+           ['claude', 'gemini', 'ampcode'].includes(formData.serviceType) && (
             <OAuthFlow
-              platform={formData.serviceType}
+              platform={formData.serviceType as 'claude' | 'gemini' | 'ampcode'}
               proxy={formData.proxy}
               groupId={groupId}
               onSuccess={handleOAuthSuccess}

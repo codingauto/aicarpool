@@ -236,7 +236,7 @@ export async function PUT(
       }
 
       // 检查是否会造成循环引用
-      const isCircular = await this.checkCircularReference(departmentId, validatedData.parentId);
+      const isCircular = await checkCircularReference(departmentId, validatedData.parentId);
       if (isCircular) {
         return createApiResponse(false, null, '不能设置循环引用的父部门', 400);
       }
@@ -349,7 +349,7 @@ async function checkCircularReference(departmentId: string, parentId: string): P
   let currentParentId = parentId;
   const visited = new Set<string>();
 
-  while (currentParentId) {
+  while (currentParentId && currentParentId !== '') {
     if (visited.has(currentParentId)) {
       return true; // 发现循环
     }
@@ -365,7 +365,7 @@ async function checkCircularReference(departmentId: string, parentId: string): P
       select: { parentId: true }
     });
     
-    currentParentId = parent?.parentId || null;
+    currentParentId = parent?.parentId || '';
   }
   
   return false;

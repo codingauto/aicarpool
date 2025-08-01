@@ -84,24 +84,33 @@ export function EnterpriseDashboard({ enterpriseId, isAdmin }: EnterpriseDashboa
       if (departmentsData.success && poolsData.success) {
         // 计算统计数据
         const departmentStats = {
-          total: departmentsData.data.totalCount || 0,
-          active: departmentsData.data.totalCount || 0
+          total: departmentsData.data?.totalCount || 0,
+          active: departmentsData.data?.totalCount || 0
         };
 
+        const pools = Array.isArray(poolsData.data) ? poolsData.data : [];
         const poolStats = {
-          total: poolsData.data.length || 0,
-          active: poolsData.data.filter((pool: any) => pool.isActive).length || 0,
-          totalAccounts: poolsData.data.reduce((sum: number, pool: any) => 
+          total: pools.length || 0,
+          active: pools.filter((pool: any) => pool.isActive).length || 0,
+          totalAccounts: pools.reduce((sum: number, pool: any) => 
             sum + (pool._count?.accountBindings || 0), 0
           )
         };
 
-        const groupCount = departmentsData.data.departments?.reduce((sum: number, dept: any) => 
+        const departments = departmentsData.data?.departments || [];
+        const groupCount = departments.reduce((sum: number, dept: any) => 
           sum + (dept._count?.groups || 0), 0
         ) || 0;
 
+        // 获取企业信息
+        const enterprise = departmentsData.data?.enterprise || {
+          id: enterpriseId,
+          name: '企业',
+          planType: 'basic'
+        };
+
         setStats({
-          enterprise: departmentsData.data.enterprise,
+          enterprise,
           departments: departmentStats,
           accountPools: poolStats,
           groups: {
@@ -115,7 +124,10 @@ export function EnterpriseDashboard({ enterpriseId, isAdmin }: EnterpriseDashboa
           }
         });
       } else {
-        setError('获取企业统计数据失败');
+        // 提供更详细的错误信息
+        const errorMsg = departmentsData.error || poolsData.error || '获取企业统计数据失败';
+        console.error('API错误详情:', { departmentsData, poolsData });
+        setError(errorMsg);
       }
     } catch (error) {
       console.error('获取企业统计数据失败:', error);
