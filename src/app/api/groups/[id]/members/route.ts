@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { withAuth, createApiResponse } from '@/lib/middleware';
 import { verifyToken } from '@/lib/auth';
 import { NextRequest } from 'next/server';
+import { cacheManager } from '@/lib/cache';
 
 const updateMemberSchema = z.object({
   memberId: z.string(),
@@ -29,29 +30,8 @@ async function getHandler(req: NextRequest, { params }: { params: Promise<{ id: 
       return createApiResponse(false, null, '您不是该拼车组的成员', 403);
     }
 
-    // 获取成员列表
-    const members = await prisma.groupMember.findMany({
-      where: {
-        groupId,
-        status: 'active',
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            avatar: true,
-            status: true,
-            createdAt: true,
-          },
-        },
-      },
-      orderBy: [
-        { role: 'asc' }, // admin first
-        { joinedAt: 'asc' },
-      ],
-    });
+    // 从缓存获取成员列表
+    const members = await cacheManager.getGroupMembers(groupId);
 
     // 获取每个成员的使用统计
     const memberStats = await Promise.all(
@@ -184,6 +164,9 @@ async function putHandler(req: NextRequest, { params }: { params: Promise<{ id: 
         },
       },
     });
+
+    // 清除相关缓存
+    await cacheManager.invalidateGroupCache(groupId);
 
     return createApiResponse(updatedMember, true, 200);
 
