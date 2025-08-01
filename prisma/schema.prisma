@@ -25,6 +25,7 @@ model User {
   usageStats    UsageStat[]
   userQuotaUsage UserQuotaUsage[]
   inviteLinks   InviteLink[]
+  enhancedUsageStats EnhancedUsageStat[]  // 增强使用统计
 
   @@map("users")
 }
@@ -38,6 +39,7 @@ model Group {
   status        String           @default("active")
   settings      Json?
   createdById   String
+  departmentId  String?          // 所属部门ID（企业级功能）
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
   apiKeys       ApiKey[]
@@ -45,6 +47,7 @@ model Group {
   aiServiceAccounts AiServiceAccount[]
   members       GroupMember[]
   createdBy     User             @relation("GroupCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  department    Department?      @relation("DepartmentGroups", fields: [departmentId], references: [id])
   invitations   Invitation[]
   proxyBindings ProxyBinding[]
   usageStats    UsageStat[]
@@ -59,8 +62,11 @@ model Group {
   modelConfigurations ModelConfiguration[]
   modelFailoverLogs ModelFailoverLog[]
   modelPerformanceMetrics ModelPerformanceMetric[]
+  poolBindings  GroupPoolBinding[]  // 账号池绑定关系
+  enhancedUsageStats EnhancedUsageStat[]  // 增强使用统计
 
   @@index([createdById], map: "groups_createdById_fkey")
+  @@index([departmentId])
   @@map("groups")
 }
 
@@ -279,7 +285,7 @@ model UserQuotaUsage {
 model AiServiceAccount {
   id            String  @id @default(cuid())
   groupId       String
-  serviceType   String  // 'claude', 'gemini', 'ampcode'
+  serviceType   String  // 'claude', 'gemini', 'ampcode', 'kimi', 'zhipu', 'qwen'
   name          String
   description   String?
   accountType   String  @default("shared") // 'shared', 'dedicated'
@@ -304,6 +310,12 @@ model AiServiceAccount {
   // Gemini特有
   projectId     String?
   
+  // 企业级功能扩展
+  modelId         String?  // 具体模型标识，如 "claude-4-sonnet"
+  modelVersion    String?  // 模型版本
+  supportedFeatures Json?  // 支持的功能列表
+  failoverPriority Int     @default(1) // 故障转移优先级
+  
   // 状态信息
   status        String  @default("active") // 'active', 'inactive', 'error'
   isEnabled     Boolean @default(true)
@@ -314,6 +326,8 @@ model AiServiceAccount {
   
   group         Group   @relation(fields: [groupId], references: [id], onDelete: Cascade)
   groupAiServices GroupAiService[]
+  poolBindings  AccountPoolBinding[]  // 账号池绑定关系
+  enhancedUsageStats EnhancedUsageStat[]  // 增强使用统计
   
   @@unique([groupId, name])
   @@index([groupId, serviceType])
@@ -549,4 +563,216 @@ model ModelPerformanceMetric {
   @@index([groupId, modelId, metricType, windowStart])
   @@index([windowStart, windowEnd])
   @@map("model_performance_metrics")
+}
+
+// ==================== 企业级功能数据表 ====================
+
+// 企业组织表
+model Enterprise {
+  id          String   @id @default(cuid())
+  name        String
+  planType    String   @default("basic") // "basic", "enterprise", "custom"
+  settings    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // 关联关系
+  accountPools AccountPool[]
+  departments  Department[]
+  
+  @@map("enterprises")
+}
+
+// 部门表 (支持层级结构)
+model Department {
+  id           String   @id @default(cuid())
+  enterpriseId String
+  parentId     String?  // 支持层级结构
+  name         String
+  description  String?
+  budgetLimit  Decimal? @db.Decimal(10, 2)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  // 关联关系
+  enterprise   Enterprise   @relation(fields: [enterpriseId], references: [id], onDelete: Cascade)
+  parent       Department?  @relation("DepartmentHierarchy", fields: [parentId], references: [id])
+  children     Department[] @relation("DepartmentHierarchy") 
+  groups       Group[]      @relation("DepartmentGroups")
+  
+  @@index([enterpriseId])
+  @@map("departments")
+}
+
+// 账号池表
+model AccountPool {
+  id                  String   @id @default(cuid())
+  enterpriseId        String
+  name                String
+  description         String?
+  poolType            String   @default("shared") // "shared", "dedicated"
+  loadBalanceStrategy String   @default("round_robin") // "round_robin", "least_connections", "weighted"
+  maxLoadPerAccount   Int      @default(80)
+  priority            Int      @default(1)
+  isActive            Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  
+  // 关联关系
+  enterprise       Enterprise           @relation(fields: [enterpriseId], references: [id], onDelete: Cascade)
+  accountBindings  AccountPoolBinding[]
+  groupBindings    GroupPoolBinding[]
+  enhancedUsageStats EnhancedUsageStat[]
+  
+  @@index([enterpriseId])
+  @@map("account_pools")
+}
+
+// 账号池与AI账号绑定表
+model AccountPoolBinding {
+  id                String   @id @default(cuid())
+  poolId            String
+  accountId         String
+  weight            Int      @default(1)
+  maxLoadPercentage Int      @default(80)
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  
+  // 关联关系
+  pool    AccountPool      @relation(fields: [poolId], references: [id], onDelete: Cascade)
+  account AiServiceAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  
+  @@unique([poolId, accountId])
+  @@index([accountId])
+  @@map("account_pool_bindings")
+}
+
+// 拼车组与账号池绑定表
+model GroupPoolBinding {
+  id                String   @id @default(cuid())
+  groupId           String
+  poolId            String
+  bindingType       String   @default("shared") // "primary", "fallback", "shared"
+  usageLimitHourly  Int      @default(0) // 0表示无限制
+  usageLimitDaily   Int      @default(0)
+  usageLimitMonthly Int      @default(0)
+  priority          Int      @default(1)
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  // 关联关系
+  group Group       @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  pool  AccountPool @relation(fields: [poolId], references: [id], onDelete: Cascade)
+  
+  @@unique([groupId, poolId])
+  @@index([poolId])
+  @@map("group_pool_bindings")
+}
+
+// 增强使用记录表以支持账号池统计
+model EnhancedUsageStat {
+  id            String    @id @default(cuid())
+  userId        String
+  groupId       String
+  accountId     String?   // 实际使用的账号ID
+  poolId        String?   // 账号所属池ID
+  aiServiceId   String    // 服务类型
+  requestType   String
+  requestTokens Int       @default(0)
+  responseTokens Int      @default(0)
+  totalTokens   BigInt
+  cost          Decimal   @db.Decimal(10, 6)
+  requestTime   DateTime
+  responseTime  Int?
+  status        String
+  errorCode     String?
+  metadata      Json?
+  
+  // 关联关系
+  user    User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group   Group            @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  account AiServiceAccount? @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  pool    AccountPool?     @relation(fields: [poolId], references: [id], onDelete: SetNull)
+  
+  @@index([userId, requestTime])
+  @@index([groupId, requestTime])
+  @@index([accountId, requestTime])
+  @@index([poolId, requestTime])
+  @@map("enhanced_usage_stats")
+}
+
+// 预算分配表
+model BudgetAllocation {
+  id           String   @id @default(cuid())
+  entityType   String   // "enterprise", "department", "group"
+  entityId     String   // 对应的实体ID
+  budgetPeriod String   @default("monthly") // "monthly", "quarterly", "yearly"
+  budgetAmount Decimal  @db.Decimal(10, 2)
+  usedAmount   Decimal  @default(0) @db.Decimal(10, 2)
+  periodStart  DateTime
+  periodEnd    DateTime
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  @@unique([entityType, entityId, budgetPeriod, periodStart])
+  @@index([entityType, entityId])
+  @@map("budget_allocations")
+}
+
+// ==================== 权限管理数据表 ====================
+
+// 用户企业角色表
+model UserEnterpriseRole {
+  id           String   @id @default(cuid())
+  userId       String
+  enterpriseId String?  // 如果为null表示全局角色
+  roleId       String
+  scope        String   @default("enterprise") // "global", "enterprise", "department", "group"
+  resourceId   String?  // 具体资源ID，如部门ID或组ID
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  // 关联关系  
+  role       EnterpriseRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, enterpriseId, roleId, scope, resourceId])
+  @@index([userId])
+  @@index([enterpriseId])
+  @@map("user_enterprise_roles")
+}
+
+// 企业角色表
+model EnterpriseRole {
+  id           String   @id @default(cuid())
+  name         String
+  displayName  String
+  description  String?
+  isBuiltIn    Boolean  @default(false) // 是否为内置角色
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  // 关联关系
+  userRoles    UserEnterpriseRole[]
+  permissions  RolePermission[]
+  
+  @@unique([name])
+  @@map("enterprise_roles")
+}
+
+// 角色权限关联表
+model RolePermission {
+  id         String   @id @default(cuid())
+  roleId     String
+  permission String   // 权限标识符，如 "enterprise:read", "group:create"
+  createdAt  DateTime @default(now())
+  
+  // 关联关系
+  role EnterpriseRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  
+  @@unique([roleId, permission])
+  @@map("role_permissions")
 }

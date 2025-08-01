@@ -13,7 +13,11 @@ import {
   BookOpen,
   ChevronLeft,
   ChevronRight,
-  XIcon
+  XIcon,
+  Building2,
+  Shield,
+  DollarSign,
+  Database
 } from 'lucide-react';
 
 interface NavigationItem {
@@ -32,6 +36,10 @@ interface User {
 const navigationItems: NavigationItem[] = [
   { label: '仪表盘', path: '/dashboard', icon: LayoutDashboard },
   { label: '拼车组', path: '/groups', icon: Users },
+  { label: '企业管理', path: '/enterprise', icon: Building2 },
+  { label: '账号池', path: '/account-pools', icon: Database },
+  { label: '预算管理', path: '/budget', icon: DollarSign },
+  { label: '权限管理', path: '/permissions', icon: Shield },
   { label: '监控中心', path: '/monitoring', icon: Activity },
   { label: '边缘节点', path: '/edge-nodes', icon: Server },
   { label: '使用教程', path: '/tutorial', icon: BookOpen },

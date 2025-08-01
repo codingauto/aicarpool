@@ -124,7 +124,7 @@ export class EnhancedAiServiceRouter extends AiServiceRouter {
         console.log(`尝试故障转移到模型: ${fallbackModel}`);
         
         // 检查备用模型健康状态
-        if (await this.checkModelHealth(fallbackModel)) {
+        if (await this.checkModelHealth(fallbackModel, groupId)) {
           const response = await this.sendToModel(groupId, fallbackModel, request);
           
           // 更新当前活跃模型
@@ -132,6 +132,10 @@ export class EnhancedAiServiceRouter extends AiServiceRouter {
           
           // 记录故障转移事件
           await this.recordFailoverEvent(groupId, failedModel, fallbackModel, 'automatic_failover', true);
+          
+          // 缓存新的活跃模型
+          const { cacheManager } = await import('@/lib/cache');
+          await cacheManager.set(`active_model:${groupId}`, fallbackModel, 300);
           
           return response;
         }
@@ -155,7 +159,7 @@ export class EnhancedAiServiceRouter extends AiServiceRouter {
   ): Promise<boolean> {
     try {
       // 验证目标模型可用性
-      if (!(await this.checkModelHealth(targetModel))) {
+      if (!(await this.checkModelHealth(targetModel, groupId))) {
         throw new Error(`目标模型 ${targetModel} 不健康`);
       }
 
@@ -166,6 +170,10 @@ export class EnhancedAiServiceRouter extends AiServiceRouter {
       
       // 记录切换事件
       await this.recordFailoverEvent(groupId, previousModel || 'unknown', targetModel, 'manual_switch', true);
+      
+      // 缓存新的活跃模型
+      const { cacheManager } = await import('@/lib/cache');
+      await cacheManager.set(`active_model:${groupId}`, targetModel, 300);
       
       console.log(`成功切换模型: ${previousModel} -> ${targetModel}`);
       return true;
@@ -178,24 +186,16 @@ export class EnhancedAiServiceRouter extends AiServiceRouter {
   }
 
   /**
-   * 模型健康检查
+   * 模型健康检查 - 使用HealthChecker实例
    */
-  private async checkModelHealth(modelId: string): Promise<boolean> {
+  private async checkModelHealth(modelId: string, groupId?: string): Promise<boolean> {
     try {
-      const startTime = Date.now();
+      // 导入并使用HealthChecker
+      const { healthChecker } = await import('@/lib/enterprise/health-checker');
+      const healthResult = await healthChecker.checkModelHealth(modelId, groupId);
       
-      // 发送简单的健康检查请求
-      const testRequest: ChatRequest = {
-        messages: [{ role: 'user', content: 'ping' }],
-        maxTokens: 10
-      };
-      
-      await this.sendToModel('health_check', modelId, testRequest);
-      
-      const responseTime = Date.now() - startTime;
-      
-      // 健康检查通过条件：响应时间 < 5秒
-      return responseTime < 5000;
+      // 健康检查通过条件：分数 >= 50 且当前状态健康
+      return healthResult.isHealthy && healthResult.score >= 50;
       
     } catch (error) {
       console.warn(`模型健康检查失败 ${modelId}:`, error);

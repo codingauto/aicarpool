@@ -39,6 +39,27 @@ export const CACHE_KEYS = {
   MODEL_SWITCH_STATUS: (groupId: string) => `model:switch:${groupId}`,
   MODEL_METRICS: (groupId: string, timeRange: string) => `model:metrics:${groupId}:${timeRange}`,
   MODEL_FAILOVER_LOGS: (groupId: string) => `model:failover:${groupId}`,
+  
+  // 企业级功能 (TTL: 30分钟)
+  ENTERPRISE_POOLS: (enterpriseId: string) => `enterprise:pools:${enterpriseId}`,
+  ENTERPRISE_DEPARTMENTS: (enterpriseId: string) => `enterprise:departments:${enterpriseId}`,
+  ACCOUNT_POOL_BINDINGS: (poolId: string) => `pool:bindings:${poolId}`,
+  GROUP_POOL_BINDINGS: (groupId: string) => `group:pool_bindings:${groupId}`,
+  POOL_LOAD_STATUS: (poolId: string) => `pool:load:${poolId}`,
+  ACCOUNT_ALLOCATION_STATUS: (groupId: string) => `allocation:status:${groupId}`,
+  
+  // 负载均衡和分配 (TTL: 1分钟)
+  ACCOUNT_LOAD: (accountId: string) => `account:load:${accountId}`,
+  ACCOUNT_HEALTH_SCORE: (accountId: string) => `account:health_score:${accountId}`,
+  ACCOUNT_RESPONSE_TIME: (accountId: string) => `account:response_time:${accountId}`,
+  ACCOUNT_ERROR_RATE: (accountId: string) => `account:error_rate:${accountId}`,
+  
+  // 使用限额计数器 (TTL: 动态)
+  POOL_USAGE: (poolId: string, groupId: string, timeKey: string) => `pool_usage:${poolId}:${groupId}:${timeKey}`,
+  
+  // 预算和成本 (TTL: 15分钟)
+  BUDGET_ALLOCATION: (entityType: string, entityId: string) => `budget:${entityType}:${entityId}`,
+  COST_STATISTICS: (groupId: string, period: string) => `cost:stats:${groupId}:${period}`,
 } as const;
 
 // TTL配置 (秒)
@@ -51,6 +72,9 @@ export const CACHE_TTL = {
   CONFIG: 60 * 60,           // 1小时
   SESSION: 10 * 60,          // 10分钟 (OAuth等临时数据)
   MODEL_DATA: 10 * 60,       // 10分钟 (多模型相关数据)
+  ENTERPRISE_DATA: 30 * 60,  // 30分钟 (企业级数据)
+  ALLOCATION_DATA: 1 * 60,   // 1分钟 (分配和负载数据)
+  COST_DATA: 15 * 60,        // 15分钟 (成本和预算数据)
 } as const;
 
 interface CacheOptions {
@@ -499,6 +523,252 @@ class CacheManager {
       CACHE_KEYS.EDGE_NODES(),
     ]);
     await this.delPattern('monitor:*');
+  }
+
+  // === 企业级功能缓存方法 ===
+  async getEnterprisePools(enterpriseId: string, forceRefresh = false) {
+    return this.getOrSet(
+      CACHE_KEYS.ENTERPRISE_POOLS(enterpriseId),
+      async () => {
+        return await prisma.accountPool.findMany({
+          where: { enterpriseId },
+          include: {
+            accountBindings: {
+              include: {
+                account: {
+                  select: {
+                    id: true,
+                    name: true,
+                    serviceType: true,
+                    status: true,
+                    isEnabled: true,
+                  }
+                }
+              }
+            },
+            groupBindings: {
+              include: {
+                group: {
+                  select: {
+                    id: true,
+                    name: true,
+                  }
+                }
+              }
+            }
+          },
+          orderBy: { priority: 'asc' }
+        });
+      },
+      { ttl: CACHE_TTL.ENTERPRISE_DATA, forceRefresh }
+    );
+  }
+
+  async getAccountPoolBindings(poolId: string, forceRefresh = false) {
+    return this.getOrSet(
+      CACHE_KEYS.ACCOUNT_POOL_BINDINGS(poolId),
+      async () => {
+        return await prisma.accountPoolBinding.findMany({
+          where: { poolId, isActive: true },
+          include: {
+            account: {
+              select: {
+                id: true,
+                name: true,
+                serviceType: true,
+                status: true,
+                isEnabled: true,
+                lastUsedAt: true,
+              }
+            }
+          }
+        });
+      },
+      { ttl: CACHE_TTL.ENTERPRISE_DATA, forceRefresh }
+    );
+  }
+
+  async getGroupPoolBindings(groupId: string, forceRefresh = false) {
+    return this.getOrSet(
+      CACHE_KEYS.GROUP_POOL_BINDINGS(groupId),
+      async () => {
+        return await prisma.groupPoolBinding.findMany({
+          where: { groupId, isActive: true },
+          include: {
+            pool: {
+              include: {
+                accountBindings: {
+                  where: { isActive: true },
+                  include: {
+                    account: {
+                      select: {
+                        id: true,
+                        name: true,
+                        serviceType: true,
+                        status: true,
+                        isEnabled: true,
+                        lastUsedAt: true,
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          orderBy: { priority: 'asc' }
+        });
+      },
+      { ttl: CACHE_TTL.ENTERPRISE_DATA, forceRefresh }
+    );
+  }
+
+  async getAccountAllocationStatus(groupId: string, forceRefresh = false) {
+    return this.getOrSet(
+      CACHE_KEYS.ACCOUNT_ALLOCATION_STATUS(groupId),
+      async () => {
+        const poolBindings = await this.getGroupPoolBindings(groupId, forceRefresh);
+        
+        const allocationStatus = {
+          totalPools: poolBindings.length,
+          totalAccounts: 0,
+          serviceBreakdown: {} as Record<string, number>,
+          poolStatus: [] as any[]
+        };
+
+        for (const binding of poolBindings) {
+          const accountCount = binding.pool.accountBindings.length;
+          allocationStatus.totalAccounts += accountCount;
+
+          // 统计各服务类型的账号数量
+          for (const accountBinding of binding.pool.accountBindings) {
+            const serviceType = accountBinding.account?.serviceType;
+            if (serviceType) {
+              allocationStatus.serviceBreakdown[serviceType] = 
+                (allocationStatus.serviceBreakdown[serviceType] || 0) + 1;
+            }
+          }
+
+          // 获取池的负载状态
+          const poolLoad = await this.get<number>(CACHE_KEYS.POOL_LOAD_STATUS(binding.poolId)) || 0;
+          
+          allocationStatus.poolStatus.push({
+            poolId: binding.poolId,
+            poolName: binding.pool.name,
+            poolType: binding.pool.poolType,
+            bindingType: binding.bindingType,
+            priority: binding.priority,
+            accountCount,
+            currentLoad: poolLoad,
+            usageLimits: {
+              hourly: binding.usageLimitHourly,
+              daily: binding.usageLimitDaily,
+              monthly: binding.usageLimitMonthly
+            }
+          });
+        }
+
+        return allocationStatus;
+      },
+      { ttl: CACHE_TTL.ALLOCATION_DATA, forceRefresh }
+    );
+  }
+
+  // === 负载均衡和性能监控缓存 ===
+  async setAccountLoad(accountId: string, load: number) {
+    await this.set(CACHE_KEYS.ACCOUNT_LOAD(accountId), load, CACHE_TTL.ALLOCATION_DATA);
+  }
+
+  async getAccountLoad(accountId: string): Promise<number> {
+    const load = await this.get<number>(CACHE_KEYS.ACCOUNT_LOAD(accountId));
+    return load !== null ? load : 0;
+  }
+
+  async setAccountHealthScore(accountId: string, score: number) {
+    await this.set(CACHE_KEYS.ACCOUNT_HEALTH_SCORE(accountId), score, CACHE_TTL.ALLOCATION_DATA * 5); // 5分钟
+  }
+
+  async getAccountHealthScore(accountId: string): Promise<number> {
+    const score = await this.get<number>(CACHE_KEYS.ACCOUNT_HEALTH_SCORE(accountId));
+    return score !== null ? score : 100;
+  }
+
+  async setAccountResponseTime(accountId: string, responseTime: number) {
+    await this.set(CACHE_KEYS.ACCOUNT_RESPONSE_TIME(accountId), responseTime, CACHE_TTL.ALLOCATION_DATA);
+  }
+
+  async getAccountResponseTime(accountId: string): Promise<number> {
+    const time = await this.get<number>(CACHE_KEYS.ACCOUNT_RESPONSE_TIME(accountId));
+    return time !== null ? time : 0;
+  }
+
+  // === 企业级缓存失效方法 ===
+  async invalidateEnterpriseCache(enterpriseId: string) {
+    await this.del([
+      CACHE_KEYS.ENTERPRISE_POOLS(enterpriseId),
+      CACHE_KEYS.ENTERPRISE_DEPARTMENTS(enterpriseId),
+    ]);
+    
+    // 删除企业相关的所有缓存
+    await this.delPattern(`enterprise:*:${enterpriseId}*`);
+  }
+
+  async invalidatePoolCache(poolId: string) {
+    await this.del([
+      CACHE_KEYS.ACCOUNT_POOL_BINDINGS(poolId),
+      CACHE_KEYS.POOL_LOAD_STATUS(poolId),
+    ]);
+    
+    // 删除池相关的所有缓存
+    await this.delPattern(`pool:*:${poolId}*`);
+  }
+
+  async invalidateAllocationCache(groupId: string) {
+    await this.del([
+      CACHE_KEYS.GROUP_POOL_BINDINGS(groupId),
+      CACHE_KEYS.ACCOUNT_ALLOCATION_STATUS(groupId),
+    ]);
+    
+    // 删除分配相关的缓存
+    await this.delPattern(`allocation:*:${groupId}*`);
+  }
+
+  /**
+   * 增加计数器
+   */
+  async incrementCounter(key: string, value: number = 1): Promise<number> {
+    try {
+      const redisClient = this.client.getClient();
+      if (!redisClient) return value;
+
+      const result = await redisClient.incrByFloat(key, value);
+      // 设置7天过期
+      await redisClient.expire(key, 7 * 24 * 60 * 60);
+      return result;
+    } catch (error) {
+      console.warn(`Counter increment failed for key ${key}:`, error);
+      return value;
+    }
+  }
+
+  /**
+   * 获取计数器值
+   */
+  async getCounter(key: string): Promise<number> {
+    try {
+      const redisClient = this.client.getClient();
+      if (!redisClient) return 0;
+
+      const value = await redisClient.get(key);
+      return value ? parseFloat(value) : 0;
+    } catch (error) {
+      console.warn(`Get counter failed for key ${key}:`, error);
+      return 0;
+    }
+  }
+
+  // 获取Redis客户端实例，供其他模块使用
+  getClient() {
+    return this.client.getClient();
   }
 }
 
