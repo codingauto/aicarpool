@@ -1,6 +1,6 @@
 {
   "name": "aicarpool-拼车",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "private": true,
   "scripts": {
     "dev": "next dev --port 4000",
@@ -11,7 +11,8 @@
     "type-check:strict": "npx tsc --noEmit --project tsconfig.production.json",
     "start": "next start",
     "lint": "next lint",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "db:create-admin": "tsx prisma/create-admin.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.12.0",

@@ -250,13 +250,20 @@ export default function EnterprisePage() {
                 <Building2 className="w-16 h-16 mx-auto text-gray-400 mb-4" />
                 <h3 className="text-xl font-medium mb-2">暂无企业</h3>
                 <p className="text-gray-600 mb-6">
-                  您还没有加入任何企业，请联系管理员添加您到企业中
+                  {isAdmin 
+                    ? '开始创建您的第一个企业组织'
+                    : '您还没有加入任何企业，请联系管理员添加您到企业中'
+                  }
                 </p>
-                {isAdmin && (
-                  <Button>
+                {isAdmin ? (
+                  <Button onClick={() => setCreateDialogOpen(true)}>
                     <Plus className="w-4 h-4 mr-2" />
                     创建企业
                   </Button>
+                ) : (
+                  <div className="text-sm text-gray-500">
+                    需要管理员权限才能创建企业
+                  </div>
                 )}
               </div>
             </CardContent>

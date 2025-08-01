@@ -7,7 +7,9 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5+-blue.svg)](https://www.typescriptlang.org/)
 [![MySQL](https://img.shields.io/badge/MySQL-8+-orange.svg)](https://www.mysql.com/)
 
-**🚗 企业级AI服务拼车管理平台，支持多AI服务聚合、智能路由、成本分摊** 
+**🚗 企业级AI服务拼车管理平台，支持多AI服务聚合、智能路由、成本分摊**
+
+**🆕 v0.6.2 - 企业级功能全面升级：企业组织管理、账号池智能调度、预算控制、RBAC权限系统** 
 
 </div>
 
@@ -15,10 +17,17 @@
 
 ## 🚀 核心功能
 
+### 🏢 企业级管理 (v0.6.2 新增)
+- ✅ **企业组织**: 创建和管理企业级组织架构
+- ✅ **部门管理**: 多级部门结构，支持复杂企业架构
+- ✅ **账号池管理**: 智能AI账号池，支持负载均衡和故障转移
+- ✅ **预算控制**: 企业级预算分配和成本监控
+- ✅ **权限管理**: 基于角色的访问控制（RBAC）
+
 ### 🎯 拼车组管理
 - ✅ **组织管理**: 创建和管理多个拼车组，支持不同业务场景
 - ✅ **成员权限**: 细粒度角色权限（组长、管理员、成员）
-- ✅ **邀请系统**: 邮件邀请链接，快速加入拼车组
+- ✅ **邀请系统**: 邮件邮请链接，快速加入拼车组
 - ✅ **使用统计**: 每个组的详细使用情况和成本分析
 
 ### 🤖 多AI服务支持
@@ -111,28 +120,50 @@ npm run typecheck    # TypeScript类型检查
 npx prisma generate       # 生成Prisma客户端
 npx prisma migrate dev     # 创建开发迁移
 npx prisma studio         # 打开数据库管理界面
+npm run db:seed           # 初始化种子数据
+npm run db:create-admin   # 创建管理员账号
 ```
 
 ---
 
 ## 🎮 使用指南
 
-### 1. 访问管理界面
-浏览器访问：`http://localhost:3000`
+### 1. 创建管理员账号
+首次部署后，需要创建管理员账号：
+```bash
+npm run db:create-admin
+```
+默认管理员信息：
+- **邮箱**: admin@aicarpool.com
+- **密码**: admin123456
+- **角色**: admin
 
-### 2. 配置AI服务
+⚠️ **重要**：首次登录后请立即修改密码！
+
+### 2. 访问管理界面
+浏览器访问：`http://localhost:4000`（开发环境）或 `http://localhost:3000`（生产环境）
+
+### 3. 企业级管理 (v0.6.2)
+使用管理员账号登录后：
+1. 进入「企业管理」页面
+2. 创建企业组织
+3. 设置部门结构
+4. 配置账号池和负载均衡策略
+5. 分配预算和设置权限
+
+### 4. 配置AI服务
 1. 进入「AI服务管理」页面
 2. 添加AI服务（Claude、GPT等）
 3. 配置API密钥和代理设置
 4. 测试连接
 
-### 3. 创建拼车组
+### 5. 创建拼车组
 1. 进入「拼车组管理」页面
 2. 创建新的拼车组
 3. 设置成员权限和配额
 4. 邀请成员加入
 
-### 4. 选择部署模式
+### 6. 选择部署模式
 根据团队规模选择合适的部署模式：
 - **集中化模式**: 适合小团队（<10人）
 - **分布式模式**: 适合大团队（>20人）
@@ -158,6 +189,19 @@ PUT    /api/groups/[id]   # 更新拼车组
 POST   /api/groups/[id]/invite  # 邀请成员
 ```
 
+### 企业管理接口 (v0.6.2 新增)
+```http
+GET    /api/enterprises                    # 获取企业列表
+POST   /api/enterprises                    # 创建企业
+GET    /api/enterprises/[id]               # 获取企业详情
+PUT    /api/enterprises/[id]               # 更新企业
+DELETE /api/enterprises/[id]               # 删除企业
+GET    /api/enterprises/[id]/departments   # 获取部门列表
+POST   /api/enterprises/[id]/departments   # 创建部门
+GET    /api/enterprises/[id]/account-pools # 获取账号池列表
+POST   /api/enterprises/[id]/account-pools # 创建账号池
+```
+
 ### AI服务接口
 ```http
 POST /api/chat/completions  # 聊天补全
@@ -173,14 +217,24 @@ GET  /api/usage            # 使用统计
 aicarpool/
 ├── src/
 │   ├── app/                 # Next.js页面和API路由
+│   │   ├── api/            # API路由
+│   │   │   ├── enterprises/ # 企业管理API (v0.6.2)
+│   │   │   ├── groups/     # 拼车组API
+│   │   │   └── auth/       # 认证API
+│   │   ├── enterprise/     # 企业管理页面 (v0.6.2)
+│   │   └── dashboard/      # 仪表板页面
 │   ├── components/          # React组件
 │   │   ├── ui/             # 基础UI组件
 │   │   ├── layout/         # 布局组件
+│   │   ├── enterprise/     # 企业管理组件 (v0.6.2)
 │   │   └── groups/         # 拼车组相关组件
 │   ├── lib/                # 工具库和配置
 │   ├── hooks/              # 自定义Hook
 │   └── types/              # TypeScript类型定义
 ├── prisma/                 # 数据库schema和迁移
+│   ├── schema.prisma       # 数据库模型定义
+│   ├── seed-enterprise.ts  # 企业数据种子 (v0.6.2)
+│   └── create-admin.ts     # 管理员账号创建 (v0.6.2)
 ├── public/                 # 静态资源
 └── docs/                   # 项目文档
 ```
@@ -297,7 +351,10 @@ npx prisma generate
 npx prisma migrate deploy
 
 # 初始化种子数据
-npm run seed
+npm run db:seed
+
+# 创建管理员账号
+npm run db:create-admin
 ```
 
 #### 第五步：构建和启动
@@ -678,6 +735,35 @@ pm2 logs aicarpool
 pm2 delete aicarpool
 bash /opt/aicarpool/scripts/update.sh
 ```
+
+---
+
+## 📝 版本更新日志
+
+### v0.6.2 (2025-08-01) - 企业级功能升级
+- 🏢 **新增企业级管理功能**
+  - 企业组织创建和管理
+  - 多级部门结构支持
+  - 智能账号池管理
+  - 负载均衡和故障转移
+- 💰 **预算控制系统**
+  - 企业级预算分配
+  - 部门预算管理
+  - 成本监控和告警
+- 👥 **权限管理系统**
+  - 基于角色的访问控制（RBAC）
+  - 企业用户角色分配
+  - 细粒度权限设置
+- 🔧 **开发体验优化**
+  - 管理员账号创建脚本
+  - 企业数据种子文件
+  - 完善的错误处理和用户提示
+
+### v0.6.0 - 核心平台稳定版
+- ✅ 拼车组管理完整功能
+- ✅ 多AI服务支持和智能路由
+- ✅ 配额监控和实时告警
+- ✅ 代理管理和部署模式选择
 
 ---
 
