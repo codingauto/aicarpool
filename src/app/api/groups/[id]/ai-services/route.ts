@@ -52,15 +52,17 @@ async function getHandler(req: NextRequest, user: any, { params }: { params: Pro
       return createErrorResponse('您不是该拼车组的成员', 403);
     }
 
-    // 静态AI服务列表
+    // 静态AI服务列表（包含多模型支持）
     const staticAiServices = {
       claude: {
         id: 'claude',
         serviceName: 'claude',
         displayName: 'Claude Code',
-        description: 'Anthropic Claude AI服务',
+        description: 'Anthropic Claude AI服务 - 支持多模型切换',
         baseUrl: 'https://api.anthropic.com',
         isEnabled: true,
+        category: 'primary',
+        supportedModels: ['claude-4-sonnet', 'claude-4-opus', 'claude-3.5-sonnet'],
       },
       gemini: {
         id: 'gemini',
@@ -69,6 +71,8 @@ async function getHandler(req: NextRequest, user: any, { params }: { params: Pro
         description: 'Google Gemini AI服务',
         baseUrl: 'https://generativelanguage.googleapis.com',
         isEnabled: true,
+        category: 'primary',
+        supportedModels: ['gemini-1.5-pro', 'gemini-1.5-flash'],
       },
       ampcode: {
         id: 'ampcode',
@@ -77,6 +81,38 @@ async function getHandler(req: NextRequest, user: any, { params }: { params: Pro
         description: 'AmpCode AI服务',
         baseUrl: 'https://api.ampcode.com',
         isEnabled: true,
+        category: 'primary',
+        supportedModels: ['ampcode-v1'],
+      },
+      kimi: {
+        id: 'kimi',
+        serviceName: 'kimi',
+        displayName: 'Kimi K2 (2025)',
+        description: 'Moonshot AI Kimi K2 - 1T参数MoE模型，优越的Agent能力',
+        baseUrl: 'https://api.moonshot.cn',
+        isEnabled: true,
+        category: 'fallback',
+        supportedModels: ['kimi-k2-instruct', 'kimi-k2-base', 'moonshot-v1-128k'],
+      },
+      zhipu: {
+        id: 'zhipu',
+        serviceName: 'zhipu',
+        displayName: 'GLM-4.5 (2025)',
+        description: '智谱GLM-4.5 - 3550亿参数，综合性能全球第三',
+        baseUrl: 'https://open.bigmodel.cn',
+        isEnabled: true,
+        category: 'fallback',
+        supportedModels: ['glm-4.5', 'glm-4.5-air', 'glm-4-plus', 'glm-4-flash'],
+      },
+      qwen: {
+        id: 'qwen',
+        serviceName: 'qwen',
+        displayName: 'Qwen3 (2025)',
+        description: '阿里通义千问Qwen3 - 235B MoE，支持思考模式',
+        baseUrl: 'https://dashscope.aliyuncs.com',
+        isEnabled: true,
+        category: 'fallback',
+        supportedModels: ['qwen3-32b', 'qwen3-14b', 'qwen3-8b', 'qwen3-coder-plus'],
       },
     };
 

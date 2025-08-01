@@ -12,6 +12,9 @@ export interface AiAccountCredentials {
   expiresAt?: number;
   scopes?: string[];
   projectId?: string;
+  // 多模型支持
+  modelSpecificKeys?: Record<string, string>; // 模型特定的API密钥
+  fallbackKeys?: string[]; // 备用API密钥列表
 }
 
 export interface ProxyConfig {
@@ -22,15 +25,25 @@ export interface ProxyConfig {
   password?: string;
 }
 
+export interface MultiModelConfig {
+  supportedModels?: string[]; // 该账号支持的模型列表
+  defaultModel?: string; // 默认模型
+  rateLimits?: Record<string, {
+    requestsPerMinute?: number;
+    tokensPerMinute?: number;
+  }>; // 各模型的速率限制
+}
+
 export interface CreateAccountData {
   groupId: string;
-  serviceType: 'claude' | 'gemini' | 'ampcode';
+  serviceType: 'claude' | 'gemini' | 'ampcode' | 'kimi' | 'zhipu' | 'qwen';
   name: string;
   description?: string;
   accountType: 'shared' | 'dedicated';
   authType: 'oauth' | 'api_key';
   credentials: AiAccountCredentials;
   proxy?: ProxyConfig;
+  multiModelConfig?: MultiModelConfig; // 多模型配置
 }
 
 export interface OAuthSession {
@@ -526,6 +539,122 @@ class AiAccountService {
     });
 
     return selectedAccount.id;
+  }
+
+  // 为多模型选择合适的账户和API密钥
+  async selectAccountForModel(groupId: string, modelId: string, serviceTypes: string[] = ['claude', 'kimi', 'zhipu', 'qwen']) {
+    // 优先选择支持该模型的专用账户
+    for (const serviceType of serviceTypes) {
+      const accounts = await prisma.aiServiceAccount.findMany({
+        where: {
+          groupId,
+          serviceType,
+          isEnabled: true,
+          status: 'active',
+        },
+        orderBy: {
+          lastUsedAt: 'asc',
+        },
+      });
+
+      for (const account of accounts) {
+        try {
+          const credentials = await this.getAccountCredentials(account.id);
+          
+          // 检查是否有模型特定的密钥
+          if (credentials.modelSpecificKeys && credentials.modelSpecificKeys[modelId]) {
+            await this.updateAccountUsage(account.id);
+            return {
+              accountId: account.id,
+              apiKey: credentials.modelSpecificKeys[modelId],
+              serviceType: account.serviceType,
+              modelId,
+            };
+          }
+          
+          // 使用通用API密钥
+          if (credentials.apiKey) {
+            await this.updateAccountUsage(account.id);
+            return {
+              accountId: account.id,
+              apiKey: credentials.apiKey,
+              serviceType: account.serviceType,
+              modelId,
+            };
+          }
+        } catch (error) {
+          console.warn(`Failed to get credentials for account ${account.id}:`, error);
+          continue;
+        }
+      }
+    }
+
+    throw new Error(`No suitable account found for model: ${modelId}`);
+  }
+
+  // 更新账户使用情况
+  private async updateAccountUsage(accountId: string) {
+    await prisma.aiServiceAccount.update({
+      where: { id: accountId },
+      data: { lastUsedAt: new Date() },
+    });
+  }
+
+  // 获取多模型支持情况
+  async getMultiModelSupport(groupId: string) {
+    const accounts = await prisma.aiServiceAccount.findMany({
+      where: {
+        groupId,
+        isEnabled: true,
+        status: 'active',
+      },
+    });
+
+    const modelSupport: Record<string, string[]> = {};
+    const availableModels = new Set<string>();
+
+    for (const account of accounts) {
+      try {
+        const credentials = await this.getAccountCredentials(account.id);
+        
+        // 收集该账户支持的模型
+        const supportedModels: string[] = [];
+        
+        // 从模型特定密钥收集
+        if (credentials.modelSpecificKeys) {
+          Object.keys(credentials.modelSpecificKeys).forEach(modelId => {
+            supportedModels.push(modelId);
+            availableModels.add(modelId);
+          });
+        }
+        
+        // 根据服务类型添加默认支持的模型
+        const defaultModelsByService: Record<string, string[]> = {
+          claude: ['claude-4-sonnet', 'claude-4-opus'],
+          kimi: ['kimi-k2'],
+          zhipu: ['glm-4.5'],
+          qwen: ['qwen-max'],
+        };
+        
+        const serviceDefaults = defaultModelsByService[account.serviceType] || [];
+        serviceDefaults.forEach(modelId => {
+          if (!supportedModels.includes(modelId)) {
+            supportedModels.push(modelId);
+            availableModels.add(modelId);
+          }
+        });
+        
+        modelSupport[account.id] = supportedModels;
+      } catch (error) {
+        console.warn(`Failed to check model support for account ${account.id}:`, error);
+      }
+    }
+
+    return {
+      accountModelSupport: modelSupport,
+      availableModels: Array.from(availableModels).sort(),
+      totalAccounts: accounts.length,
+    };
   }
 
   // 格式化账户数据（移除敏感信息）

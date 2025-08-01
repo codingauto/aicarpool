@@ -15,7 +15,7 @@ interface AiAccount {
   id: string;
   name: string;
   description?: string;
-  serviceType: 'claude' | 'gemini' | 'ampcode';
+  serviceType: 'claude' | 'gemini' | 'ampcode' | 'kimi' | 'zhipu' | 'qwen';
   accountType: 'shared' | 'dedicated';
   authType: 'oauth' | 'api_key';
   projectId?: string;
@@ -24,14 +24,14 @@ interface AiAccount {
 
 interface AiAccountFormProps {
   account?: AiAccount;
-  serviceType?: 'claude' | 'gemini' | 'ampcode';
+  serviceType?: 'claude' | 'gemini' | 'ampcode' | 'kimi' | 'zhipu' | 'qwen';
   groupId: string;
   onClose: () => void;
   onSuccess: (account?: AiAccount) => void;
 }
 
 interface FormData {
-  serviceType: 'claude' | 'gemini' | 'ampcode';
+  serviceType: 'claude' | 'gemini' | 'ampcode' | 'kimi' | 'zhipu' | 'qwen';
   name: string;
   description: string;
   accountType: 'shared' | 'dedicated';
@@ -132,6 +132,26 @@ export default function AiAccountForm({ account, serviceType, groupId, onClose, 
     if (formData.serviceType === 'gemini' && formData.projectId && 
         (!/^\d+$/.test(formData.projectId) || formData.projectId.length !== 12)) {
       newErrors.projectId = '项目编号应为12位纯数字';
+    }
+
+    // API密钥格式验证
+    if (formData.authType === 'api_key' && formData.accessToken.trim()) {
+      const apiKey = formData.accessToken.trim();
+      
+      // Kimi K2 API密钥验证
+      if (formData.serviceType === 'kimi' && !apiKey.startsWith('sk-')) {
+        newErrors.accessToken = 'Kimi API密钥应以 "sk-" 开头';
+      }
+      
+      // GLM-4.5 API密钥验证 (通常以英文和数字组成)
+      if (formData.serviceType === 'zhipu' && (apiKey.length < 20 || !/^[a-zA-Z0-9.]+$/.test(apiKey))) {
+        newErrors.accessToken = 'GLM API密钥格式不正确，应为20位以上的字母数字组合';
+      }
+      
+      // Qwen3 API密钥验证 (阿里云DashScope API Key)
+      if (formData.serviceType === 'qwen' && (apiKey.length < 20 || !apiKey.includes('-'))) {
+        newErrors.accessToken = 'Qwen API密钥格式不正确，请使用阿里云DashScope API Key';
+      }
     }
 
     setErrors(newErrors);
@@ -354,20 +374,42 @@ export default function AiAccountForm({ account, serviceType, groupId, onClose, 
                   <Label className="text-sm font-semibold text-gray-700">平台</Label>
                   <RadioGroup
                     value={formData.serviceType}
-                    onValueChange={(value) => updateFormData({ serviceType: value as 'claude' | 'gemini' | 'ampcode' })}
-                    className="flex gap-6"
+                    onValueChange={(value) => updateFormData({ serviceType: value as 'claude' | 'gemini' | 'ampcode' | 'kimi' | 'zhipu' | 'qwen' })}
+                    className="grid grid-cols-2 gap-4"
                   >
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="claude" id="claude" />
-                      <Label htmlFor="claude">Claude</Label>
+                    <div className="space-y-3">
+                      <div className="text-sm font-medium text-gray-700">主要服务</div>
+                      <div className="space-y-2">
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="claude" id="claude" />
+                          <Label htmlFor="claude">Claude Code</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="gemini" id="gemini" />
+                          <Label htmlFor="gemini">Gemini CLI</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="ampcode" id="ampcode" />
+                          <Label htmlFor="ampcode">AmpCode</Label>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="gemini" id="gemini" />
-                      <Label htmlFor="gemini">Gemini</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="ampcode" id="ampcode" />
-                      <Label htmlFor="ampcode">AMPCode</Label>
+                    <div className="space-y-3">
+                      <div className="text-sm font-medium text-gray-700">备用服务 (Claude多模型支持)</div>
+                      <div className="space-y-2">
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="kimi" id="kimi" />
+                          <Label htmlFor="kimi">Kimi (K2)</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="zhipu" id="zhipu" />
+                          <Label htmlFor="zhipu">GLM-4.5</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="qwen" id="qwen" />
+                          <Label htmlFor="qwen">Qwen3</Label>
+                        </div>
+                      </div>
                     </div>
                   </RadioGroup>
                 </div>
@@ -490,6 +532,63 @@ export default function AiAccountForm({ account, serviceType, groupId, onClose, 
                 </div>
               )}
 
+              {/* 新服务配置提示 */}
+              {(formData.serviceType === 'kimi' || formData.serviceType === 'zhipu' || formData.serviceType === 'qwen') && (
+                <Card className="bg-green-50 border-green-200">
+                  <CardContent className="p-4">
+                    <div className="flex items-start gap-2">
+                      <div className="w-4 h-4 bg-green-500 rounded-full mt-0.5 flex-shrink-0" />
+                      <div className="text-xs text-green-700">
+                        <p className="font-medium mb-2">
+                          {formData.serviceType === 'kimi' && 'Kimi K2 (2025年最新版本)'}
+                          {formData.serviceType === 'zhipu' && 'GLM-4.5 (综合性能全球第三)'}
+                          {formData.serviceType === 'qwen' && 'Qwen3 (支持思考模式)'}
+                        </p>
+                        <div className="bg-white p-2 rounded border border-green-300 mb-2">
+                          {formData.serviceType === 'kimi' && (
+                            <div>
+                              <p className="font-medium mb-1">🚀 Kimi K2 特性：</p>
+                              <ul className="list-disc list-inside space-y-1 text-xs">
+                                <li>1T参数MoE架构，全球领先</li>
+                                <li>Agent专用优化，工具调用能力突出</li>
+                                <li>极低价格：输入$0.15/M，输出$2.5/M</li>
+                                <li>开源商用，Apache 2.0许可</li>
+                              </ul>
+                              <p className="mt-2 font-medium">🔑 API密钥获取：<a href="https://platform.moonshot.cn" target="_blank" className="text-blue-600 underline">platform.moonshot.cn</a></p>
+                            </div>
+                          )}
+                          {formData.serviceType === 'zhipu' && (
+                            <div>
+                              <p className="font-medium mb-1">🚀 GLM-4.5 特性：</p>
+                              <ul className="list-disc list-inside space-y-1 text-xs">
+                                <li>3550亿参数，性能超越Kimi K2</li>
+                                <li>原生融合智能体，专为Agent设计</li>
+                                <li>超高速度：超过100 tokens/秒</li>
+                                <li>低价格：输入￥0.8/M，输出￥2/M</li>
+                              </ul>
+                              <p className="mt-2 font-medium">🔑 API密钥获取：<a href="https://bigmodel.cn" target="_blank" className="text-blue-600 underline">bigmodel.cn</a></p>
+                            </div>
+                          )}
+                          {formData.serviceType === 'qwen' && (
+                            <div>
+                              <p className="font-medium mb-1">🚀 Qwen3 特性：</p>
+                              <ul className="list-disc list-inside space-y-1 text-xs">
+                                <li>235B MoE架构，36T Tokens训练</li>
+                                <li>支持思考模式和非思考模式</li>
+                                <li>Agent专用优化，工具调用能力强</li>
+                                <li>开源商用，Apache 2.0许可</li>
+                              </ul>
+                              <p className="mt-2 font-medium">🔑 API密钥获取：<a href="https://dashscope.aliyuncs.com" target="_blank" className="text-blue-600 underline">dashscope.aliyuncs.com</a></p>
+                            </div>
+                          )}
+                        </div>
+                        <p className="text-green-600 font-medium">✨ 这些是作为Claude多模型备用服务的最佳选择！</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               {/* 手动输入 Token */}
               {formData.authType === 'api_key' && (
                 <Card className="bg-blue-50 border-blue-200">
@@ -501,9 +600,16 @@ export default function AiAccountForm({ account, serviceType, groupId, onClose, 
                       <div>
                         <CardTitle className="text-base text-blue-900 mb-2">手动输入 Token</CardTitle>
                         <p className="text-sm text-blue-800 mb-2">
-                          请输入有效的 {formData.serviceType === 'claude' ? 'Claude' : 
-                                         formData.serviceType === 'gemini' ? 'Gemini' : 'AMPCode'} Access Token。
-                          如果您有 Refresh Token，建议也一并填写以支持自动刷新。
+                          请输入有效的 {
+                            formData.serviceType === 'claude' ? 'Claude' : 
+                            formData.serviceType === 'gemini' ? 'Gemini' : 
+                            formData.serviceType === 'ampcode' ? 'AMPCode' :
+                            formData.serviceType === 'kimi' ? 'Kimi K2' :
+                            formData.serviceType === 'zhipu' ? 'GLM-4.5' :
+                            formData.serviceType === 'qwen' ? 'Qwen3' : ''
+                          } API密钥。
+                          {(formData.serviceType === 'claude' || formData.serviceType === 'gemini' || formData.serviceType === 'ampcode') && 
+                            '如果您有 Refresh Token，建议也一并填写以支持自动刷新。'}
                         </p>
                         <div className="bg-white/80 rounded-lg p-3 border border-blue-300">
                           <p className="text-sm text-blue-900 font-medium mb-1">获取 Access Token 的方法：</p>

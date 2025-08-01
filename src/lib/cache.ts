@@ -33,6 +33,12 @@ export const CACHE_KEYS = {
   
   // 配置缓存 (TTL: 1小时)
   GROUP_CONFIG: (groupId: string) => `config:group:${groupId}`,
+  
+  // 多模型相关 (TTL: 10分钟)
+  MODEL_CONFIGURATIONS: (groupId: string) => `model:configs:${groupId}`,
+  MODEL_SWITCH_STATUS: (groupId: string) => `model:switch:${groupId}`,
+  MODEL_METRICS: (groupId: string, timeRange: string) => `model:metrics:${groupId}:${timeRange}`,
+  MODEL_FAILOVER_LOGS: (groupId: string) => `model:failover:${groupId}`,
 } as const;
 
 // TTL配置 (秒)
@@ -44,6 +50,7 @@ export const CACHE_TTL = {
   AI_SERVICE: 10 * 60,       // 10分钟
   CONFIG: 60 * 60,           // 1小时
   SESSION: 10 * 60,          // 10分钟 (OAuth等临时数据)
+  MODEL_DATA: 10 * 60,       // 10分钟 (多模型相关数据)
 } as const;
 
 interface CacheOptions {
@@ -339,6 +346,9 @@ class CacheManager {
     
     // 删除组相关的统计数据缓存
     await this.delPattern(`stats:usage:${groupId}:*`);
+    
+    // 删除多模型相关缓存
+    await this.invalidateModelCache(groupId);
   }
 
   async invalidateStatsCache(identifier?: string) {
@@ -347,6 +357,140 @@ class CacheManager {
     } else {
       await this.delPattern('stats:*');
     }
+  }
+
+  // === 多模型相关缓存方法 ===
+  async getModelConfigurations(groupId: string, forceRefresh = false) {
+    return this.getOrSet(
+      CACHE_KEYS.MODEL_CONFIGURATIONS(groupId),
+      async () => {
+        return await prisma.modelConfiguration.findMany({
+          where: { groupId },
+          orderBy: { createdAt: 'desc' },
+        });
+      },
+      { ttl: CACHE_TTL.MODEL_DATA, forceRefresh }
+    );
+  }
+
+  async getModelSwitchStatus(groupId: string, forceRefresh = false) {
+    return this.getOrSet(
+      CACHE_KEYS.MODEL_SWITCH_STATUS(groupId),
+      async () => {
+        const modelConfig = await prisma.modelConfiguration.findFirst({
+          where: {
+            groupId,
+            serviceType: 'claude_code',
+            isEnabled: true,
+          },
+        });
+
+        if (!modelConfig) return null;
+
+        const recentFailovers = await prisma.modelFailoverLog.findMany({
+          where: { groupId },
+          orderBy: { timestamp: 'desc' },
+          take: 10,
+        });
+
+        return {
+          groupId,
+          serviceType: modelConfig.serviceType,
+          configuration: {
+            primaryModel: modelConfig.primaryModel,
+            fallbackModels: modelConfig.fallbackModels,
+            failoverTrigger: modelConfig.failoverTrigger,
+            strategy: modelConfig.strategy,
+            isEnabled: modelConfig.isEnabled,
+          },
+          recentFailovers: recentFailovers.map(log => ({
+            id: log.id,
+            fromModel: log.fromModel,
+            toModel: log.toModel,
+            reason: log.reason,
+            success: log.success,
+            timestamp: log.timestamp,
+            responseTime: log.responseTime,
+            errorMsg: log.errorMsg,
+          })),
+        };
+      },
+      { ttl: CACHE_TTL.MODEL_DATA, forceRefresh }
+    );
+  }
+
+  async getModelMetrics(groupId: string, timeRange: string, modelId?: string, metricType?: string, forceRefresh = false) {
+    const cacheKey = CACHE_KEYS.MODEL_METRICS(groupId, `${timeRange}_${modelId || 'all'}_${metricType || 'all'}`);
+    
+    return this.getOrSet(
+      cacheKey,
+      async () => {
+        const timeRangeMap = {
+          '1h': 1 * 60 * 60 * 1000,
+          '6h': 6 * 60 * 60 * 1000,
+          '24h': 24 * 60 * 60 * 1000,
+          '7d': 7 * 24 * 60 * 60 * 1000,
+          '30d': 30 * 24 * 60 * 60 * 1000,
+        };
+
+        const timeRangeMs = timeRangeMap[timeRange as keyof typeof timeRangeMap] || timeRangeMap['24h'];
+        const startTime = new Date(Date.now() - timeRangeMs);
+
+        const whereCondition: any = {
+          groupId,
+          windowStart: { gte: startTime },
+        };
+
+        if (modelId && modelId !== 'all') {
+          whereCondition.modelId = modelId;
+        }
+
+        if (metricType && metricType !== 'all') {
+          whereCondition.metricType = metricType;
+        }
+
+        const metrics = await prisma.modelPerformanceMetric.findMany({
+          where: whereCondition,
+          orderBy: { windowStart: 'desc' },
+          take: 100,
+        });
+
+        const availableModels = await prisma.modelPerformanceMetric.findMany({
+          where: { groupId },
+          select: { modelId: true },
+          distinct: ['modelId'],
+        });
+
+        return {
+          metrics: metrics.map(metric => ({
+            id: metric.id,
+            modelId: metric.modelId,
+            metricType: metric.metricType,
+            value: Number(metric.value),
+            unit: metric.unit,
+            windowStart: metric.windowStart,
+            windowEnd: metric.windowEnd,
+            sampleCount: metric.sampleCount,
+            tags: metric.tags,
+          })),
+          availableModels: availableModels.map(m => m.modelId),
+          query: { timeRange, modelId, metricType },
+          totalCount: metrics.length,
+        };
+      },
+      { ttl: CACHE_TTL.STATS_DATA, forceRefresh }
+    );
+  }
+
+  async invalidateModelCache(groupId: string) {
+    await this.del([
+      CACHE_KEYS.MODEL_CONFIGURATIONS(groupId),
+      CACHE_KEYS.MODEL_SWITCH_STATUS(groupId),
+      CACHE_KEYS.MODEL_FAILOVER_LOGS(groupId),
+    ]);
+    
+    // 删除多模型相关的所有缓存
+    await this.delPattern(`model:*:${groupId}*`);
   }
 
   async invalidateMonitoringCache() {

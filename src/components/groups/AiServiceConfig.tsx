@@ -69,17 +69,19 @@ export function AiServiceConfig({ groupId, isAdmin, onRefresh }: AiServiceConfig
   const [configDialogOpen, setConfigDialogOpen] = useState(false);
   const [selectedService, setSelectedService] = useState<AiServiceDetail | null>(null);
   const [accountFormOpen, setAccountFormOpen] = useState(false);
-  const [selectedServiceType, setSelectedServiceType] = useState<'claude' | 'gemini' | 'ampcode' | null>(null);
+  const [selectedServiceType, setSelectedServiceType] = useState<'claude' | 'gemini' | 'ampcode' | 'kimi' | 'zhipu' | 'qwen' | null>(null);
 
-  // 定义静态的3个AI服务
+  // 定义静态AI服务列表（包含多模型支持）
   const staticAiServices = [
     {
       id: 'claude',
       serviceName: 'claude',
       displayName: 'Claude Code',
-      description: 'Anthropic Claude AI服务',
+      description: 'Anthropic Claude AI服务 - 支持多模型切换',
       baseUrl: 'https://api.anthropic.com',
       isEnabled: true,
+      category: 'primary',
+      supportedModels: ['claude-4-sonnet', 'claude-4-opus', 'claude-3.5-sonnet'],
     },
     {
       id: 'gemini',
@@ -88,6 +90,8 @@ export function AiServiceConfig({ groupId, isAdmin, onRefresh }: AiServiceConfig
       description: 'Google Gemini AI服务',
       baseUrl: 'https://generativelanguage.googleapis.com',
       isEnabled: true,
+      category: 'primary',
+      supportedModels: ['gemini-1.5-pro', 'gemini-1.5-flash'],
     },
     {
       id: 'ampcode',
@@ -96,6 +100,44 @@ export function AiServiceConfig({ groupId, isAdmin, onRefresh }: AiServiceConfig
       description: 'AmpCode AI服务',
       baseUrl: 'https://api.ampcode.com',
       isEnabled: true,
+      category: 'primary',
+      supportedModels: ['ampcode-v1'],
+    },
+    {
+      id: 'kimi',
+      serviceName: 'kimi',
+      displayName: 'Kimi K2 (2025)',
+      description: 'Moonshot AI Kimi K2 - 1T参数MoE模型，优越的Agent能力',
+      baseUrl: 'https://api.moonshot.cn',
+      isEnabled: true,
+      category: 'fallback',
+      supportedModels: ['kimi-k2-instruct', 'kimi-k2-base', 'moonshot-v1-128k'],
+      pricing: '输入$0.15/M tokens, 输出$2.5/M tokens',
+      features: ['全球领先的MoE架构', 'Agent专用优化', '开源商用'],
+    },
+    {
+      id: 'zhipu',
+      serviceName: 'zhipu',
+      displayName: 'GLM-4.5 (2025)',
+      description: '智谱GLM-4.5 - 3550亿参数，综合性能全球第三',
+      baseUrl: 'https://open.bigmodel.cn',
+      isEnabled: true,
+      category: 'fallback',
+      supportedModels: ['glm-4.5', 'glm-4.5-air', 'glm-4-plus', 'glm-4-flash'],
+      pricing: '输入￥0.8/M tokens, 输出￥2/M tokens',
+      features: ['原生融合智能体', '超过100 tokens/s', '开源Apache 2.0'],
+    },
+    {
+      id: 'qwen',
+      serviceName: 'qwen',
+      displayName: 'Qwen3 (2025)',
+      description: '阿里通义千问Qwen3 - 235B MoE，支持思考模式',
+      baseUrl: 'https://dashscope.aliyuncs.com',
+      isEnabled: true,
+      category: 'fallback',
+      supportedModels: ['qwen3-32b', 'qwen3-14b', 'qwen3-8b', 'qwen3-coder-plus'],
+      pricing: '竞争力定价，支持思考模式',
+      features: ['36T Tokens训练', '思考+非思考模式', 'Agent专用优化'],
     },
   ];
 

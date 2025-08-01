@@ -6,18 +6,25 @@ import { verifyToken } from '@/lib/auth';
 import { aiAccountService } from '@/lib/ai-accounts';
 
 const createAccountSchema = z.object({
-  serviceType: z.enum(['claude', 'gemini', 'ampcode']),
+  serviceType: z.enum(['claude', 'gemini', 'ampcode', 'kimi', 'zhipu', 'qwen']),
   name: z.string().min(1).max(255),
   description: z.string().optional(),
   accountType: z.enum(['shared', 'dedicated']).default('shared'),
   authType: z.enum(['oauth', 'api_key']),
+  // 支持多模型凭证配置
   credentials: z.object({
+    // 通用API密钥
     apiKey: z.string().optional(),
+    // OAuth相关
     accessToken: z.string().optional(),
     refreshToken: z.string().optional(),
     expiresAt: z.number().optional(),
     scopes: z.array(z.string()).optional(),
+    // Gemini专用
     projectId: z.string().optional(),
+    // 多模型专用配置
+    modelSpecificKeys: z.record(z.string(), z.string()).optional(), // 模型特定的API密钥
+    fallbackKeys: z.array(z.string()).optional(), // 备用API密钥列表
   }),
   proxy: z.object({
     type: z.enum(['socks5', 'http', 'https']),
@@ -25,6 +32,15 @@ const createAccountSchema = z.object({
     port: z.number(),
     username: z.string().optional(),
     password: z.string().optional(),
+  }).optional(),
+  // 多模型支持配置
+  multiModelConfig: z.object({
+    supportedModels: z.array(z.string()).optional(), // 该账号支持的模型列表
+    defaultModel: z.string().optional(), // 默认模型
+    rateLimits: z.record(z.string(), z.object({
+      requestsPerMinute: z.number().optional(),
+      tokensPerMinute: z.number().optional(),
+    })).optional(), // 各模型的速率限制
   }).optional(),
 });
 

@@ -56,6 +56,9 @@ model Group {
   systemMetrics SystemMetric[]
   alertRules    AlertRule[]
   inviteLinks   InviteLink[]
+  modelConfigurations ModelConfiguration[]
+  modelFailoverLogs ModelFailoverLog[]
+  modelPerformanceMetrics ModelPerformanceMetric[]
 
   @@index([createdById], map: "groups_createdById_fkey")
   @@map("groups")
@@ -484,4 +487,66 @@ model InviteLink {
   @@index([groupId], map: "invite_links_groupId_fkey")
   @@index([creatorId], map: "invite_links_creatorId_fkey")
   @@map("invite_links")
+}
+
+// 多模型配置表
+model ModelConfiguration {
+  id                    String  @id @default(cuid())
+  groupId               String
+  serviceType           String  @default("claude_code") // claude_code, gemini, ampcode
+  primaryModel          String  @default("claude-4-sonnet")
+  fallbackModels        Json    // 备用模型列表，按优先级排序
+  failoverTrigger       String  @default("automatic") // manual, automatic, hybrid
+  healthCheckThreshold  Int     @default(80)
+  failbackEnabled       Boolean @default(true)
+  strategy              String  @default("priority") // priority, round_robin, least_used
+  maxRetries            Int     @default(3)
+  timeout               Int     @default(30000)
+  healthCheckInterval   Int     @default(60000)
+  isEnabled             Boolean @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  group                 Group   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, serviceType])
+  @@map("model_configurations")
+}
+
+// 模型故障转移日志表
+model ModelFailoverLog {
+  id           String   @id @default(cuid())
+  groupId      String
+  fromModel    String
+  toModel      String
+  reason       String   // automatic_failover, manual_switch, maintenance
+  success      Boolean
+  responseTime Int?
+  errorMsg     String?
+  timestamp    DateTime @default(now())
+  metadata     Json?
+  group        Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([groupId, timestamp])
+  @@index([fromModel, toModel])
+  @@map("model_failover_logs")
+}
+
+// 模型性能指标表
+model ModelPerformanceMetric {
+  id           String   @id @default(cuid())
+  groupId      String
+  modelId      String   // claude-4-sonnet, kimi-k2等
+  metricType   String   // response_time, success_rate, error_rate, health_score
+  value        Decimal  @db.Decimal(15, 4)
+  unit         String   // ms, percent等
+  windowStart  DateTime // 时间窗口开始
+  windowEnd    DateTime // 时间窗口结束
+  sampleCount  Int      @default(1)
+  tags         Json?    // 额外的标签信息
+  createdAt    DateTime @default(now())
+  group        Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([groupId, modelId, metricType, windowStart])
+  @@index([windowStart, windowEnd])
+  @@map("model_performance_metrics")
 }

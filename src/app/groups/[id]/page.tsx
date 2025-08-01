@@ -11,6 +11,8 @@ import { MembersTab } from '@/components/groups/MembersTab';
 import { ApiKeysTab } from '@/components/groups/ApiKeysTab';
 import { InvitationsTab } from '@/components/groups/InvitationsTab';
 import { EdgeNodesTab } from '@/components/groups/EdgeNodesTab';
+import { MultiModelManagement } from '@/components/groups/MultiModelManagement';
+import { ModelPerformanceMonitoring } from '@/components/groups/ModelPerformanceMonitoring';
 
 interface GroupDetail {
   id: string;
@@ -227,14 +229,16 @@ export default function GroupDetailPage() {
       <GroupHeader group={group} isAdmin={isAdmin} />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-7">
+        <TabsList className="grid w-full grid-cols-9">
           <TabsTrigger value="members">成员管理</TabsTrigger>
           <TabsTrigger value="services">AI服务</TabsTrigger>
+          <TabsTrigger value="multi-model">多模型管理</TabsTrigger>
           <TabsTrigger value="api-keys">API密钥</TabsTrigger>
           <TabsTrigger value="deployment">部署模式</TabsTrigger>
           <TabsTrigger value="edge-nodes">边缘节点</TabsTrigger>
           <TabsTrigger value="invitations">邀请管理</TabsTrigger>
           <TabsTrigger value="usage">使用统计</TabsTrigger>
+          <TabsTrigger value="monitoring">性能监控</TabsTrigger>
         </TabsList>
 
         <TabsContent value="members" className="space-y-6">
@@ -287,11 +291,24 @@ export default function GroupDetailPage() {
           />
         </TabsContent>
 
+        <TabsContent value="multi-model" className="space-y-6">
+          <MultiModelManagement
+            groupId={groupId}
+            isAdmin={isAdmin} 
+          />
+        </TabsContent>
+
         <TabsContent value="usage" className="space-y-6">
           <EnhancedUsageStats 
             groupId={groupId}
             title="拼车组使用统计"
             showMemberUsage={true}
+          />
+        </TabsContent>
+
+        <TabsContent value="monitoring" className="space-y-6">
+          <ModelPerformanceMonitoring
+            groupId={groupId}
           />
         </TabsContent>
       </Tabs>

@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { createApiResponse } from '@/lib/middleware';
 import { AIServiceFactory, SupportedAIService } from '@/lib/ai-services/factory';
 import { ChatRequest } from '@/lib/ai-services/base';
-// import { aiServiceRouter } from '@/lib/ai-services/router'; // 暂时未使用
+import { EnhancedAiServiceRouter } from '@/lib/ai-services/enhanced-router';
 
 const chatRequestSchema = z.object({
   messages: z.array(z.object({
@@ -71,6 +71,7 @@ export async function POST(request: NextRequest) {
         displayName: 'Claude Code',
         baseUrl: 'https://api.anthropic.com',
         isEnabled: true,
+        serviceType: 'claude_code' as const,
       },
       gemini: {
         id: 'gemini',
@@ -78,6 +79,7 @@ export async function POST(request: NextRequest) {
         displayName: 'Gemini CLI',
         baseUrl: 'https://generativelanguage.googleapis.com',
         isEnabled: true,
+        serviceType: 'gemini' as const,
       },
       ampcode: {
         id: 'ampcode',
@@ -85,6 +87,7 @@ export async function POST(request: NextRequest) {
         displayName: 'AmpCode',
         baseUrl: 'https://api.ampcode.com',
         isEnabled: true,
+        serviceType: 'ampcode' as const,
       },
     };
 
@@ -102,44 +105,69 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedData = chatRequestSchema.parse(body);
 
-    // 获取组的AI服务配置
-    const groupAiService = await prisma.groupAiService.findFirst({
-      where: {
-        groupId: apiKeyRecord.group.id,
-        aiServiceId: apiKeyRecord.aiServiceId,
-        isEnabled: true,
-      },
-    });
-
-    if (!groupAiService || !groupAiService.authConfig) {
-      return createApiResponse({ error: '拼车组未配置该AI服务' }, false, 400);
-    }
-
-    const authConfig = groupAiService.authConfig as Record<string, unknown>;
-    if (!authConfig.apiKey) {
-      return createApiResponse({ error: 'AI服务未配置API密钥' }, false, 400);
-    }
-
-    // 创建AI服务实例
-    const aiService = AIServiceFactory.create(
-      aiServiceInfo.serviceName as SupportedAIService,
-      {
-        apiKey: authConfig.apiKey as string,
-        baseUrl: aiServiceInfo.baseUrl,
-        timeout: 30000,
-      }
-    );
-
+    // 检查服务类型以决定使用哪种路由策略
+    const serviceType = aiServiceInfo.serviceType;
     const startTime = Date.now();
+    
+    let response;
+    let cost = 0;
 
     try {
-      // 调用AI服务
-      const response = await aiService.chat(validatedData as ChatRequest);
+      if (serviceType === 'claude_code') {
+        // Claude Code CLI使用多模型路由
+        const enhancedRouter = new EnhancedAiServiceRouter();
+        
+        // 初始化多模型路由
+        await enhancedRouter.initializeMultiModelRoutes(apiKeyRecord.group.id);
+        
+        // 使用智能路由调用
+        response = await enhancedRouter.routeToOptimalModel(
+          apiKeyRecord.group.id,
+          validatedData as ChatRequest,
+          serviceType
+        );
+        
+        // 模拟成本计算 - 实际实现中需要根据具体使用的模型计算
+        cost = response.usage.totalTokens * 0.00002; // 临时费率
+        
+      } else {
+        // Gemini CLI和AmpCode CLI使用原有逻辑
+        const groupAiService = await prisma.groupAiService.findFirst({
+          where: {
+            groupId: apiKeyRecord.group.id,
+            aiServiceId: apiKeyRecord.aiServiceId,
+            isEnabled: true,
+          },
+        });
+
+        if (!groupAiService || !groupAiService.authConfig) {
+          return createApiResponse({ error: '拼车组未配置该AI服务' }, false, 400);
+        }
+
+        const authConfig = groupAiService.authConfig as Record<string, unknown>;
+        if (!authConfig.apiKey) {
+          return createApiResponse({ error: 'AI服务未配置API密钥' }, false, 400);
+        }
+
+        // 创建AI服务实例
+        const aiService = AIServiceFactory.create(
+          aiServiceInfo.serviceName as SupportedAIService,
+          {
+            apiKey: authConfig.apiKey as string,
+            baseUrl: aiServiceInfo.baseUrl,
+            timeout: 30000,
+          }
+        );
+
+        // 调用AI服务
+        response = await aiService.chat(validatedData as ChatRequest);
+        
+        // 计算成本
+        cost = aiService.calculateCost(response.usage, response.model);
+      }
+
       const endTime = Date.now();
       const responseTime = endTime - startTime;
-
-      // 计算成本
-      const cost = aiService.calculateCost(response.usage, response.model);
 
       // 记录使用统计
       await prisma.$transaction(async (tx) => {
