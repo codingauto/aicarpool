@@ -68,7 +68,7 @@ export default function CreateAiAccountPage({ params }: { params: Promise<{ ente
   });
 
   // 检查权限
-  if (!hasRole(['owner', 'admin'])) {
+  if (!(hasRole('owner') || hasRole('admin'))) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="text-center py-12">
@@ -169,7 +169,7 @@ export default function CreateAiAccountPage({ params }: { params: Promise<{ ente
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="max-w-4xl mx-auto">
-        {/* 面包屑和标题 */}
+        {/* 面包屑导航 */}
         <div className="flex items-center gap-4 mb-6">
           <Button 
             variant="ghost" 
@@ -189,49 +189,46 @@ export default function CreateAiAccountPage({ params }: { params: Promise<{ ente
           </div>
         </div>
 
-        <div className="space-y-6">
         {/* 页面标题 */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">创建AI账号</h1>
-            <p className="text-gray-600 mt-1">为企业添加新的AI服务账号</p>
-          </div>
-          
-          <Button variant="outline" onClick={() => router.back()}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            返回
-          </Button>
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">创建AI账号</h1>
+          <p className="text-gray-600 mt-2">为企业添加新的AI服务账号，配置认证信息和使用限制</p>
         </div>
 
         {/* 创建表单 */}
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-8">
           {/* 基本信息 */}
-          <Card>
-            <CardHeader>
-              <CardTitle>基本信息</CardTitle>
+          <Card className="shadow-sm">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg font-semibold text-gray-900">基本信息</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="name">账号名称 *</Label>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-3">
+                  <Label htmlFor="name" className="text-sm font-medium text-gray-700">
+                    账号名称 <span className="text-red-500">*</span>
+                  </Label>
                   <Input
                     id="name"
                     value={form.name}
                     onChange={(e) => handleInputChange('name', e.target.value)}
-                    placeholder="输入账号名称"
+                    placeholder="请输入账号名称"
+                    className="h-10"
                     required
                   />
                 </div>
                 
-                <div>
-                  <Label htmlFor="serviceType">AI服务类型 *</Label>
+                <div className="space-y-3">
+                  <Label htmlFor="serviceType" className="text-sm font-medium text-gray-700">
+                    AI服务类型 <span className="text-red-500">*</span>
+                  </Label>
                   <Select value={form.serviceType} onValueChange={(value) => {
                     handleInputChange('serviceType', value);
                     handleInputChange('supportedModels', []);
                     handleInputChange('defaultModel', '');
                   }}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="选择AI服务" />
+                    <SelectTrigger className="h-10">
+                      <SelectValue placeholder="请选择AI服务" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="claude">Claude</SelectItem>
@@ -245,22 +242,23 @@ export default function CreateAiAccountPage({ params }: { params: Promise<{ ente
                 </div>
               </div>
               
-              <div>
-                <Label htmlFor="description">描述</Label>
+              <div className="space-y-3">
+                <Label htmlFor="description" className="text-sm font-medium text-gray-700">描述</Label>
                 <Textarea
                   id="description"
                   value={form.description}
                   onChange={(e) => handleInputChange('description', e.target.value)}
-                  placeholder="输入账号描述"
+                  placeholder="请输入账号描述（可选）"
                   rows={3}
+                  className="resize-none"
                 />
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="accountType">账号类型</Label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-3">
+                  <Label htmlFor="accountType" className="text-sm font-medium text-gray-700">账号类型</Label>
                   <Select value={form.accountType} onValueChange={(value) => handleInputChange('accountType', value)}>
-                    <SelectTrigger>
+                    <SelectTrigger className="h-10">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -270,10 +268,10 @@ export default function CreateAiAccountPage({ params }: { params: Promise<{ ente
                   </Select>
                 </div>
                 
-                <div>
-                  <Label htmlFor="authType">认证类型</Label>
+                <div className="space-y-3">
+                  <Label htmlFor="authType" className="text-sm font-medium text-gray-700">认证类型</Label>
                   <Select value={form.authType} onValueChange={(value) => handleInputChange('authType', value)}>
-                    <SelectTrigger>
+                    <SelectTrigger className="h-10">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -287,43 +285,48 @@ export default function CreateAiAccountPage({ params }: { params: Promise<{ ente
           </Card>
 
           {/* 认证配置 */}
-          <Card>
-            <CardHeader>
-              <CardTitle>认证配置</CardTitle>
+          <Card className="shadow-sm">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg font-semibold text-gray-900">认证配置</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="apiKey">API Key *</Label>
+            <CardContent className="space-y-6">
+              <div className="space-y-3">
+                <Label htmlFor="apiKey" className="text-sm font-medium text-gray-700">
+                  API Key <span className="text-red-500">*</span>
+                </Label>
                 <Input
                   id="apiKey"
                   type="password"
                   value={form.apiKey}
                   onChange={(e) => handleInputChange('apiKey', e.target.value)}
-                  placeholder="输入API Key"
+                  placeholder="请输入API Key"
+                  className="h-10"
                   required
                 />
               </div>
               
               {form.authType === 'api_key' && (
-                <div>
-                  <Label htmlFor="apiSecret">API Secret</Label>
+                <div className="space-y-3">
+                  <Label htmlFor="apiSecret" className="text-sm font-medium text-gray-700">API Secret</Label>
                   <Input
                     id="apiSecret"
                     type="password"
                     value={form.apiSecret}
                     onChange={(e) => handleInputChange('apiSecret', e.target.value)}
-                    placeholder="输入API Secret（如果需要）"
+                    placeholder="请输入API Secret（如果需要）"
+                    className="h-10"
                   />
                 </div>
               )}
               
-              <div>
-                <Label htmlFor="apiEndpoint">API端点</Label>
+              <div className="space-y-3">
+                <Label htmlFor="apiEndpoint" className="text-sm font-medium text-gray-700">API端点</Label>
                 <Input
                   id="apiEndpoint"
                   value={form.apiEndpoint}
                   onChange={(e) => handleInputChange('apiEndpoint', e.target.value)}
                   placeholder="自定义API端点（可选）"
+                  className="h-10"
                 />
               </div>
             </CardContent>
@@ -331,16 +334,16 @@ export default function CreateAiAccountPage({ params }: { params: Promise<{ ente
 
           {/* 模型配置 */}
           {form.serviceType && (
-            <Card>
-              <CardHeader>
-                <CardTitle>模型配置</CardTitle>
+            <Card className="shadow-sm">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-lg font-semibold text-gray-900">模型配置</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label>支持的模型</Label>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2">
+              <CardContent className="space-y-6">
+                <div className="space-y-3">
+                  <Label className="text-sm font-medium text-gray-700">支持的模型</Label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                     {modelOptions.map((model) => (
-                      <label key={model} className="flex items-center space-x-2">
+                      <label key={model} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
                         <input
                           type="checkbox"
                           checked={form.supportedModels.includes(model)}
@@ -351,19 +354,20 @@ export default function CreateAiAccountPage({ params }: { params: Promise<{ ente
                               handleInputChange('supportedModels', form.supportedModels.filter(m => m !== model));
                             }
                           }}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                         />
-                        <span className="text-sm">{model}</span>
+                        <span className="text-sm font-medium text-gray-700">{model}</span>
                       </label>
                     ))}
                   </div>
                 </div>
                 
                 {form.supportedModels.length > 0 && (
-                  <div>
-                    <Label htmlFor="defaultModel">默认模型</Label>
+                  <div className="space-y-3">
+                    <Label htmlFor="defaultModel" className="text-sm font-medium text-gray-700">默认模型</Label>
                     <Select value={form.defaultModel} onValueChange={(value) => handleInputChange('defaultModel', value)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="选择默认模型" />
+                      <SelectTrigger className="h-10">
+                        <SelectValue placeholder="请选择默认模型" />
                       </SelectTrigger>
                       <SelectContent>
                         {form.supportedModels.map((model) => (
@@ -378,25 +382,27 @@ export default function CreateAiAccountPage({ params }: { params: Promise<{ ente
           )}
 
           {/* 限制配置 */}
-          <Card>
-            <CardHeader>
-              <CardTitle>限制配置</CardTitle>
+          <Card className="shadow-sm">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg font-semibold text-gray-900">限制配置</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="dailyLimit">每日请求限制</Label>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-3">
+                  <Label htmlFor="dailyLimit" className="text-sm font-medium text-gray-700">每日请求限制</Label>
                   <Input
                     id="dailyLimit"
                     type="number"
                     value={form.dailyLimit}
                     onChange={(e) => handleInputChange('dailyLimit', parseInt(e.target.value))}
                     min="1"
+                    className="h-10"
+                    placeholder="10000"
                   />
                 </div>
                 
-                <div>
-                  <Label htmlFor="costPerToken">每Token成本 (USD)</Label>
+                <div className="space-y-3">
+                  <Label htmlFor="costPerToken" className="text-sm font-medium text-gray-700">每Token成本 (USD)</Label>
                   <Input
                     id="costPerToken"
                     type="number"
@@ -404,6 +410,8 @@ export default function CreateAiAccountPage({ params }: { params: Promise<{ ente
                     value={form.costPerToken}
                     onChange={(e) => handleInputChange('costPerToken', parseFloat(e.target.value))}
                     min="0"
+                    className="h-10"
+                    placeholder="0.00001"
                   />
                 </div>
               </div>
@@ -411,59 +419,63 @@ export default function CreateAiAccountPage({ params }: { params: Promise<{ ente
           </Card>
 
           {/* 代理配置 */}
-          <Card>
-            <CardHeader>
-              <CardTitle>代理配置</CardTitle>
+          <Card className="shadow-sm">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg font-semibold text-gray-900">代理配置</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center space-x-2">
+            <CardContent className="space-y-6">
+              <div className="flex items-center space-x-3">
                 <Switch
                   checked={form.proxyEnabled}
                   onCheckedChange={(checked) => handleInputChange('proxyEnabled', checked)}
                 />
-                <Label>启用代理</Label>
+                <Label className="text-sm font-medium text-gray-700">启用代理</Label>
               </div>
               
               {form.proxyEnabled && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="proxyHost">代理主机</Label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-gray-200">
+                  <div className="space-y-3">
+                    <Label htmlFor="proxyHost" className="text-sm font-medium text-gray-700">代理主机</Label>
                     <Input
                       id="proxyHost"
                       value={form.proxyHost}
                       onChange={(e) => handleInputChange('proxyHost', e.target.value)}
                       placeholder="代理服务器地址"
+                      className="h-10"
                     />
                   </div>
                   
-                  <div>
-                    <Label htmlFor="proxyPort">代理端口</Label>
+                  <div className="space-y-3">
+                    <Label htmlFor="proxyPort" className="text-sm font-medium text-gray-700">代理端口</Label>
                     <Input
                       id="proxyPort"
                       value={form.proxyPort}
                       onChange={(e) => handleInputChange('proxyPort', e.target.value)}
                       placeholder="端口号"
+                      className="h-10"
                     />
                   </div>
                   
-                  <div>
-                    <Label htmlFor="proxyUsername">代理用户名</Label>
+                  <div className="space-y-3">
+                    <Label htmlFor="proxyUsername" className="text-sm font-medium text-gray-700">代理用户名</Label>
                     <Input
                       id="proxyUsername"
                       value={form.proxyUsername}
                       onChange={(e) => handleInputChange('proxyUsername', e.target.value)}
                       placeholder="用户名（可选）"
+                      className="h-10"
                     />
                   </div>
                   
-                  <div>
-                    <Label htmlFor="proxyPassword">代理密码</Label>
+                  <div className="space-y-3">
+                    <Label htmlFor="proxyPassword" className="text-sm font-medium text-gray-700">代理密码</Label>
                     <Input
                       id="proxyPassword"
                       type="password"
                       value={form.proxyPassword}
                       onChange={(e) => handleInputChange('proxyPassword', e.target.value)}
                       placeholder="密码（可选）"
+                      className="h-10"
                     />
                   </div>
                 </div>
@@ -473,19 +485,28 @@ export default function CreateAiAccountPage({ params }: { params: Promise<{ ente
 
           {/* 错误信息 */}
           {error && (
-            <Card>
+            <Card className="border-red-200 bg-red-50">
               <CardContent className="pt-6">
-                <div className="text-red-600 text-center">{error}</div>
+                <div className="text-red-700 text-center font-medium">{error}</div>
               </CardContent>
             </Card>
           )}
 
           {/* 提交按钮 */}
-          <div className="flex justify-end space-x-4">
-            <Button type="button" variant="outline" onClick={() => router.back()}>
+          <div className="flex justify-end space-x-4 pt-6">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => router.back()}
+              className="h-11 px-6"
+            >
               取消
             </Button>
-            <Button type="submit" disabled={loading}>
+            <Button 
+              type="submit" 
+              disabled={loading}
+              className="h-11 px-6"
+            >
               {loading ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
@@ -500,7 +521,6 @@ export default function CreateAiAccountPage({ params }: { params: Promise<{ ente
             </Button>
           </div>
         </form>
-        </div>
       </div>
     </div>
   );

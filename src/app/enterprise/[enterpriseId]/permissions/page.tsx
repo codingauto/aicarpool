@@ -95,8 +95,14 @@ export default function EnterprisePermissionsPage({ params }: { params: Promise<
   const [showRoleDialog, setShowRoleDialog] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
+  useEffect(() => {
+    if (hasRole('owner') || hasRole('admin')) {
+      fetchPermissionsData();
+    }
+  }, [enterpriseId, hasRole]);
+
   // 权限检查
-  if (!hasRole(['owner', 'admin'])) {
+  if (!hasRole('owner') && !hasRole('admin')) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="text-center py-12">
@@ -107,10 +113,6 @@ export default function EnterprisePermissionsPage({ params }: { params: Promise<
       </div>
     );
   }
-
-  useEffect(() => {
-    fetchPermissionsData();
-  }, [enterpriseId]);
 
   const fetchPermissionsData = async () => {
     try {

@@ -269,7 +269,7 @@ export default function EnterpriseAlertsPage({ params }: { params: Promise<{ ent
               配置和管理企业系统告警规则和通知
             </p>
           </div>
-          {hasRole(['owner', 'admin']) && (
+          {(hasRole('owner') || hasRole('admin')) && (
             <div className="flex gap-2">
               <Dialog open={showChannelDialog} onOpenChange={setShowChannelDialog}>
                 <DialogTrigger asChild>
@@ -449,7 +449,7 @@ export default function EnterpriseAlertsPage({ params }: { params: Promise<{ ent
                           {getStatusIcon(incident.status)}
                           {incident.status}
                         </Badge>
-                        {hasRole(['owner', 'admin']) && incident.status === 'active' && (
+                        {(hasRole('owner') || hasRole('admin')) && incident.status === 'active' && (
                           <Button variant="outline" size="sm">
                             处理
                           </Button>
@@ -490,7 +490,7 @@ export default function EnterpriseAlertsPage({ params }: { params: Promise<{ ent
                           {getSeverityIcon(rule.severity)}
                           {rule.severity}
                         </Badge>
-                        {hasRole(['owner', 'admin']) && (
+                        {(hasRole('owner') || hasRole('admin')) && (
                           <div className="flex gap-1">
                             <Button variant="ghost" size="sm">
                               <Edit className="w-4 h-4" />
@@ -533,7 +533,7 @@ export default function EnterpriseAlertsPage({ params }: { params: Promise<{ ent
                         <Badge variant="secondary">
                           {channel.type}
                         </Badge>
-                        {hasRole(['owner', 'admin']) && (
+                        {(hasRole('owner') || hasRole('admin')) && (
                           <div className="flex gap-1">
                             <Button variant="ghost" size="sm">
                               <Edit className="w-4 h-4" />

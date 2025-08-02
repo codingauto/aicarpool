@@ -193,7 +193,7 @@ export default function EnterpriseOrganizationPage({ params }: { params: Promise
               <p>{dept.memberCount} 名成员</p>
               <p>{dept.groupCount} 个拼车组</p>
             </div>
-            {hasRole(['owner', 'admin']) && (
+            {(hasRole('owner') || hasRole('admin')) && (
               <Button variant="ghost" size="sm">
                 <Edit className="w-4 h-4" />
               </Button>
@@ -289,7 +289,7 @@ export default function EnterpriseOrganizationPage({ params }: { params: Promise
               管理企业部门结构和人员分配
             </p>
           </div>
-          {hasRole(['owner', 'admin']) && (
+          {(hasRole('owner') || hasRole('admin')) && (
             <div className="flex gap-2">
               <Dialog open={showMemberDialog} onOpenChange={setShowMemberDialog}>
                 <DialogTrigger asChild>
@@ -452,7 +452,7 @@ export default function EnterpriseOrganizationPage({ params }: { params: Promise
                         >
                           {member.status === 'active' ? '活跃' : '非活跃'}
                         </Badge>
-                        {hasRole(['owner', 'admin']) && (
+                        {(hasRole('owner') || hasRole('admin')) && (
                           <Button variant="ghost" size="sm">
                             <Edit className="w-4 h-4" />
                           </Button>
@@ -491,7 +491,7 @@ export default function EnterpriseOrganizationPage({ params }: { params: Promise
                         >
                           {group.status === 'active' ? '活跃' : '非活跃'}
                         </Badge>
-                        {hasRole(['owner', 'admin']) && (
+                        {(hasRole('owner') || hasRole('admin')) && (
                           <Button variant="ghost" size="sm">
                             <Edit className="w-4 h-4" />
                           </Button>

@@ -113,19 +113,6 @@ export default function EnterpriseSettingsPage({ params }: { params: Promise<{ e
   const [success, setSuccess] = useState('');
   const [showApiKeys, setShowApiKeys] = useState(false);
 
-  // 权限检查
-  if (!hasRole(['owner', 'admin'])) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center py-12">
-          <Shield className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">访问受限</h3>
-          <p className="text-gray-600">您没有权限访问企业设置页面</p>
-        </div>
-      </div>
-    );
-  }
-
   useEffect(() => {
     fetchSettings();
   }, [enterpriseId]);
@@ -221,6 +208,19 @@ export default function EnterpriseSettingsPage({ params }: { params: Promise<{ e
       }
     });
   };
+
+  // 权限检查
+  if (!(hasRole('owner') || hasRole('admin'))) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center py-12">
+          <Shield className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">访问受限</h3>
+          <p className="text-gray-600">您没有权限访问企业设置页面</p>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (

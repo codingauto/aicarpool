@@ -35,20 +35,22 @@ export async function GET(
 
     // 验证企业访问权限
     const enterprise = await prisma.enterprise.findUnique({
-      where: { id: enterpriseId },
-      include: {
-        members: {
-          where: { userId: user.id },
-          select: { role: true }
-        }
-      }
+      where: { id: enterpriseId }
     });
 
     if (!enterprise) {
       return createApiResponse(false, null, '企业不存在', 404);
     }
 
-    const userMembership = enterprise.members[0];
+    // 检查用户是否是企业成员
+    const userMembership = await prisma.userEnterprise.findFirst({
+      where: {
+        userId: user.id,
+        enterpriseId: enterpriseId,
+        isActive: true
+      }
+    });
+
     if (!userMembership) {
       return createApiResponse(false, null, '您不是该企业的成员', 403);
     }

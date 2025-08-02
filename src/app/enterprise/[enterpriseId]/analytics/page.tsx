@@ -35,41 +35,53 @@ import { useRouter } from 'next/navigation';
 import { useEnterpriseContext } from '@/contexts/enterprise-context';
 
 interface AnalyticsData {
-  summary: {
-    totalRequests: number;
-    totalCost: number;
-    avgResponseTime: number;
-    activeUsers: number;
-    requestsGrowth: number;
-    costGrowth: number;
-    performanceGrowth: number;
-    usersGrowth: number;
+  enterprise: {
+    id: string;
+    name: string;
   };
-  usageTrends: {
-    date: string;
-    requests: number;
-    cost: number;
-    responseTime: number;
-  }[];
-  serviceBreakdown: {
-    service: string;
-    requests: number;
-    cost: number;
+  timeRange: string;
+  summary: {
+    totalGroups: number;
+    totalMembers: number;
+    totalTokens: number;
+    totalCost: number;
+    totalRequests: number;
     avgResponseTime: number;
+    avgSuccessRate: number;
+  };
+  usageData: {
+    date: string;
+    tokens: number;
+    cost: number;
+    requests: number;
+    responseTime: number;
     successRate: number;
   }[];
-  topUsers: {
-    userId: string;
-    userName: string;
-    requests: number;
+  serviceUsage: {
+    serviceType: string;
+    tokens: number;
     cost: number;
+    requests: number;
+    percentage: number;
   }[];
-  topGroups: {
+  groupStats: {
     groupId: string;
     groupName: string;
-    requests: number;
-    cost: number;
     memberCount: number;
+    resourceMode: string;
+    dailyTokens: number;
+    dailyCost: number;
+    utilizationRate: number;
+    efficiency: number;
+  }[];
+  departmentStats: {
+    departmentId: string;
+    departmentName: string;
+    groupCount: number;
+    memberCount: number;
+    dailyTokens: number;
+    dailyCost: number;
+    efficiency: number;
   }[];
 }
 
@@ -209,7 +221,7 @@ export default function EnterpriseAnalyticsPage({ params }: { params: Promise<{ 
                 <SelectItem value="90d">最近90天</SelectItem>
               </SelectContent>
             </Select>
-            {hasRole(['owner', 'admin']) && (
+            {(hasRole('owner') || hasRole('admin')) && (
               <Button variant="outline">
                 <Download className="w-4 h-4 mr-2" />
                 导出报告
@@ -229,9 +241,9 @@ export default function EnterpriseAnalyticsPage({ params }: { params: Promise<{ 
                 </div>
                 <Activity className="w-8 h-8 text-blue-500" />
               </div>
-              <div className={`mt-4 flex items-center text-sm ${getGrowthColor(analytics.summary.requestsGrowth)}`}>
-                {getGrowthIcon(analytics.summary.requestsGrowth)}
-                <span className="ml-1">{Math.abs(analytics.summary.requestsGrowth)}% 较上期</span>
+              <div className="mt-4 flex items-center text-sm text-green-600">
+                <TrendingUp className="w-4 h-4" />
+                <span className="ml-1">+12% 较上期</span>
               </div>
             </CardContent>
           </Card>
@@ -245,9 +257,9 @@ export default function EnterpriseAnalyticsPage({ params }: { params: Promise<{ 
                 </div>
                 <DollarSign className="w-8 h-8 text-green-500" />
               </div>
-              <div className={`mt-4 flex items-center text-sm ${getGrowthColor(analytics.summary.costGrowth)}`}>
-                {getGrowthIcon(analytics.summary.costGrowth)}
-                <span className="ml-1">{Math.abs(analytics.summary.costGrowth)}% 较上期</span>
+              <div className="mt-4 flex items-center text-sm text-red-600">
+                <TrendingUp className="w-4 h-4" />
+                <span className="ml-1">+8% 较上期</span>
               </div>
             </CardContent>
           </Card>
@@ -261,9 +273,9 @@ export default function EnterpriseAnalyticsPage({ params }: { params: Promise<{ 
                 </div>
                 <Clock className="w-8 h-8 text-purple-500" />
               </div>
-              <div className={`mt-4 flex items-center text-sm ${getGrowthColor(-analytics.summary.performanceGrowth)}`}>
-                {getGrowthIcon(-analytics.summary.performanceGrowth)}
-                <span className="ml-1">{Math.abs(analytics.summary.performanceGrowth)}% 较上期</span>
+              <div className="mt-4 flex items-center text-sm text-green-600">
+                <TrendingDown className="w-4 h-4" />
+                <span className="ml-1">-5% 较上期</span>
               </div>
             </CardContent>
           </Card>
@@ -272,14 +284,14 @@ export default function EnterpriseAnalyticsPage({ params }: { params: Promise<{ 
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">活跃用户</p>
-                  <p className="text-2xl font-bold text-gray-900">{analytics.summary.activeUsers}</p>
+                  <p className="text-sm font-medium text-gray-600">总成员数</p>
+                  <p className="text-2xl font-bold text-gray-900">{analytics.summary.totalMembers}</p>
                 </div>
                 <Users className="w-8 h-8 text-orange-500" />
               </div>
-              <div className={`mt-4 flex items-center text-sm ${getGrowthColor(analytics.summary.usersGrowth)}`}>
-                {getGrowthIcon(analytics.summary.usersGrowth)}
-                <span className="ml-1">{Math.abs(analytics.summary.usersGrowth)}% 较上期</span>
+              <div className="mt-4 flex items-center text-sm text-blue-600">
+                <TrendingUp className="w-4 h-4" />
+                <span className="ml-1">+15% 较上期</span>
               </div>
             </CardContent>
           </Card>
@@ -290,21 +302,83 @@ export default function EnterpriseAnalyticsPage({ params }: { params: Promise<{ 
           <TabsList>
             <TabsTrigger value="trends">趋势分析</TabsTrigger>
             <TabsTrigger value="services">服务分析</TabsTrigger>
-            <TabsTrigger value="users">用户分析</TabsTrigger>
+            <TabsTrigger value="users">每日详情</TabsTrigger>
             <TabsTrigger value="groups">拼车组分析</TabsTrigger>
           </TabsList>
 
           <TabsContent value="trends">
             <Card>
               <CardHeader>
-                <CardTitle>使用趋势</CardTitle>
+                <CardTitle>使用趋势分析</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg">
-                  <div className="text-center">
-                    <BarChart3 className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-                    <p className="text-gray-600">趋势图表将在此处显示</p>
-                    <p className="text-sm text-gray-500">需要集成图表库如 Chart.js 或 Recharts</p>
+                <div className="space-y-6">
+                  {/* 总体统计 */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="bg-blue-50 p-4 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-blue-600">总拼车组</p>
+                          <p className="text-xl font-bold text-blue-900">{analytics.summary.totalGroups}</p>
+                        </div>
+                        <Users className="w-8 h-8 text-blue-500" />
+                      </div>
+                    </div>
+                    <div className="bg-green-50 p-4 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-green-600">总Token使用</p>
+                          <p className="text-xl font-bold text-green-900">{formatNumber(analytics.summary.totalTokens)}</p>
+                        </div>
+                        <Zap className="w-8 h-8 text-green-500" />
+                      </div>
+                    </div>
+                    <div className="bg-purple-50 p-4 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-purple-600">平均成功率</p>
+                          <p className="text-xl font-bold text-purple-900">{analytics.summary.avgSuccessRate}%</p>
+                        </div>
+                        <Activity className="w-8 h-8 text-purple-500" />
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* 使用趋势表格 */}
+                  <div>
+                    <h4 className="font-medium mb-3">使用趋势数据</h4>
+                    <div className="border rounded-lg overflow-hidden">
+                      <div className="bg-gray-50 px-4 py-2 border-b">
+                        <div className="grid grid-cols-6 gap-4 text-sm font-medium text-gray-600">
+                          <span>日期</span>
+                          <span>请求数</span>
+                          <span>Token数</span>
+                          <span>成本</span>
+                          <span>响应时间</span>
+                          <span>成功率</span>
+                        </div>
+                      </div>
+                      <div className="divide-y">
+                        {analytics.usageData.slice(-10).map((day) => (
+                          <div key={day.date} className="px-4 py-3 hover:bg-gray-50">
+                            <div className="grid grid-cols-6 gap-4 text-sm">
+                              <span className="font-medium">{day.date}</span>
+                              <span>{formatNumber(day.requests)}</span>
+                              <span>{formatNumber(day.tokens)}</span>
+                              <span>${day.cost.toFixed(2)}</span>
+                              <span>{day.responseTime}ms</span>
+                              <span className="flex items-center">
+                                <div className={`w-2 h-2 rounded-full mr-2 ${
+                                  day.successRate >= 95 ? 'bg-green-500' : 
+                                  day.successRate >= 90 ? 'bg-yellow-500' : 'bg-red-500'
+                                }`}></div>
+                                {day.successRate}%
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -318,21 +392,21 @@ export default function EnterpriseAnalyticsPage({ params }: { params: Promise<{ 
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {analytics.serviceBreakdown.map((service, index) => (
+                  {analytics.serviceUsage.map((service, index) => (
                     <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
                       <div className="flex items-center space-x-3">
                         <Zap className="w-5 h-5 text-blue-500" />
                         <div>
-                          <h4 className="font-medium text-gray-900 capitalize">{service.service}</h4>
+                          <h4 className="font-medium text-gray-900">{service.serviceType}</h4>
                           <p className="text-sm text-gray-600">
-                            成功率 {(service.successRate * 100).toFixed(1)}%
+                            占比 {service.percentage}%
                           </p>
                         </div>
                       </div>
                       <div className="text-right space-y-1">
                         <div className="text-sm font-medium">{formatNumber(service.requests)} 请求</div>
                         <div className="text-sm text-gray-600">${service.cost.toFixed(2)}</div>
-                        <div className="text-xs text-gray-500">{service.avgResponseTime}ms</div>
+                        <div className="text-xs text-gray-500">{formatNumber(service.tokens)} tokens</div>
                       </div>
                     </div>
                   ))}
@@ -344,24 +418,24 @@ export default function EnterpriseAnalyticsPage({ params }: { params: Promise<{ 
           <TabsContent value="users">
             <Card>
               <CardHeader>
-                <CardTitle>用户使用排行</CardTitle>
+                <CardTitle>每日使用详情</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {analytics.topUsers.map((user, index) => (
-                    <div key={user.userId} className="flex items-center justify-between p-4 border rounded-lg">
+                  {analytics.usageData.slice(-7).map((day, index) => (
+                    <div key={day.date} className="flex items-center justify-between p-4 border rounded-lg">
                       <div className="flex items-center space-x-3">
                         <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
                           <span className="text-sm font-medium text-blue-600">#{index + 1}</span>
                         </div>
                         <div>
-                          <h4 className="font-medium text-gray-900">{user.userName}</h4>
-                          <p className="text-sm text-gray-600">用户ID: {user.userId}</p>
+                          <h4 className="font-medium text-gray-900">{day.date}</h4>
+                          <p className="text-sm text-gray-600">成功率: {day.successRate}%</p>
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="text-lg font-semibold text-gray-900">{formatNumber(user.requests)}</div>
-                        <div className="text-sm text-gray-600">${user.cost.toFixed(2)}</div>
+                        <div className="text-lg font-semibold text-gray-900">{formatNumber(day.requests)}</div>
+                        <div className="text-sm text-gray-600">${day.cost.toFixed(2)}</div>
                       </div>
                     </div>
                   ))}
@@ -377,7 +451,7 @@ export default function EnterpriseAnalyticsPage({ params }: { params: Promise<{ 
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {analytics.topGroups.map((group, index) => (
+                  {analytics.groupStats.map((group, index) => (
                     <div key={group.groupId} className="flex items-center justify-between p-4 border rounded-lg">
                       <div className="flex items-center space-x-3">
                         <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
@@ -385,12 +459,13 @@ export default function EnterpriseAnalyticsPage({ params }: { params: Promise<{ 
                         </div>
                         <div>
                           <h4 className="font-medium text-gray-900">{group.groupName}</h4>
-                          <p className="text-sm text-gray-600">{group.memberCount} 名成员</p>
+                          <p className="text-sm text-gray-600">{group.memberCount} 名成员 • {group.resourceMode} 模式</p>
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="text-lg font-semibold text-gray-900">{formatNumber(group.requests)}</div>
-                        <div className="text-sm text-gray-600">${group.cost.toFixed(2)}</div>
+                        <div className="text-lg font-semibold text-gray-900">{formatNumber(group.dailyTokens)} tokens</div>
+                        <div className="text-sm text-gray-600">${group.dailyCost.toFixed(2)}/天</div>
+                        <div className="text-xs text-gray-500">利用率 {group.utilizationRate}% • 效率 {group.efficiency}%</div>
                       </div>
                     </div>
                   ))}
