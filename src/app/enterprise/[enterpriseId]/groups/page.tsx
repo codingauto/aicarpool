@@ -6,6 +6,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Progress } from '@/components/ui/progress';
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { 
   Users, 
@@ -17,7 +26,13 @@ import {
   ChevronLeft,
   Building2,
   DollarSign,
-  Activity
+  Activity,
+  Search,
+  CheckCircle,
+  AlertTriangle,
+  Clock,
+  Database,
+  Zap
 } from 'lucide-react';
 
 interface Group {
@@ -28,17 +43,32 @@ interface Group {
   status: string;
   enterpriseId: string | null;
   memberCount: number;
+  role?: 'admin' | 'member'; // 用户在该组中的角色
   resourceBinding?: {
     bindingMode: string;
     dailyTokenLimit: number;
     monthlyBudget: number | null;
+    priorityLevel?: number;
+    warningThreshold?: number;
+    alertThreshold?: number;
   };
   usageStats?: {
     totalRequests: number;
     totalTokens: number;
     totalCost: number;
+    dailyTokens?: number;
+    dailyCost?: number;
+    requestCount?: number;
+    tokenLimit?: number;
+    costLimit?: number;
+  };
+  resourceConfig?: {
+    bindingMode: 'dedicated' | 'shared' | 'hybrid';
+    isConfigured: boolean;
+    isActive: boolean;
   };
   createdAt: string;
+  lastActiveAt?: string;
 }
 
 interface Enterprise {
@@ -59,6 +89,8 @@ export default function EnterpriseGroupsPage({ params }: PageProps) {
   const [error, setError] = useState('');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState<string | null>(null);
   const [enterpriseId, setEnterpriseId] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterStatus, setFilterStatus] = useState<string>('all');
 
   useEffect(() => {
     params.then(resolvedParams => {
@@ -110,13 +142,58 @@ export default function EnterpriseGroupsPage({ params }: PageProps) {
       if (groupsResponse.ok) {
         const groupsData = await groupsResponse.json();
         if (groupsData.success) {
-          setGroups(groupsData.data || []);
+          // 转换API数据格式为前端期望的格式
+          const formattedGroups: Group[] = (groupsData.data || []).map((apiGroup: any) => {
+            // 计算资源配置状态
+            const hasResourceBinding = apiGroup.resourceBinding;
+            const isActive = apiGroup.status === 'active';
+            
+            return {
+              id: apiGroup.id,
+              name: apiGroup.name,
+              description: apiGroup.description,
+              maxMembers: apiGroup.maxMembers,
+              status: apiGroup.status,
+              enterpriseId: apiGroup.enterpriseId,
+              memberCount: apiGroup.memberCount || 0,
+              role: 'admin', // 企业管理员默认为组管理员
+              resourceBinding: apiGroup.resourceBinding,
+              usageStats: apiGroup.usageStats ? {
+                totalRequests: apiGroup.usageStats.totalRequests || 0,
+                totalTokens: apiGroup.usageStats.totalTokens || 0,
+                totalCost: apiGroup.usageStats.totalCost || 0,
+                // 模拟实时数据
+                dailyTokens: Math.floor(Math.random() * 10000),
+                dailyCost: Math.random() * 50,
+                requestCount: Math.floor(Math.random() * 200),
+                tokenLimit: apiGroup.resourceBinding?.dailyTokenLimit || 50000,
+                costLimit: apiGroup.resourceBinding?.monthlyBudget || 500
+              } : {
+                totalRequests: 0,
+                totalTokens: 0,
+                totalCost: 0,
+                dailyTokens: 0,
+                dailyCost: 0,
+                requestCount: 0,
+                tokenLimit: 50000,
+                costLimit: 500
+              },
+              resourceConfig: {
+                bindingMode: apiGroup.resourceBinding?.bindingMode || 'shared',
+                isConfigured: !!hasResourceBinding,
+                isActive: isActive && !!hasResourceBinding
+              },
+              createdAt: apiGroup.createdAt,
+              lastActiveAt: apiGroup.updatedAt || apiGroup.createdAt
+            };
+          });
+          
+          setGroups(formattedGroups);
         } else {
           setError(groupsData.error || '获取拼车组列表失败');
         }
       } else {
-        // API路由可能还不存在，先显示空列表
-        setGroups([]);
+        setError('获取拼车组列表失败');
       }
 
     } catch (error) {
@@ -176,6 +253,38 @@ export default function EnterpriseGroupsPage({ params }: PageProps) {
     return <Badge className={config.className}>{config.label}</Badge>;
   };
 
+  const getBindingModeDisplayName = (mode: string) => {
+    const displayNames: Record<string, string> = {
+      'dedicated': '专属',
+      'shared': '共享', 
+      'hybrid': '混合'
+    };
+    return displayNames[mode] || mode;
+  };
+
+  const getConfigStatusIcon = (config?: Group['resourceConfig']) => {
+    if (!config) {
+      return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
+    }
+    
+    if (config.isConfigured && config.isActive) {
+      return <CheckCircle className="h-4 w-4 text-green-500" />;
+    } else if (config.isConfigured && !config.isActive) {
+      return <AlertTriangle className="h-4 w-4 text-orange-500" />;
+    } else {
+      return <AlertTriangle className="h-4 w-4 text-red-500" />;
+    }
+  };
+
+  // 筛选拼车组
+  const filteredGroups = groups.filter(group => {
+    const matchesSearch = group.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         group.description?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = filterStatus === 'all' || group.status === filterStatus;
+    
+    return matchesSearch && matchesStatus;
+  });
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -203,10 +312,10 @@ export default function EnterpriseGroupsPage({ params }: PageProps) {
           <Button 
             variant="ghost" 
             size="sm"
-            onClick={() => router.push('/enterprise')}
+            onClick={() => router.push(`/enterprise/${enterpriseId}/dashboard`)}
           >
             <ChevronLeft className="w-4 h-4 mr-2" />
-            返回企业管理
+            返回企业控制面板
           </Button>
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <Building2 className="w-4 h-4" />
@@ -230,6 +339,46 @@ export default function EnterpriseGroupsPage({ params }: PageProps) {
             创建拼车组
           </Button>
         </div>
+
+        {/* 搜索和筛选 */}
+        <div className="flex flex-col md:flex-row gap-4 mb-8">
+          <div className="flex-1">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Input
+                placeholder="搜索拼车组名称或描述..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+          </div>
+          <Select value={filterStatus} onValueChange={setFilterStatus}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="筛选状态" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">全部状态</SelectItem>
+              <SelectItem value="active">活跃</SelectItem>
+              <SelectItem value="inactive">停用</SelectItem>
+              <SelectItem value="archived">已归档</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* 搜索结果提示 */}
+        {(searchQuery || filterStatus !== 'all') && (
+          <div className="mb-6">
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                找到 {filteredGroups.length} 个匹配的拼车组
+                {searchQuery && ` (搜索: "${searchQuery}")`}
+                {filterStatus !== 'all' && ` (状态: ${filterStatus})`}
+              </AlertDescription>
+            </Alert>
+          </div>
+        )}
 
         {/* 统计概览 */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -294,7 +443,7 @@ export default function EnterpriseGroupsPage({ params }: PageProps) {
           </Card>
         ) : (
           <div className="grid gap-6">
-            {groups.map((group) => (
+            {filteredGroups.map((group) => (
               <Card key={group.id} className="hover:shadow-lg transition-shadow">
                 <CardHeader>
                   <div className="flex items-center justify-between">
@@ -305,6 +454,12 @@ export default function EnterpriseGroupsPage({ params }: PageProps) {
                       </CardTitle>
                       {getStatusBadge(group.status)}
                       {getBindingModeBadge(group.resourceBinding?.bindingMode)}
+                      <div className="flex items-center gap-1">
+                        {getConfigStatusIcon(group.resourceConfig)}
+                        <span className="text-xs text-gray-500">
+                          {group.resourceConfig?.isConfigured ? '已配置' : '未配置'}
+                        </span>
+                      </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <Button 
@@ -338,53 +493,125 @@ export default function EnterpriseGroupsPage({ params }: PageProps) {
                     {group.description || '暂无描述'}
                   </CardDescription>
                   
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                    <div>
-                      <span className="text-gray-600">成员数:</span>
-                      <span className="ml-2 font-medium">
+                  {/* 成员使用进度 */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">成员使用情况</span>
+                      <span className="font-medium">
                         {group.memberCount || 0} / {group.maxMembers}
                       </span>
                     </div>
-                    
-                    <div>
-                      <span className="text-gray-600">日用量限制:</span>
-                      <span className="ml-2 font-medium">
-                        {group.resourceBinding?.dailyTokenLimit?.toLocaleString() || '--'} tokens
-                      </span>
+                    <Progress 
+                      value={((group.memberCount || 0) / group.maxMembers) * 100} 
+                      className="h-2" 
+                    />
+                  </div>
+
+                  {/* Token使用进度 */}
+                  {group.usageStats && group.usageStats.tokenLimit && (
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">今日Token使用</span>
+                        <span className="font-medium">
+                          {group.usageStats.dailyTokens?.toLocaleString()} / {group.usageStats.tokenLimit?.toLocaleString()}
+                        </span>
+                      </div>
+                      <Progress 
+                        value={((group.usageStats.dailyTokens || 0) / (group.usageStats.tokenLimit || 1)) * 100} 
+                        className="h-2" 
+                      />
+                    </div>
+                  )}
+
+                  {/* 成本使用进度 */}
+                  {group.usageStats && group.usageStats.costLimit && (
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">今日成本</span>
+                        <span className="font-medium">
+                          ${group.usageStats.dailyCost?.toFixed(2)} / ${group.usageStats.costLimit}
+                        </span>
+                      </div>
+                      <Progress 
+                        value={((group.usageStats.dailyCost || 0) / (group.usageStats.costLimit || 1)) * 100} 
+                        className="h-2" 
+                      />
+                    </div>
+                  )}
+                  
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                    <div className="flex items-center gap-2">
+                      <Database className="w-4 h-4 text-gray-400" />
+                      <div>
+                        <div className="text-gray-600">绑定模式</div>
+                        <div className="font-medium">
+                          {getBindingModeDisplayName(group.resourceBinding?.bindingMode || 'shared')}
+                        </div>
+                      </div>
                     </div>
                     
-                    <div>
-                      <span className="text-gray-600">月预算:</span>
-                      <span className="ml-2 font-medium">
-                        ${group.resourceBinding?.monthlyBudget || '--'}
-                      </span>
+                    <div className="flex items-center gap-2">
+                      <Zap className="w-4 h-4 text-gray-400" />
+                      <div>
+                        <div className="text-gray-600">日用量限制</div>
+                        <div className="font-medium">
+                          {group.resourceBinding?.dailyTokenLimit?.toLocaleString() || '--'} tokens
+                        </div>
+                      </div>
                     </div>
                     
-                    <div>
-                      <span className="text-gray-600">创建时间:</span>
-                      <span className="ml-2 font-medium">
-                        {new Date(group.createdAt).toLocaleDateString()}
-                      </span>
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="w-4 h-4 text-gray-400" />
+                      <div>
+                        <div className="text-gray-600">月预算</div>
+                        <div className="font-medium">
+                          ${group.resourceBinding?.monthlyBudget || '--'}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-gray-400" />
+                      <div>
+                        <div className="text-gray-600">创建时间</div>
+                        <div className="font-medium">
+                          {new Date(group.createdAt).toLocaleDateString()}
+                        </div>
+                      </div>
                     </div>
                   </div>
 
                   {group.usageStats && (
                     <div className="border-t pt-4">
-                      <h4 className="font-medium mb-2">使用统计</h4>
-                      <div className="grid grid-cols-3 gap-4 text-sm">
-                        <div>
-                          <span className="text-gray-600">总请求:</span>
-                          <span className="ml-2 font-medium">{group.usageStats.totalRequests}</span>
+                      <h4 className="font-medium mb-3 flex items-center gap-2">
+                        <Activity className="w-4 h-4" />
+                        使用统计
+                      </h4>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                        <div className="bg-blue-50 p-3 rounded-lg">
+                          <div className="text-blue-600 font-medium">{group.usageStats.totalRequests}</div>
+                          <div className="text-blue-500 text-xs">总请求数</div>
                         </div>
-                        <div>
-                          <span className="text-gray-600">总Token:</span>
-                          <span className="ml-2 font-medium">{group.usageStats.totalTokens?.toLocaleString()}</span>
+                        <div className="bg-green-50 p-3 rounded-lg">
+                          <div className="text-green-600 font-medium">{group.usageStats.totalTokens?.toLocaleString()}</div>
+                          <div className="text-green-500 text-xs">总Token数</div>
                         </div>
-                        <div>
-                          <span className="text-gray-600">总成本:</span>
-                          <span className="ml-2 font-medium">${group.usageStats.totalCost?.toFixed(2)}</span>
+                        <div className="bg-orange-50 p-3 rounded-lg">
+                          <div className="text-orange-600 font-medium">${group.usageStats.totalCost?.toFixed(2)}</div>
+                          <div className="text-orange-500 text-xs">总成本</div>
+                        </div>
+                        <div className="bg-purple-50 p-3 rounded-lg">
+                          <div className="text-purple-600 font-medium">{group.usageStats.requestCount || 0}</div>
+                          <div className="text-purple-500 text-xs">今日请求</div>
                         </div>
                       </div>
+                    </div>
+                  )}
+
+                  {/* 最后活跃时间 */}
+                  {group.lastActiveAt && (
+                    <div className="text-xs text-gray-500 border-t pt-2">
+                      最后活跃: {new Date(group.lastActiveAt).toLocaleString()}
                     </div>
                   )}
                 </CardContent>

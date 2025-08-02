@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Menu } from 'lucide-react';
 import { Sidebar } from './Sidebar';
+import { TopNavigation } from './TopNavigation';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -65,44 +66,40 @@ export function AppLayout({ children, title, actions }: AppLayoutProps) {
     return routeTitles[pathname] || 'AiCarpool';
   };
 
-  // 检查是否是认证页面
-  const isAuthPage = pathname.startsWith('/auth/') || pathname === '/';
+  // 检查页面类型
+  const isAuthPage = pathname.startsWith('/auth/') || pathname === '/landing';
+  const isEnterpriseSelectionPage = pathname === '/'; // 企业选择页面
+  const isEnterprisePage = pathname.startsWith('/enterprise/'); // 企业内部页面
 
-  if (isAuthPage) {
+  // 认证页面和企业页面跳过全局布局
+  if (isAuthPage || isEnterprisePage) {
     return <>{children}</>;
   }
 
+  // 企业选择页面使用顶部导航
+  if (isEnterpriseSelectionPage) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <TopNavigation showNavigationMenu={true} />
+        <main className="flex-1">
+          {children}
+        </main>
+      </div>
+    );
+  }
+
+  // 其他全局页面使用顶部导航 + 主内容
   return (
     <div className="min-h-screen bg-gray-50">
-      <Sidebar 
-        isCollapsed={isCollapsed}
-        onToggleCollapse={handleToggleCollapse}
-        isMobileOpen={isMobileOpen}
-        onMobileToggle={handleMobileToggle}
-      />
+      <TopNavigation showNavigationMenu={true} />
       
-      {/* Main Content */}
-      <div className={`transition-all duration-300 ease-in-out ${
-        isCollapsed ? 'lg:ml-16' : 'lg:ml-64'
-      }`}>
-        {/* Top Bar */}
-        <header className="bg-white border-b border-gray-200 px-4 py-3 lg:px-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              {/* Mobile menu button */}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleMobileToggle}
-                className="lg:hidden"
-              >
-                <Menu className="w-5 h-5" />
-              </Button>
-              
-              <h1 className="text-xl font-semibold text-gray-900">
-                {getPageTitle()}
-              </h1>
-            </div>
+      {/* 页面标题栏 */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-12">
+            <h1 className="text-lg font-semibold text-gray-900">
+              {getPageTitle()}
+            </h1>
             
             {/* Actions */}
             {actions && (
@@ -111,13 +108,13 @@ export function AppLayout({ children, title, actions }: AppLayoutProps) {
               </div>
             )}
           </div>
-        </header>
-
-        {/* Page Content */}
-        <main className="flex-1">
-          {children}
-        </main>
+        </div>
       </div>
+
+      {/* Page Content */}
+      <main className="flex-1">
+        {children}
+      </main>
     </div>
   );
 }
