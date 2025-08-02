@@ -56,7 +56,7 @@ export async function GET(
 
     // 计算时间范围
     const now = new Date();
-    let startDate = new Date();
+    const startDate = new Date();
     
     switch (period) {
       case '1d':
@@ -219,7 +219,7 @@ export async function GET(
     }));
 
     // 分析资源绑定使用情况
-    let bindingAnalysis: any = {
+    const bindingAnalysis: any = {
       mode: group.resourceBinding?.bindingMode || 'none',
       configured: !!group.resourceBinding,
       dedicatedAccounts: 0,

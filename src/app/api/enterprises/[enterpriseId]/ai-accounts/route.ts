@@ -27,12 +27,12 @@ export async function GET(
     // 1. 认证验证
     const token = request.headers.get('authorization')?.replace('Bearer ', '');
     if (!token) {
-      return createApiResponse(null, false, '缺少认证令牌', 401);
+      return createApiResponse(false, null, '缺少认证令牌', 401);
     }
 
     const user = await verifyToken(token);
     if (!user) {
-      return createApiResponse(null, false, '认证令牌无效', 401);
+      return createApiResponse(false, null, '认证令牌无效', 401);
     }
 
     const resolvedParams = await params;
@@ -40,7 +40,7 @@ export async function GET(
     
     // 2. 参数验证
     if (!enterpriseId) {
-      return createApiResponse(null, false, '缺少企业ID', 400);
+      return createApiResponse(false, null, '缺少企业ID', 400);
     }
 
     // 3. 权限验证 - 检查用户是否属于该企业
@@ -49,7 +49,7 @@ export async function GET(
     });
 
     if (!enterprise) {
-      return createApiResponse(null, false, '企业不存在', 404);
+      return createApiResponse(false, null, '企业不存在', 404);
     }
 
     // 4. 获取查询参数
@@ -177,7 +177,7 @@ export async function GET(
 
   } catch (error) {
     console.error('获取企业AI账号列表失败:', error);
-    return createApiResponse(null, false, '获取AI账号列表失败', 500);
+    return createApiResponse(false, null, '获取AI账号列表失败', 500);
   }
 }
 
@@ -192,12 +192,12 @@ export async function POST(
     // 1. 认证验证
     const token = request.headers.get('authorization')?.replace('Bearer ', '');
     if (!token) {
-      return createApiResponse(null, false, '缺少认证令牌', 401);
+      return createApiResponse(false, null, '缺少认证令牌', 401);
     }
 
     const user = await verifyToken(token);
     if (!user) {
-      return createApiResponse(null, false, '认证令牌无效', 401);
+      return createApiResponse(false, null, '认证令牌无效', 401);
     }
 
     const resolvedParams = await params;
@@ -221,19 +221,19 @@ export async function POST(
 
     // 3. 参数验证
     if (!name || !serviceType || !authType || !credentials) {
-      return createApiResponse(null, false, '缺少必要参数', 400);
+      return createApiResponse(false, null, '缺少必要参数', 400);
     }
 
     if (!['claude', 'gemini', 'openai', 'qwen', 'zhipu', 'kimi'].includes(serviceType)) {
-      return createApiResponse(null, false, '不支持的AI服务类型', 400);
+      return createApiResponse(false, null, '不支持的AI服务类型', 400);
     }
 
     if (!['dedicated', 'shared'].includes(accountType)) {
-      return createApiResponse(null, false, '不支持的账号类型', 400);
+      return createApiResponse(false, null, '不支持的账号类型', 400);
     }
 
     if (!['oauth', 'api_key'].includes(authType)) {
-      return createApiResponse(null, false, '不支持的认证类型', 400);
+      return createApiResponse(false, null, '不支持的认证类型', 400);
     }
 
     // 4. 企业权限验证
@@ -242,7 +242,7 @@ export async function POST(
     });
 
     if (!enterprise) {
-      return createApiResponse(null, false, '企业不存在', 404);
+      return createApiResponse(false, null, '企业不存在', 404);
     }
 
     // 5. 检查同名账号
@@ -254,7 +254,7 @@ export async function POST(
     });
 
     if (existingAccount) {
-      return createApiResponse(null, false, '账号名称已存在', 409);
+      return createApiResponse(false, null, '账号名称已存在', 409);
     }
 
     // 6. 创建AI账号
@@ -318,7 +318,7 @@ export async function POST(
 
   } catch (error) {
     console.error('创建AI账号失败:', error);
-    return createApiResponse(null, false, '创建AI账号失败', 500);
+    return createApiResponse(false, null, '创建AI账号失败', 500);
   }
 }
 
@@ -333,12 +333,12 @@ export async function PATCH(
     // 1. 认证验证
     const token = request.headers.get('authorization')?.replace('Bearer ', '');
     if (!token) {
-      return createApiResponse(null, false, '缺少认证令牌', 401);
+      return createApiResponse(false, null, '缺少认证令牌', 401);
     }
 
     const user = await verifyToken(token);
     if (!user) {
-      return createApiResponse(null, false, '认证令牌无效', 401);
+      return createApiResponse(false, null, '认证令牌无效', 401);
     }
 
     const resolvedParams = await params;
@@ -350,7 +350,7 @@ export async function PATCH(
 
     // 3. 参数验证
     if (!action || !accountIds || !Array.isArray(accountIds) || accountIds.length === 0) {
-      return createApiResponse(null, false, '缺少必要参数', 400);
+      return createApiResponse(false, null, '缺少必要参数', 400);
     }
 
     // 4. 权限验证
@@ -363,7 +363,7 @@ export async function PATCH(
     });
 
     if (validAccounts.length !== accountIds.length) {
-      return createApiResponse(null, false, '包含无效的账号ID', 400);
+      return createApiResponse(false, null, '包含无效的账号ID', 400);
     }
 
     let result;
@@ -395,7 +395,7 @@ export async function PATCH(
         
         if (boundAccounts.length > 0) {
           const boundGroupNames = boundAccounts.map(b => b.group.name).join(', ');
-          return createApiResponse(null, false, `账号正在被拼车组使用: ${boundGroupNames}`, 409);
+          return createApiResponse(false, null, `账号正在被拼车组使用: ${boundGroupNames}`, 409);
         }
         
         result = await prisma.aiServiceAccount.deleteMany({
@@ -405,7 +405,7 @@ export async function PATCH(
         
       case 'update':
         if (!data) {
-          return createApiResponse(null, false, '缺少更新数据', 400);
+          return createApiResponse(false, null, '缺少更新数据', 400);
         }
         
         result = await prisma.aiServiceAccount.updateMany({
@@ -420,7 +420,7 @@ export async function PATCH(
         break;
         
       default:
-        return createApiResponse(null, false, '不支持的操作类型', 400);
+        return createApiResponse(false, null, '不支持的操作类型', 400);
     }
 
     console.log(`✅ API 企业AI账号: 批量${action}操作完成，影响${result.count}个账号`);
@@ -433,6 +433,6 @@ export async function PATCH(
 
   } catch (error) {
     console.error('批量操作AI账号失败:', error);
-    return createApiResponse(null, false, '批量操作失败', 500);
+    return createApiResponse(false, null, '批量操作失败', 500);
   }
 }

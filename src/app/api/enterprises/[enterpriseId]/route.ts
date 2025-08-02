@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
-import { createApiResponse } from '@/lib/middleware';
+import { createNextResponse } from '@/lib/middleware';
 import { getUserFromRequest } from '@/lib/auth';
 import { cacheManager } from '@/lib/cache';
 
@@ -19,11 +19,24 @@ export async function GET(
   try {
     const user = await getUserFromRequest(request);
     if (!user) {
-      return createApiResponse(false, null, '未授权', 401);
+      return createNextResponse(false, null, '未授权', 401);
     }
 
     const resolvedParams = await params;
     const { enterpriseId } = resolvedParams;
+
+    // 验证用户是否有权限访问此企业
+    const userEnterprise = await prisma.userEnterprise.findFirst({
+      where: {
+        userId: user.id,
+        enterpriseId: enterpriseId,
+        isActive: true
+      }
+    });
+
+    if (!userEnterprise) {
+      return createNextResponse(false, null, '没有权限访问该企业', 403);
+    }
 
     const enterprise = await prisma.enterprise.findUnique({
       where: { id: enterpriseId },
@@ -51,21 +64,29 @@ export async function GET(
         _count: {
           select: {
             departments: true,
-            accountPools: true
+            accountPools: true,
+            userEnterprises: true,
+            groups: true
           }
         }
       }
     });
 
     if (!enterprise) {
-      return createApiResponse(false, null, '企业不存在', 404);
+      return createNextResponse(false, null, '企业不存在', 404);
     }
 
-    return createApiResponse(true, enterprise, '获取企业详情成功', 200);
+    // 添加用户在该企业的角色信息
+    const enterpriseData = {
+      ...enterprise,
+      userRole: userEnterprise.role
+    };
+
+    return createNextResponse(true, enterpriseData, '获取企业详情成功', 200);
     
   } catch (error) {
     console.error('Get enterprise error:', error);
-    return createApiResponse(false, null, '获取企业详情失败', 500);
+    return createNextResponse(false, null, '获取企业详情失败', 500);
   }
 }
 
@@ -77,7 +98,7 @@ export async function PUT(
   try {
     const user = await getUserFromRequest(request);
     if (!user) {
-      return createApiResponse(false, null, '未授权', 401);
+      return createNextResponse(false, null, '未授权', 401);
     }
 
     const resolvedParams = await params;
@@ -89,7 +110,7 @@ export async function PUT(
     });
 
     if (!existingEnterprise) {
-      return createApiResponse(false, null, '企业不存在', 404);
+      return createNextResponse(false, null, '企业不存在', 404);
     }
 
     const body = await request.json();
@@ -131,15 +152,15 @@ export async function PUT(
     // 清理相关缓存
     await cacheManager.invalidateEnterpriseCache(enterpriseId);
 
-    return createApiResponse(true, updatedEnterprise, '企业信息更新成功', 200);
+    return createNextResponse(true, updatedEnterprise, '企业信息更新成功', 200);
     
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return createApiResponse(false, null, error.issues[0].message, 400);
+      return createNextResponse(false, null, error.issues[0].message, 400);
     }
     
     console.error('Update enterprise error:', error);
-    return createApiResponse(false, null, '更新企业信息失败', 500);
+    return createNextResponse(false, null, '更新企业信息失败', 500);
   }
 }
 
@@ -151,7 +172,7 @@ export async function DELETE(
   try {
     const user = await getUserFromRequest(request);
     if (!user) {
-      return createApiResponse(false, null, '未授权', 401);
+      return createNextResponse(false, null, '未授权', 401);
     }
 
     const resolvedParams = await params;
@@ -167,16 +188,16 @@ export async function DELETE(
     });
 
     if (!enterprise) {
-      return createApiResponse(false, null, '企业不存在', 404);
+      return createNextResponse(false, null, '企业不存在', 404);
     }
 
     // 检查是否有关联的部门或账号池
     if (enterprise.departments.length > 0) {
-      return createApiResponse(false, null, '该企业下还有部门，请先删除所有部门', 400);
+      return createNextResponse(false, null, '该企业下还有部门，请先删除所有部门', 400);
     }
 
     if (enterprise.accountPools.length > 0) {
-      return createApiResponse(false, null, '该企业下还有账号池，请先删除所有账号池', 400);
+      return createNextResponse(false, null, '该企业下还有账号池，请先删除所有账号池', 400);
     }
 
     await prisma.enterprise.delete({
@@ -186,10 +207,10 @@ export async function DELETE(
     // 清理相关缓存
     await cacheManager.invalidateEnterpriseCache(enterpriseId);
 
-    return createApiResponse(true, { id: enterpriseId }, '企业删除成功', 200);
+    return createNextResponse(true, { id: enterpriseId }, '企业删除成功', 200);
     
   } catch (error) {
     console.error('Delete enterprise error:', error);
-    return createApiResponse(false, null, '删除企业失败', 500);
+    return createNextResponse(false, null, '删除企业失败', 500);
   }
 }

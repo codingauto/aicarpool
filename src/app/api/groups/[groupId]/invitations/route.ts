@@ -26,12 +26,12 @@ export async function GET(
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '');
     if (!token) {
-      return createApiResponse(null, false, '缺少认证令牌', 401);
+      return createApiResponse(false, null, '缺少认证令牌', 401);
     }
 
     const user = await verifyToken(token);
     if (!user) {
-      return createApiResponse(null, false, '认证令牌无效', 401);
+      return createApiResponse(false, null, '认证令牌无效', 401);
     }
 
     const resolvedParams = await params;
@@ -47,7 +47,7 @@ export async function GET(
     });
 
     if (!groupMembership) {
-      return createApiResponse(null, false, '无权限访问该拼车组', 403);
+      return createApiResponse(false, null, '无权限访问该拼车组', 403);
     }
 
     // 获取邀请列表
@@ -93,7 +93,7 @@ export async function GET(
 
   } catch (error) {
     console.error('获取邀请列表失败:', error);
-    return createApiResponse(null, false, '获取邀请列表失败', 500);
+    return createApiResponse(false, null, '获取邀请列表失败', 500);
   }
 }
 
@@ -107,12 +107,12 @@ export async function POST(
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '');
     if (!token) {
-      return createApiResponse(null, false, '缺少认证令牌', 401);
+      return createApiResponse(false, null, '缺少认证令牌', 401);
     }
 
     const user = await verifyToken(token);
     if (!user) {
-      return createApiResponse(null, false, '认证令牌无效', 401);
+      return createApiResponse(false, null, '认证令牌无效', 401);
     }
 
     const resolvedParams = await params;
@@ -122,13 +122,13 @@ export async function POST(
     const { email, message, expiresInDays = 7 } = body;
 
     if (!email) {
-      return createApiResponse(null, false, '缺少邮箱地址', 400);
+      return createApiResponse(false, null, '缺少邮箱地址', 400);
     }
 
     // 验证邮箱格式
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      return createApiResponse(null, false, '邮箱格式无效', 400);
+      return createApiResponse(false, null, '邮箱格式无效', 400);
     }
 
     // 验证当前用户是否为拼车组管理员
@@ -142,7 +142,7 @@ export async function POST(
     });
 
     if (!groupMembership) {
-      return createApiResponse(null, false, '无权限发送邀请', 403);
+      return createApiResponse(false, null, '无权限发送邀请', 403);
     }
 
     // 获取拼车组信息
@@ -166,12 +166,12 @@ export async function POST(
     });
 
     if (!group) {
-      return createApiResponse(null, false, '拼车组不存在', 404);
+      return createApiResponse(false, null, '拼车组不存在', 404);
     }
 
     // 检查拼车组是否已满
     if (group._count.members >= group.maxMembers) {
-      return createApiResponse(null, false, '拼车组已达到最大成员数量', 400);
+      return createApiResponse(false, null, '拼车组已达到最大成员数量', 400);
     }
 
     // 检查用户是否已经是成员
@@ -189,7 +189,7 @@ export async function POST(
       });
 
       if (existingMember) {
-        return createApiResponse(null, false, '该用户已经是拼车组成员', 400);
+        return createApiResponse(false, null, '该用户已经是拼车组成员', 400);
       }
 
       // 如果有企业，验证用户是否属于该企业
@@ -203,7 +203,7 @@ export async function POST(
         });
 
         if (!userEnterpriseRole) {
-          return createApiResponse(null, false, '该用户不属于企业，无法邀请', 403);
+          return createApiResponse(false, null, '该用户不属于企业，无法邀请', 403);
         }
       }
     }
@@ -221,7 +221,7 @@ export async function POST(
     });
 
     if (existingInvitation) {
-      return createApiResponse(null, false, '该邮箱已有未过期的邀请', 400);
+      return createApiResponse(false, null, '该邮箱已有未过期的邀请', 400);
     }
 
     // 生成邀请令牌
@@ -278,7 +278,7 @@ export async function POST(
 
   } catch (error) {
     console.error('创建邀请失败:', error);
-    return createApiResponse(null, false, '创建邀请失败', 500);
+    return createApiResponse(false, null, '创建邀请失败', 500);
   }
 }
 
@@ -292,12 +292,12 @@ export async function PATCH(
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '');
     if (!token) {
-      return createApiResponse(null, false, '缺少认证令牌', 401);
+      return createApiResponse(false, null, '缺少认证令牌', 401);
     }
 
     const user = await verifyToken(token);
     if (!user) {
-      return createApiResponse(null, false, '认证令牌无效', 401);
+      return createApiResponse(false, null, '认证令牌无效', 401);
     }
 
     const resolvedParams = await params;
@@ -307,7 +307,7 @@ export async function PATCH(
     const { invitationId, action } = body;
 
     if (!invitationId || !action) {
-      return createApiResponse(null, false, '缺少必要参数', 400);
+      return createApiResponse(false, null, '缺少必要参数', 400);
     }
 
     // 验证当前用户是否为拼车组管理员
@@ -321,7 +321,7 @@ export async function PATCH(
     });
 
     if (!groupMembership) {
-      return createApiResponse(null, false, '无权限管理邀请', 403);
+      return createApiResponse(false, null, '无权限管理邀请', 403);
     }
 
     const invitation = await prisma.invitation.findUnique({
@@ -329,7 +329,7 @@ export async function PATCH(
     });
 
     if (!invitation || invitation.groupId !== groupId) {
-      return createApiResponse(null, false, '邀请不存在', 404);
+      return createApiResponse(false, null, '邀请不存在', 404);
     }
 
     let newStatus: string;
@@ -338,7 +338,7 @@ export async function PATCH(
     switch (action) {
       case 'resend':
         if (invitation.status !== 'pending') {
-          return createApiResponse(null, false, '只能重发待处理的邀请', 400);
+          return createApiResponse(false, null, '只能重发待处理的邀请', 400);
         }
 
         // 延长过期时间
@@ -357,7 +357,7 @@ export async function PATCH(
 
       case 'cancel':
         if (invitation.status !== 'pending') {
-          return createApiResponse(null, false, '只能取消待处理的邀请', 400);
+          return createApiResponse(false, null, '只能取消待处理的邀请', 400);
         }
 
         await prisma.invitation.update({
@@ -369,7 +369,7 @@ export async function PATCH(
         break;
 
       default:
-        return createApiResponse(null, false, '不支持的操作', 400);
+        return createApiResponse(false, null, '不支持的操作', 400);
     }
 
     console.log(`✅ API 邀请管理: ${action} 操作成功，邀请 ${invitationId}`);
@@ -385,6 +385,6 @@ export async function PATCH(
 
   } catch (error) {
     console.error('管理邀请失败:', error);
-    return createApiResponse(null, false, '操作失败', 500);
+    return createApiResponse(false, null, '操作失败', 500);
   }
 }

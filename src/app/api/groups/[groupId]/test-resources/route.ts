@@ -25,12 +25,12 @@ export async function POST(
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '');
     if (!token) {
-      return createApiResponse(null, false, '缺少认证令牌', 401);
+      return createApiResponse(false, null, '缺少认证令牌', 401);
     }
 
     const user = await verifyToken(token);
     if (!user) {
-      return createApiResponse(null, false, '认证令牌无效', 401);
+      return createApiResponse(false, null, '认证令牌无效', 401);
     }
 
     const { groupId } = await params;
@@ -38,7 +38,7 @@ export async function POST(
     // 验证用户对拼车组的访问权限
     const permissionResult = await verifyGroupPermissions(user, groupId, 'manage');
     if (!permissionResult.hasAccess) {
-      return createApiResponse(null, false, '没有权限测试此拼车组配置', 403);
+      return createApiResponse(false, null, '没有权限测试此拼车组配置', 403);
     }
 
     const body = await request.json();
@@ -46,14 +46,14 @@ export async function POST(
 
     // 验证输入参数
     if (!bindingMode || !['dedicated', 'shared', 'hybrid'].includes(bindingMode)) {
-      return createApiResponse(null, false, '无效的绑定模式', 400);
+      return createApiResponse(false, null, '无效的绑定模式', 400);
     }
 
     const testResults: Record<string, any> = {};
 
     if (bindingMode === 'dedicated' || bindingMode === 'hybrid') {
       if (!selectedAccounts || selectedAccounts.length === 0) {
-        return createApiResponse(null, false, '专属/混合模式需要选择AI账号', 400);
+        return createApiResponse(false, null, '专属/混合模式需要选择AI账号', 400);
       }
 
       // 获取选定的AI账号详情
@@ -119,7 +119,7 @@ export async function POST(
 
   } catch (error) {
     console.error('测试拼车组资源配置失败:', error);
-    return createApiResponse(null, false, '测试资源配置失败', 500);
+    return createApiResponse(false, null, '测试资源配置失败', 500);
   }
 }
 

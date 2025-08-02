@@ -32,11 +32,12 @@ import {
   Download,
   Calendar,
   Target,
-  PieChart
+  PieChart,
+  ChevronLeft,
+  Building2
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEnterpriseContext } from '@/contexts/enterprise-context';
-import { EnterpriseLayout } from '@/components/layout/enterprise-navigation';
 
 interface BudgetData {
   overview: {
@@ -159,38 +160,54 @@ export default function EnterpriseBudgetPage({ params }: { params: Promise<{ ent
 
   if (loading) {
     return (
-      <EnterpriseLayout enterpriseId={enterpriseId}>
-        <div className="p-6">
-          <div className="flex items-center justify-center h-64">
-            <div className="text-lg text-gray-600">加载预算数据...</div>
+      <div className="container mx-auto px-4 py-8">
+        <div className="animate-pulse space-y-6">
+          <div className="h-8 bg-gray-200 rounded w-1/3"></div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="h-32 bg-gray-200 rounded"></div>
+            ))}
           </div>
         </div>
-      </EnterpriseLayout>
+      </div>
     );
   }
 
   if (error || !budgetData) {
     return (
-      <EnterpriseLayout enterpriseId={enterpriseId}>
-        <div className="p-6">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-center">
-                <DollarSign className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">预算数据加载失败</h3>
-                <p className="text-gray-600 mb-4">{error || '暂无预算数据'}</p>
-                <Button onClick={fetchBudgetData}>重试</Button>
-              </div>
-            </CardContent>
-          </Card>
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center py-12">
+          <DollarSign className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">预算数据加载失败</h3>
+          <p className="text-gray-600 mb-4">{error || '暂无预算数据'}</p>
+          <Button onClick={fetchBudgetData}>重试</Button>
         </div>
-      </EnterpriseLayout>
+      </div>
     );
   }
 
   return (
-    <EnterpriseLayout enterpriseId={enterpriseId}>
-      <div className="p-6 space-y-6">
+    <div className="container mx-auto px-4 py-8">
+      <div className="max-w-6xl mx-auto">
+        {/* 面包屑和标题 */}
+        <div className="flex items-center gap-4 mb-6">
+          <Button 
+            variant="ghost" 
+            size="sm"
+            onClick={() => router.push(`/enterprise/${enterpriseId}/dashboard`)}
+          >
+            <ChevronLeft className="w-4 h-4 mr-2" />
+            返回企业控制面板
+          </Button>
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <Building2 className="w-4 h-4" />
+            <span>{currentEnterprise?.name || '未知企业'}</span>
+            <span>/</span>
+            <span>预算管理</span>
+          </div>
+        </div>
+
+        <div className="space-y-6">
         {/* 页面标题 */}
         <div className="flex items-center justify-between">
           <div>
@@ -417,7 +434,8 @@ export default function EnterpriseBudgetPage({ params }: { params: Promise<{ ent
             </Card>
           </TabsContent>
         </Tabs>
+        </div>
       </div>
-    </EnterpriseLayout>
+    </div>
   );
 }

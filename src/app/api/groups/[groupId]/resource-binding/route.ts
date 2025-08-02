@@ -137,7 +137,7 @@ export async function POST(
     // 验证拼车组管理权限
     const permissionResult = await verifyGroupPermissions(user, groupId, 'manage');
     if (!permissionResult.hasAccess) {
-      return createApiResponse(null, false, '您没有权限管理此拼车组的资源配置', 403);
+      return createApiResponse(false, null, '您没有权限管理此拼车组的资源配置', 403);
     }
 
     const body = await request.json();
@@ -152,15 +152,15 @@ export async function POST(
 
     // 数据验证
     if (!bindingMode || !['dedicated', 'shared', 'hybrid'].includes(bindingMode)) {
-      return createApiResponse(null, false, '无效的绑定模式', 400);
+      return createApiResponse(false, null, '无效的绑定模式', 400);
     }
 
     if (!dailyTokenLimit || dailyTokenLimit <= 0) {
-      return createApiResponse(null, false, '日Token限制必须大于0', 400);
+      return createApiResponse(false, null, '日Token限制必须大于0', 400);
     }
 
     if (!priorityLevel || !['low', 'medium', 'high', 'critical'].includes(priorityLevel)) {
-      return createApiResponse(null, false, '无效的优先级设置', 400);
+      return createApiResponse(false, null, '无效的优先级设置', 400);
     }
 
     // 检查是否已存在配置
@@ -169,7 +169,7 @@ export async function POST(
     });
 
     if (existingBinding) {
-      return createApiResponse(null, false, '资源绑定配置已存在，请使用PUT方法更新', 400);
+      return createApiResponse(false, null, '资源绑定配置已存在，请使用PUT方法更新', 400);
     }
 
     // 创建资源绑定配置
@@ -220,7 +220,7 @@ export async function POST(
 
   } catch (error) {
     console.error('创建资源绑定配置失败:', error);
-    return createApiResponse(null, false, '创建资源绑定配置失败', 500);
+    return createApiResponse(false, null, '创建资源绑定配置失败', 500);
   }
 }
 
@@ -234,12 +234,12 @@ export async function PUT(
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '');
     if (!token) {
-      return createApiResponse(null, false, '缺少认证令牌', 401);
+      return createApiResponse(false, null, '缺少认证令牌', 401);
     }
 
     const user = await verifyToken(token);
     if (!user) {
-      return createApiResponse(null, false, '认证令牌无效', 401);
+      return createApiResponse(false, null, '认证令牌无效', 401);
     }
 
     const { groupId } = await params;
@@ -247,7 +247,7 @@ export async function PUT(
     // 验证拼车组管理权限
     const permissionResult = await verifyGroupPermissions(user, groupId, 'manage');
     if (!permissionResult.hasAccess) {
-      return createApiResponse(null, false, '您没有权限管理此拼车组的资源配置', 403);
+      return createApiResponse(false, null, '您没有权限管理此拼车组的资源配置', 403);
     }
 
     const body = await request.json();
@@ -266,20 +266,20 @@ export async function PUT(
     });
 
     if (!existingBinding) {
-      return createApiResponse(null, false, '资源绑定配置不存在', 404);
+      return createApiResponse(false, null, '资源绑定配置不存在', 404);
     }
 
     // 数据验证
     if (bindingMode && !['dedicated', 'shared', 'hybrid'].includes(bindingMode)) {
-      return createApiResponse(null, false, '无效的绑定模式', 400);
+      return createApiResponse(false, null, '无效的绑定模式', 400);
     }
 
     if (dailyTokenLimit !== undefined && dailyTokenLimit <= 0) {
-      return createApiResponse(null, false, '日Token限制必须大于0', 400);
+      return createApiResponse(false, null, '日Token限制必须大于0', 400);
     }
 
     if (priorityLevel && !['low', 'medium', 'high', 'critical'].includes(priorityLevel)) {
-      return createApiResponse(null, false, '无效的优先级设置', 400);
+      return createApiResponse(false, null, '无效的优先级设置', 400);
     }
 
     // 更新资源绑定配置
@@ -324,7 +324,7 @@ export async function PUT(
 
   } catch (error) {
     console.error('更新资源绑定配置失败:', error);
-    return createApiResponse(null, false, '更新资源绑定配置失败', 500);
+    return createApiResponse(false, null, '更新资源绑定配置失败', 500);
   }
 }
 
@@ -338,12 +338,12 @@ export async function DELETE(
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '');
     if (!token) {
-      return createApiResponse(null, false, '缺少认证令牌', 401);
+      return createApiResponse(false, null, '缺少认证令牌', 401);
     }
 
     const user = await verifyToken(token);
     if (!user) {
-      return createApiResponse(null, false, '认证令牌无效', 401);
+      return createApiResponse(false, null, '认证令牌无效', 401);
     }
 
     const { groupId } = await params;
@@ -351,7 +351,7 @@ export async function DELETE(
     // 验证拼车组管理权限
     const permissionResult = await verifyGroupPermissions(user, groupId, 'manage');
     if (!permissionResult.hasAccess) {
-      return createApiResponse(null, false, '您没有权限管理此拼车组的资源配置', 403);
+      return createApiResponse(false, null, '您没有权限管理此拼车组的资源配置', 403);
     }
 
     // 检查配置是否存在
@@ -360,7 +360,7 @@ export async function DELETE(
     });
 
     if (!existingBinding) {
-      return createApiResponse(null, false, '资源绑定配置不存在', 404);
+      return createApiResponse(false, null, '资源绑定配置不存在', 404);
     }
 
     // 删除资源绑定配置（同时会删除相关的账号绑定）
@@ -370,10 +370,10 @@ export async function DELETE(
 
     console.log(`🗑️ API 资源绑定: 删除拼车组 ${groupId} 的资源配置`);
 
-    return createApiResponse(null, true, '资源绑定配置删除成功', 200);
+    return createApiResponse(true, null, '资源绑定配置删除成功', 200);
 
   } catch (error) {
     console.error('删除资源绑定配置失败:', error);
-    return createApiResponse(null, false, '删除资源绑定配置失败', 500);
+    return createApiResponse(false, null, '删除资源绑定配置失败', 500);
   }
 }

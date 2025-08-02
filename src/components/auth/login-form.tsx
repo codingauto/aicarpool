@@ -35,8 +35,8 @@ export function LoginForm() {
         localStorage.setItem('token', data.data.token);
         localStorage.setItem('user', JSON.stringify(data.data.user));
         
-        // 重定向到仪表盘
-        router.push('/dashboard');
+        // 重定向到企业选择页面（v2.2 企业优先架构）
+        router.push('/');
       } else {
         setError(data.error || '登录失败');
       }

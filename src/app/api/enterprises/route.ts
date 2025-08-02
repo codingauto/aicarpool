@@ -6,8 +6,16 @@ import { getUserFromRequest } from '@/lib/auth';
 import { cacheManager } from '@/lib/cache';
 
 const createEnterpriseSchema = z.object({
-  name: z.string().min(1, '企业名称不能为空'),
-  planType: z.enum(['basic', 'enterprise', 'custom']).default('basic'),
+  name: z.string().min(1, '企业名称不能为空').max(100, '企业名称不能超过100个字符'),
+  description: z.string().optional(),
+  industry: z.string().optional(),
+  expectedSize: z.string().transform(val => parseInt(val)).pipe(
+    z.number().min(10, '企业规模至少10人').max(10000, '企业规模不能超过10000人')
+  ).optional(),
+  planType: z.enum(['basic', 'professional', 'enterprise', 'custom']).default('professional'),
+  features: z.array(z.string()).default([]),
+  organizationType: z.literal('enterprise').optional(),
+  creationTemplate: z.literal('full_enterprise').optional(),
   settings: z.record(z.any()).optional()
 });
 

@@ -21,12 +21,12 @@ export async function GET(
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '');
     if (!token) {
-      return createApiResponse(null, false, '缺少认证令牌', 401);
+      return createApiResponse(false, null, '缺少认证令牌', 401);
     }
 
     const user = await verifyToken(token);
     if (!user) {
-      return createApiResponse(null, false, '认证令牌无效', 401);
+      return createApiResponse(false, null, '认证令牌无效', 401);
     }
 
     const { enterpriseId } = await params;
@@ -45,12 +45,12 @@ export async function GET(
     });
 
     if (!enterprise) {
-      return createApiResponse(null, false, '企业不存在', 404);
+      return createApiResponse(false, null, '企业不存在', 404);
     }
 
     const userMembership = enterprise.members[0];
     if (!userMembership) {
-      return createApiResponse(null, false, '您不是该企业的成员', 403);
+      return createApiResponse(false, null, '您不是该企业的成员', 403);
     }
 
     // 获取企业下所有拼车组
@@ -207,10 +207,10 @@ export async function GET(
 
     console.log(`📊 API 企业分析: 为企业 ${enterprise.name} 生成了 ${days} 天的使用分析数据`);
 
-    return createApiResponse(analyticsData, true, '获取企业分析数据成功', 200);
+    return createApiResponse(true, analyticsData, '获取企业分析数据成功', 200);
 
   } catch (error) {
     console.error('获取企业分析数据失败:', error);
-    return createApiResponse(null, false, '获取企业分析数据失败', 500);
+    return createApiResponse(false, null, '获取企业分析数据失败', 500);
   }
 }

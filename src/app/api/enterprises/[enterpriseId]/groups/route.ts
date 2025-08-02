@@ -1,39 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { PrismaClient } from '@prisma/client';
 import { createApiResponse } from '@/lib/middleware';
-import jwt from 'jsonwebtoken';
+import { verifyToken } from '@/lib/auth';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+const prisma = new PrismaClient();
 
 interface RouteContext {
   params: Promise<{ enterpriseId: string }>;
 }
 
-// 验证JWT token
-async function verifyToken(request: NextRequest) {
-  const authHeader = request.headers.get('authorization');
-  if (!authHeader?.startsWith('Bearer ')) {
-    return null;
-  }
-
-  const token = authHeader.substring(7);
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
-    return decoded;
-  } catch (error) {
-    return null;
-  }
-}
-
 // GET /api/enterprises/[enterpriseId]/groups - 获取企业下的拼车组列表
 export async function GET(request: NextRequest, context: RouteContext) {
   try {
-    const user = await verifyToken(request);
+    const token = request.headers.get('authorization')?.replace('Bearer ', '');
+    if (!token) {
+      return createApiResponse(false, null, '缺少认证令牌', 401);
+    }
+
+    const user = await verifyToken(token);
     if (!user) {
-      return NextResponse.json(
-        createApiResponse(false, null, '未授权访问', 401),
-        { status: 401 }
-      );
+      return createApiResponse(false, null, '认证令牌无效', 401);
     }
 
     const { enterpriseId } = await context.params;
@@ -47,13 +33,12 @@ export async function GET(request: NextRequest, context: RouteContext) {
     });
 
     if (!enterprise) {
-      return NextResponse.json(
-        createApiResponse(false, null, '企业不存在或无权限访问', 404),
-        { status: 404 }
-      );
+      return createApiResponse(false, null, '企业不存在或无权限访问', 404);
     }
 
-    // 获取企业下的拼车组
+    // 获取企业下的拼车组 - 逐步调试
+    console.log(`🔍 正在查询企业 ${enterpriseId} 的拼车组`);
+    
     const groups = await prisma.group.findMany({
       where: {
         enterpriseId: enterpriseId
@@ -73,22 +58,14 @@ export async function GET(request: NextRequest, context: RouteContext) {
             warningThreshold: true,
             alertThreshold: true
           }
-        },
-        usageStats: {
-          select: {
-            totalTokens: true,
-            cost: true
-          },
-          take: 10,
-          orderBy: {
-            requestTime: 'desc'
-          }
         }
       },
       orderBy: {
         createdAt: 'desc'
       }
     });
+    
+    console.log(`✅ 找到 ${groups.length} 个拼车组`);
 
     // 处理数据格式，添加统计信息
     const formattedGroups = groups.map(group => ({
@@ -100,36 +77,29 @@ export async function GET(request: NextRequest, context: RouteContext) {
       enterpriseId: group.enterpriseId,
       memberCount: group._count.members,
       resourceBinding: group.resourceBinding,
-      usageStats: group.usageStats.length > 0 ? {
-        totalRequests: group.usageStats.length,
-        totalTokens: group.usageStats.reduce((sum, stat) => sum + stat.totalTokens, 0),
-        totalCost: group.usageStats.reduce((sum, stat) => sum + Number(stat.cost), 0)
-      } : null,
+      usageStats: null, // 暂时设为null调试
       createdAt: group.createdAt
     }));
 
-    return NextResponse.json(
-      createApiResponse(true, formattedGroups, '获取拼车组列表成功', 200)
-    );
+    return createApiResponse(true, formattedGroups, '获取拼车组列表成功', 200);
 
   } catch (error) {
     console.error('获取企业拼车组列表失败:', error);
-    return NextResponse.json(
-      createApiResponse(false, null, '服务器内部错误', 500),
-      { status: 500 }
-    );
+    return createApiResponse(false, null, '服务器内部错误', 500);
   }
 }
 
 // POST /api/enterprises/[enterpriseId]/groups - 为企业创建新的拼车组
 export async function POST(request: NextRequest, context: RouteContext) {
   try {
-    const user = await verifyToken(request);
+    const token = request.headers.get('authorization')?.replace('Bearer ', '');
+    if (!token) {
+      return createApiResponse(false, null, '缺少认证令牌', 401);
+    }
+
+    const user = await verifyToken(token);
     if (!user) {
-      return NextResponse.json(
-        createApiResponse(false, null, '未授权访问', 401),
-        { status: 401 }
-      );
+      return createApiResponse(false, null, '认证令牌无效', 401);
     }
 
     const { enterpriseId } = await context.params;
@@ -138,10 +108,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     // 验证必需字段
     const { name, description, maxMembers } = body;
     if (!name?.trim()) {
-      return NextResponse.json(
-        createApiResponse(false, null, '拼车组名称不能为空', 400),
-        { status: 400 }
-      );
+      return createApiResponse(false, null, '拼车组名称不能为空', 400);
     }
 
     // 验证企业是否存在且用户有权限
@@ -153,10 +120,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     });
 
     if (!enterprise) {
-      return NextResponse.json(
-        createApiResponse(false, null, '企业不存在或无权限访问', 404),
-        { status: 404 }
-      );
+      return createApiResponse(false, null, '企业不存在或无权限访问', 404);
     }
 
     // 检查拼车组名称是否在企业内唯一
@@ -168,10 +132,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     });
 
     if (existingGroup) {
-      return NextResponse.json(
-        createApiResponse(false, null, '拼车组名称已存在', 400),
-        { status: 400 }
-      );
+      return createApiResponse(false, null, '拼车组名称已存在', 400);
     }
 
     // 创建拼车组
@@ -181,7 +142,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
         description: description?.trim() || null,
         maxMembers: Math.max(1, Math.min(50, parseInt(maxMembers) || 5)),
         status: 'active',
-        enterpriseId: enterpriseId
+        enterpriseId: enterpriseId,
+        createdById: user.id
       },
       include: {
         _count: {
@@ -203,16 +165,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
       createdAt: newGroup.createdAt
     };
 
-    return NextResponse.json(
-      createApiResponse(true, formattedGroup, '拼车组创建成功', 201),
-      { status: 201 }
-    );
+    return createApiResponse(true, formattedGroup, '拼车组创建成功', 201);
 
   } catch (error) {
     console.error('创建企业拼车组失败:', error);
-    return NextResponse.json(
-      createApiResponse(false, null, '服务器内部错误', 500),
-      { status: 500 }
-    );
+    return createApiResponse(false, null, '服务器内部错误', 500);
   }
 }

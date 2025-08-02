@@ -194,10 +194,10 @@ export async function DELETE(
     // 可以在这里添加通知逻辑
     console.log(`🗑️ API 成员管理: 用户 ${user.id} 移除了成员 ${existingMember.user.name} (${existingMember.user.email})`);
 
-    return createApiResponse(null, true, '成员已移除', 200);
+    return createApiResponse(true, null, '成员已移除', 200);
 
   } catch (error) {
     console.error('移除成员失败:', error);
-    return createApiResponse(null, false, '移除成员失败', 500);
+    return createApiResponse(false, null, '移除成员失败', 500);
   }
 }

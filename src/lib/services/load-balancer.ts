@@ -84,7 +84,7 @@ export class LoadBalancer {
     const serviceType = accounts[0].serviceType;
     const counterKey = `round_robin_${serviceType}`;
     
-    let counter = this.roundRobinCounters.get(counterKey) || 0;
+    const counter = this.roundRobinCounters.get(counterKey) || 0;
     const selectedAccount = accounts[counter % accounts.length];
     
     this.roundRobinCounters.set(counterKey, counter + 1);

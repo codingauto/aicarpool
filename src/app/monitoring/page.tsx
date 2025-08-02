@@ -41,8 +41,19 @@ import {
   Filter,
   Zap,
   Users,
-  Database
+  Database,
+  Settings,
+  Globe
 } from 'lucide-react';
+import { 
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { CardDescription } from '@/components/ui/card';
 
 interface ServiceMetrics {
   serviceType: string;
@@ -90,8 +101,13 @@ export default function MonitoringPage() {
   const [usageStats, setUsageStats] = useState<UsageStats | null>(null);
   const [alerts, setAlerts] = useState<AlertItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [selectedTimeRange, setSelectedTimeRange] = useState('24h');
   const [autoRefresh, setAutoRefresh] = useState(true);
+  const [activeTab, setActiveTab] = useState('overview');
+  const [healthCheck, setHealthCheck] = useState<any>(null);
+  const [overview, setOverview] = useState<any>(null);
+  const [incidents, setIncidents] = useState<any[]>([]);
 
   useEffect(() => {
     fetchMonitoringData();
@@ -102,8 +118,108 @@ export default function MonitoringPage() {
     }
   }, [selectedTimeRange, autoRefresh]);
 
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchMonitoringData();
+    setRefreshing(false);
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'healthy':
+        return 'text-green-600 bg-green-50 border-green-200';
+      case 'warning':
+        return 'text-yellow-600 bg-yellow-50 border-yellow-200';
+      case 'error':
+        return 'text-red-600 bg-red-50 border-red-200';
+      default:
+        return 'text-gray-600 bg-gray-50 border-gray-200';
+    }
+  };
+
+  const getSeverityColor = (severity: string) => {
+    switch (severity) {
+      case 'info':
+        return 'default';
+      case 'warning':
+        return 'secondary';
+      case 'error':
+        return 'destructive';
+      default:
+        return 'outline';
+    }
+  };
+
+  const resolveIncident = (id: string) => {
+    setIncidents(prev => prev.filter(incident => incident.id !== id));
+  };
+
   const fetchMonitoringData = async () => {
     try {
+      // 模拟健康检查数据
+      const mockHealthCheck = {
+        overall: 'healthy',
+        services: {
+          database: {
+            status: 'healthy',
+            message: '数据库连接正常',
+            metrics: {
+              connection_time: 45,
+              avg_response_time: 120
+            }
+          },
+          api: {
+            status: 'healthy',
+            message: 'API服务运行正常',
+            metrics: {
+              avg_response_time: 230
+            }
+          },
+          edge_nodes: {
+            status: 'warning',
+            message: '部分边缘节点响应慢',
+            metrics: {
+              active_nodes: 8,
+              total_nodes: 10
+            }
+          }
+        }
+      };
+
+      // 模拟概览数据
+      const mockOverview = {
+        users: {
+          total: 1250,
+          active: 867
+        },
+        groups: {
+          total: 45,
+          active: 38
+        },
+        requests: {
+          today: 15420,
+          total: 234567
+        },
+        costs: {
+          today: 156.78
+        },
+        nodes: {
+          active: 8,
+          total: 10
+        }
+      };
+
+      // 模拟告警事件
+      const mockIncidents = [
+        {
+          id: '1',
+          severity: 'warning',
+          title: '边缘节点响应慢',
+          description: '部分边缘节点响应时间超过阈值',
+          startTime: new Date(Date.now() - 300000).toISOString()
+        }
+      ];
+
       // 模拟数据，实际应该调用API
       const mockServiceMetrics: ServiceMetrics[] = [
         {
@@ -205,6 +321,9 @@ export default function MonitoringPage() {
       setServiceMetrics(mockServiceMetrics);
       setUsageStats(mockUsageStats);
       setAlerts(mockAlerts);
+      setHealthCheck(mockHealthCheck);
+      setOverview(mockOverview);
+      setIncidents(mockIncidents);
     } catch (error) {
       console.error('获取监控数据失败:', error);
     } finally {

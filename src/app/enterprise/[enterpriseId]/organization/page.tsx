@@ -34,11 +34,11 @@ import {
   MapPin,
   Crown,
   Shield,
-  UserCheck
+  UserCheck,
+  ChevronLeft
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEnterpriseContext } from '@/contexts/enterprise-context';
-import { EnterpriseLayout } from '@/components/layout/enterprise-navigation';
 
 interface Department {
   id: string;
@@ -228,40 +228,56 @@ export default function EnterpriseOrganizationPage({ params }: { params: Promise
 
   if (loading) {
     return (
-      <EnterpriseLayout enterpriseId={enterpriseId}>
-        <div className="p-6">
-          <div className="flex items-center justify-center h-64">
-            <div className="text-lg text-gray-600">加载组织架构...</div>
+      <div className="container mx-auto px-4 py-8">
+        <div className="animate-pulse space-y-6">
+          <div className="h-8 bg-gray-200 rounded w-1/3"></div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="h-40 bg-gray-200 rounded"></div>
+            ))}
           </div>
         </div>
-      </EnterpriseLayout>
+      </div>
     );
   }
 
   if (error || !organizationData) {
     return (
-      <EnterpriseLayout enterpriseId={enterpriseId}>
-        <div className="p-6">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-center">
-                <Building className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">组织架构加载失败</h3>
-                <p className="text-gray-600 mb-4">{error || '暂无组织架构数据'}</p>
-                <Button onClick={fetchOrganizationData}>重试</Button>
-              </div>
-            </CardContent>
-          </Card>
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center py-12">
+          <Building className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">组织架构加载失败</h3>
+          <p className="text-gray-600 mb-4">{error || '暂无组织架构数据'}</p>
+          <Button onClick={fetchOrganizationData}>重试</Button>
         </div>
-      </EnterpriseLayout>
+      </div>
     );
   }
 
   const departmentTree = buildDepartmentTree(organizationData.departments);
 
   return (
-    <EnterpriseLayout enterpriseId={enterpriseId}>
-      <div className="p-6 space-y-6">
+    <div className="container mx-auto px-4 py-8">
+      <div className="max-w-6xl mx-auto">
+        {/* 面包屑和标题 */}
+        <div className="flex items-center gap-4 mb-6">
+          <Button 
+            variant="ghost" 
+            size="sm"
+            onClick={() => router.push(`/enterprise/${enterpriseId}/dashboard`)}
+          >
+            <ChevronLeft className="w-4 h-4 mr-2" />
+            返回企业控制面板
+          </Button>
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <Building2 className="w-4 h-4" />
+            <span>{currentEnterprise?.name || '未知企业'}</span>
+            <span>/</span>
+            <span>组织架构</span>
+          </div>
+        </div>
+
+        <div className="space-y-6">
         {/* 页面标题 */}
         <div className="flex items-center justify-between">
           <div>
@@ -488,7 +504,8 @@ export default function EnterpriseOrganizationPage({ params }: { params: Promise
             </Card>
           </TabsContent>
         </Tabs>
+        </div>
       </div>
-    </EnterpriseLayout>
+    </div>
   );
 }
