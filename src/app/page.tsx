@@ -110,14 +110,13 @@ export default function EnterpriseSelectionPage() {
 
           setEnterprises(userEnterprises);
 
-
-          // 如果只有一个企业，自动跳转
-          if (userEnterprises.length === 1) {
-            const enterprise = userEnterprises[0];
-            await updateLastAccessed(enterprise.id);
-            router.push(`/enterprise/${enterprise.id}/dashboard`);
-            return;
-          }
+          // 注释掉自动跳转逻辑，让用户手动选择企业
+          // if (userEnterprises.length === 1) {
+          //   const enterprise = userEnterprises[0];
+          //   await updateLastAccessed(enterprise.id);
+          //   router.push(`/enterprise/${enterprise.id}/dashboard`);
+          //   return;
+          // }
         } else {
           // 用户没有企业，显示创建/加入企业的引导
           setEnterprises([]);
