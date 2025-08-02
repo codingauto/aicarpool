@@ -466,7 +466,7 @@ export class HealthChecker {
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
     
     try {
-      const recentRequests = await prisma.enhancedUsageStat.findMany({
+      const recentRequests = await prisma.usageStat.findMany({
         where: {
           aiServiceId: modelId,
           requestTime: { gte: fiveMinutesAgo }

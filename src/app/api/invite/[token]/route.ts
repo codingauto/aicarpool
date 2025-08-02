@@ -75,7 +75,7 @@ export async function GET(
       return createApiResponse(false, null, '拼车组已满', 400);
     }
 
-    return createApiResponse(invitation, '邀请有效');
+    return createApiResponse(true, invitation, '邀请有效', 200);
 
   } catch (error) {
     console.error('Verify invitation error:', error);
@@ -208,15 +208,14 @@ export async function POST(
     const { generateToken } = await import('@/lib/auth');
     const authToken = generateToken(user.id);
 
-    return createApiResponse({
+    return createApiResponse(true, {
       member: serializeBigInt(result),
       authToken,
       isNewUser: user.createdAt.getTime() > Date.now() - 60000, // 刚刚创建的用户
-      message: '成功加入拼车组'
-    }, true, 200);
+    }, '成功加入拼车组', 200);
 
   } catch (error) {
     console.error('Accept invitation error:', error);
-    return createApiResponse({ error: '接受邀请失败' }, false, 500);
+    return createApiResponse(false, null, '接受邀请失败', 500);
   }
 }

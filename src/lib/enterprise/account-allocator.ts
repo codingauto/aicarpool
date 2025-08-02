@@ -339,7 +339,7 @@ export class EnterpriseAccountAllocator {
 
     // 基于最近5分钟的请求数计算负载
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
-    const recentRequests = await prisma.enhancedUsageStat.count({
+    const recentRequests = await prisma.usageStat.count({
       where: {
         accountId,
         requestTime: { gte: fiveMinutesAgo }

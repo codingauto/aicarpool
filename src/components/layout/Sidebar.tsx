@@ -35,7 +35,6 @@ interface User {
 
 const navigationItems: NavigationItem[] = [
   { label: '仪表盘', path: '/dashboard', icon: LayoutDashboard },
-  { label: '拼车组', path: '/groups', icon: Users },
   { label: '企业管理', path: '/enterprise', icon: Building2 },
   { label: '账号池', path: '/account-pools', icon: Database },
   { label: '预算管理', path: '/budget', icon: DollarSign },
@@ -106,8 +105,8 @@ export function Sidebar({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileT
   };
 
   const isActive = (path: string) => {
-    if (path === '/groups') {
-      return pathname === '/groups' || pathname.startsWith('/groups/');
+    if (path === '/enterprise') {
+      return pathname === '/enterprise' || pathname.startsWith('/enterprise/');
     }
     return pathname === path;
   };

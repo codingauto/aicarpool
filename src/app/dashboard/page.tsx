@@ -151,7 +151,12 @@ export default function DashboardPage() {
                 ) : (
                   <div className="text-center py-8">
                     <p className="text-gray-500 mb-4">您还没有加入任何拼车组</p>
-                    <Button size="sm" onClick={() => router.push('/groups')}>创建拼车组</Button>
+                    <p className="text-xs text-gray-400 mb-4">
+                      拼车组由企业管理员创建，请联系管理员将您添加到相应的拼车组中
+                    </p>
+                    <Button size="sm" onClick={() => router.push('/enterprise')}>
+                      查看企业管理
+                    </Button>
                   </div>
                 )}
               </CardContent>

@@ -74,7 +74,7 @@ export function OrganizationStructure({ enterpriseId, isAdmin }: OrganizationStr
   const [departmentForm, setDepartmentForm] = useState({
     name: '',
     description: '',
-    parentId: '',
+    parentId: null as string | null,
     budgetLimit: ''
   });
 
@@ -200,7 +200,7 @@ export function OrganizationStructure({ enterpriseId, isAdmin }: OrganizationStr
     setDepartmentForm({
       name: '',
       description: '',
-      parentId: '',
+      parentId: null,
       budgetLimit: ''
     });
   };
@@ -210,7 +210,7 @@ export function OrganizationStructure({ enterpriseId, isAdmin }: OrganizationStr
     setDepartmentForm({
       name: department.name,
       description: department.description || '',
-      parentId: department.parentId || '',
+      parentId: department.parentId,
       budgetLimit: department.budgetLimit?.toString() || ''
     });
   };
@@ -506,14 +506,14 @@ export function OrganizationStructure({ enterpriseId, isAdmin }: OrganizationStr
             <div className="space-y-2">
               <Label>上级部门</Label>
               <Select 
-                value={departmentForm.parentId} 
-                onValueChange={(value) => setDepartmentForm(prev => ({ ...prev, parentId: value }))}
+                value={departmentForm.parentId || 'none'} 
+                onValueChange={(value) => setDepartmentForm(prev => ({ ...prev, parentId: value === 'none' ? null : value }))}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="选择上级部门（可选）" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">无上级部门</SelectItem>
+                  <SelectItem value="none">无上级部门</SelectItem>
                   {allDepartments
                     .filter(dept => dept.id !== editingDepartment?.id) // 排除自己
                     .map(dept => (

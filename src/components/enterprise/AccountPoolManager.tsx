@@ -212,11 +212,14 @@ export function AccountPoolManager({ enterpriseId, isAdmin }: AccountPoolManager
       });
 
       const data = await response.json();
-      if (data.success) {
-        setAvailableAccounts(data.data || []);
+      if (data.success && Array.isArray(data.data)) {
+        setAvailableAccounts(data.data);
+      } else {
+        setAvailableAccounts([]);
       }
     } catch (error) {
       console.error('获取可用账号失败:', error);
+      setAvailableAccounts([]);
     }
   };
 
@@ -566,10 +569,10 @@ export function AccountPoolManager({ enterpriseId, isAdmin }: AccountPoolManager
                 
                 <TabsContent value="available" className="space-y-4">
                   <div className="text-sm text-gray-600 mb-4">
-                    可绑定 {availableAccounts.length} 个可用账号
+                    可绑定 {Array.isArray(availableAccounts) ? availableAccounts.length : 0} 个可用账号
                   </div>
                   <div className="grid gap-3">
-                    {availableAccounts.map(account => (
+                    {Array.isArray(availableAccounts) && availableAccounts.map(account => (
                       <Card key={account.id} className="p-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
@@ -594,7 +597,7 @@ export function AccountPoolManager({ enterpriseId, isAdmin }: AccountPoolManager
                         </div>
                       </Card>
                     ))}
-                    {availableAccounts.length === 0 && (
+                    {(!Array.isArray(availableAccounts) || availableAccounts.length === 0) && (
                       <div className="text-center py-8 text-gray-500">
                         暂无可用账号
                       </div>

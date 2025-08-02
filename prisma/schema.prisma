@@ -7,6 +7,11 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum AuthType {
+  api_key
+  oauth
+}
+
 model User {
   id            String        @id @default(cuid())
   email         String        @unique
@@ -18,14 +23,15 @@ model User {
   emailVerified Boolean       @default(false)
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
+  
+  // 关联关系
   apiKeys       ApiKey[]
   groups        GroupMember[]
   createdGroups Group[]       @relation("GroupCreator")
   invitations   Invitation[]
-  usageStats    UsageStat[]
+  usageStats    UsageStat[]   // 更新的使用统计
   userQuotaUsage UserQuotaUsage[]
   inviteLinks   InviteLink[]
-  enhancedUsageStats EnhancedUsageStat[]  // 增强使用统计
 
   @@map("users")
 }
@@ -39,14 +45,23 @@ model Group {
   status        String           @default("active")
   settings      Json?
   createdById   String
-  departmentId  String?          // 所属部门ID（企业级功能）
+  
+  // 企业级关联 - 新增
+  enterpriseId  String?          // 归属企业
+  departmentId  String?          // 所属部门ID
+  
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
+  
+  // 资源绑定 - 新的核心功能
+  resourceBinding GroupResourceBinding?
+  
+  // 现有关联关系
   apiKeys       ApiKey[]
   aiServices    GroupAiService[]
-  aiServiceAccounts AiServiceAccount[]
   members       GroupMember[]
   createdBy     User             @relation("GroupCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  enterprise    Enterprise?      @relation(fields: [enterpriseId], references: [id])
   department    Department?      @relation("DepartmentGroups", fields: [departmentId], references: [id])
   invitations   Invitation[]
   proxyBindings ProxyBinding[]
@@ -62,10 +77,13 @@ model Group {
   modelConfigurations ModelConfiguration[]
   modelFailoverLogs ModelFailoverLog[]
   modelPerformanceMetrics ModelPerformanceMetric[]
-  poolBindings  GroupPoolBinding[]  // 账号池绑定关系
-  enhancedUsageStats EnhancedUsageStat[]  // 增强使用统计
+  
+  // 新的绑定关系
+  accountBindings GroupAccountBinding[] // 直接绑定账号
+  poolBindings    GroupPoolBinding[]    // 绑定账号池
 
   @@index([createdById], map: "groups_createdById_fkey")
+  @@index([enterpriseId])
   @@index([departmentId])
   @@map("groups")
 }
@@ -85,17 +103,19 @@ model GroupMember {
   @@map("group_members")
 }
 
+// GroupAiService表 - 保持向后兼容，但需要更新关联
 model GroupAiService {
   id            String    @id @default(cuid())
   groupId       String
-  aiServiceId   String    // 现在直接使用服务名称作为标识
-  accountId     String?   // 绑定的AI服务账户ID
+  aiServiceId   String    // 直接使用服务名称作为标识
+  accountId     String?   // 绑定的AI服务账户ID - 可能为空
   isEnabled     Boolean   @default(true)
   quota         Json?
   authConfig    Json?     // 保留向后兼容
   proxySettings Json?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+  
   group         Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
   account       AiServiceAccount? @relation(fields: [accountId], references: [id], onDelete: SetNull)
 
@@ -179,24 +199,38 @@ model ProxyBinding {
   @@map("proxy_bindings")
 }
 
+// 使用统计表 - 扩展以支持账号追踪
 model UsageStat {
   id           String    @id @default(cuid())
   userId       String
   groupId      String
-  aiServiceId  String    // 现在直接使用服务名称
+  accountId    String?   // 实际使用的AI账号ID - 新增
+  aiServiceId  String    // 服务类型
   requestType  String
-  tokenCount   BigInt
-  cost         Decimal   @db.Decimal(10, 6)
+  
+  // 使用量信息 - 扩展
+  requestTokens   Int      @default(0)
+  responseTokens  Int      @default(0)
+  totalTokens     BigInt   // 原tokenCount字段
+  cost            Decimal  @db.Decimal(10, 6)
+  
+  // 时间和性能信息
   requestTime  DateTime
   responseTime Int?
   status       String
   errorCode    String?
+  
+  // 元数据
   metadata     Json?
+  
+  // 关联关系
   group        Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
   user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account      AiServiceAccount? @relation(fields: [accountId], references: [id], onDelete: SetNull)
 
   @@index([userId, requestTime])
   @@index([groupId, requestTime])
+  @@index([accountId, requestTime])
   @@index([aiServiceId, requestTime])
   @@map("usage_stats")
 }
@@ -281,24 +315,27 @@ model UserQuotaUsage {
   @@map("user_quota_usage")
 }
 
-// AI服务账户表
+// AI服务账户表 - 重构为企业级管理
 model AiServiceAccount {
   id            String  @id @default(cuid())
-  groupId       String
-  serviceType   String  // 'claude', 'gemini', 'ampcode', 'kimi', 'zhipu', 'qwen'
+  enterpriseId  String  // 归属企业 - 核心变更
   name          String
   description   String?
-  accountType   String  @default("shared") // 'shared', 'dedicated'
+  serviceType   String  // 'claude', 'gemini', 'openai', 'qwen', 'zhipu', 'kimi'
+  accountType   String  @default("shared") // 'dedicated', 'shared'
   
   // 认证配置
-  authType      String  // 'oauth', 'api_key'
-  encryptedCredentials String // JSON格式的加密凭证
+  authType      AuthType  // 'oauth', 'api_key'
+  encryptedCredentials String @db.Text // JSON格式的加密凭证
   
   // OAuth特有字段
-  oauthAccessToken   String?
-  oauthRefreshToken  String?
+  oauthAccessToken   String? @db.Text
+  oauthRefreshToken  String? @db.Text
   oauthExpiresAt     DateTime?
   oauthScopes        String?
+  
+  // API配置
+  apiEndpoint   String?
   
   // 代理配置
   proxyType     String? // 'socks5', 'http', 'https'
@@ -307,30 +344,39 @@ model AiServiceAccount {
   proxyUsername String?
   proxyPassword String?
   
-  // Gemini特有
-  projectId     String?
-  
-  // 企业级功能扩展
-  modelId         String?  // 具体模型标识，如 "claude-4-sonnet"
-  modelVersion    String?  // 模型版本
-  supportedFeatures Json?  // 支持的功能列表
-  failoverPriority Int     @default(1) // 故障转移优先级
+  // 能力信息
+  supportedModels Json   @default("[]")
+  currentModel    String?
+  dailyLimit      Int    @default(10000)
+  costPerToken    Decimal @default(0.00001) @db.Decimal(10, 8)
   
   // 状态信息
-  status        String  @default("active") // 'active', 'inactive', 'error'
   isEnabled     Boolean @default(true)
-  lastUsedAt    DateTime?
-  errorMessage  String?
+  status        String  @default("active") // 'active', 'inactive', 'error'
+  currentLoad   Int     @default(0)       // 当前负载百分比
+  
+  // 统计信息
+  totalRequests   BigInt  @default(0)
+  totalTokens     BigInt  @default(0)
+  totalCost       Decimal @default(0) @db.Decimal(12, 4)
+  lastUsedAt      DateTime?
+  errorMessage    String?
+  
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   
-  group         Group   @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  groupAiServices GroupAiService[]
-  poolBindings  AccountPoolBinding[]  // 账号池绑定关系
-  enhancedUsageStats EnhancedUsageStat[]  // 增强使用统计
+  // 关联关系 - 更新为企业关联
+  enterprise    Enterprise @relation(fields: [enterpriseId], references: [id], onDelete: Cascade)
+  groupAiServices GroupAiService[] // 保持向后兼容
+  poolBindings  AccountPoolBinding[]
+  groupBindings GroupAccountBinding[]  // 新增：直接绑定到拼车组
+  usageStats    UsageStat[]    // 使用统计
+  healthChecks  AccountHealthCheck[]  // 健康检查记录
   
-  @@unique([groupId, name])
-  @@index([groupId, serviceType])
+  @@index([enterpriseId])
+  @@index([serviceType])
+  @@index([status])
+  @@index([accountType])
   @@map("ai_service_accounts")
 }
 
@@ -577,8 +623,10 @@ model Enterprise {
   updatedAt   DateTime @updatedAt
   
   // 关联关系
-  accountPools AccountPool[]
-  departments  Department[]
+  aiAccounts   AiServiceAccount[]  // 企业拥有的所有AI账号
+  accountPools AccountPool[]       // 企业的账号池策略
+  departments  Department[]        // 企业部门
+  groups       Group[]            // 企业下的拼车组
   
   @@map("enterprises")
 }
@@ -604,7 +652,7 @@ model Department {
   @@map("departments")
 }
 
-// 账号池表
+// 账号池表 - 重新定义为管理策略
 model AccountPool {
   id                  String   @id @default(cuid())
   enterpriseId        String
@@ -614,6 +662,12 @@ model AccountPool {
   loadBalanceStrategy String   @default("round_robin") // "round_robin", "least_connections", "weighted"
   maxLoadPerAccount   Int      @default(80)
   priority            Int      @default(1)
+  
+  // 使用限制
+  maxConcurrent       Int      @default(10)
+  dailyLimit          Int      @default(1000)
+  costLimit           Decimal? @db.Decimal(10, 2)
+  
   isActive            Boolean  @default(true)
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
@@ -622,7 +676,6 @@ model AccountPool {
   enterprise       Enterprise           @relation(fields: [enterpriseId], references: [id], onDelete: Cascade)
   accountBindings  AccountPoolBinding[]
   groupBindings    GroupPoolBinding[]
-  enhancedUsageStats EnhancedUsageStat[]
   
   @@index([enterpriseId])
   @@map("account_pools")
@@ -647,16 +700,20 @@ model AccountPoolBinding {
   @@map("account_pool_bindings")
 }
 
-// 拼车组与账号池绑定表
+// 拼车组与账号池绑定表 - 优化配置
 model GroupPoolBinding {
   id                String   @id @default(cuid())
   groupId           String
   poolId            String
   bindingType       String   @default("shared") // "primary", "fallback", "shared"
+  priority          Int      @default(1)
+  usageWeight       Int      @default(1)  // 使用权重
+  
+  // 使用限制
   usageLimitHourly  Int      @default(0) // 0表示无限制
   usageLimitDaily   Int      @default(0)
   usageLimitMonthly Int      @default(0)
-  priority          Int      @default(1)
+  
   isActive          Boolean  @default(true)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
@@ -670,36 +727,71 @@ model GroupPoolBinding {
   @@map("group_pool_bindings")
 }
 
-// 增强使用记录表以支持账号池统计
-model EnhancedUsageStat {
-  id            String    @id @default(cuid())
-  userId        String
-  groupId       String
-  accountId     String?   // 实际使用的账号ID
-  poolId        String?   // 账号所属池ID
-  aiServiceId   String    // 服务类型
-  requestType   String
-  requestTokens Int       @default(0)
-  responseTokens Int      @default(0)
-  totalTokens   BigInt
-  cost          Decimal   @db.Decimal(10, 6)
-  requestTime   DateTime
-  responseTime  Int?
-  status        String
-  errorCode     String?
-  metadata      Json?
+
+// ==================== 新的核心数据模型 ====================
+
+// 拼车组资源绑定表 - 核心新功能
+model GroupResourceBinding {
+  id          String   @id @default(cuid())
+  groupId     String   @unique
+  bindingMode String   // 'dedicated', 'shared', 'hybrid'
+  
+  // 绑定配置 (JSON格式，支持三种模式的不同配置)
+  bindingConfig Json
+  
+  // 使用配额
+  dailyTokenLimit    Int      @default(10000)
+  monthlyBudget      Decimal? @db.Decimal(10, 2)
+  priorityLevel      String   @default("medium") // 'high', 'medium', 'low'
+  
+  // 告警设置
+  warningThreshold   Int      @default(80)
+  alertThreshold     Int      @default(95)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
   
   // 关联关系
-  user    User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  group   Group            @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  account AiServiceAccount? @relation(fields: [accountId], references: [id], onDelete: SetNull)
-  pool    AccountPool?     @relation(fields: [poolId], references: [id], onDelete: SetNull)
+  group       Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
   
-  @@index([userId, requestTime])
-  @@index([groupId, requestTime])
-  @@index([accountId, requestTime])
-  @@index([poolId, requestTime])
-  @@map("enhanced_usage_stats")
+  @@map("group_resource_bindings")
+}
+
+// 拼车组直接绑定账号表 - 支持专属模式
+model GroupAccountBinding {
+  id        String   @id @default(cuid())
+  groupId   String
+  accountId String
+  priority  Int      @default(1)
+  weight    Int      @default(1)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  
+  group     Group            @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  account   AiServiceAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  
+  @@unique([groupId, accountId])
+  @@index([accountId])
+  @@map("group_account_bindings")
+}
+
+// 账号健康监控表
+model AccountHealthCheck {
+  id          String   @id @default(cuid())
+  accountId   String
+  
+  // 健康状态
+  isHealthy   Boolean
+  responseTime Int?    // 健康检查响应时间(ms)
+  errorMessage String?
+  
+  // 检查时间
+  checkedAt   DateTime @default(now())
+  
+  account     AiServiceAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  
+  @@index([accountId, checkedAt])
+  @@map("account_health_checks")
 }
 
 // 预算分配表

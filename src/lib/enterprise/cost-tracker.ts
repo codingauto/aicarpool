@@ -71,7 +71,7 @@ export class CostTracker {
       // 获取部门ID（如果未提供）
       let departmentId = record.departmentId;
       if (!departmentId && record.groupId) {
-        const group = await prisma.carpoolGroup.findUnique({
+        const group = await prisma.group.findUnique({
           where: { id: record.groupId },
           select: { departmentId: true }
         });
@@ -79,7 +79,7 @@ export class CostTracker {
       }
 
       // 记录到数据库
-      await prisma.enhancedUsageStat.create({
+      await prisma.usageStat.create({
         data: {
           groupId: record.groupId,
           departmentId,
@@ -162,7 +162,7 @@ export class CostTracker {
       }
 
       // 查询使用统计
-      const usageStats = await prisma.enhancedUsageStat.findMany({
+      const usageStats = await prisma.usageStat.findMany({
         where: whereCondition,
         select: {
           aiServiceId: true,
@@ -482,7 +482,7 @@ export class CostTracker {
         break;
     }
 
-    const result = await prisma.enhancedUsageStat.aggregate({
+    const result = await prisma.usageStat.aggregate({
       where: whereCondition,
       _sum: {
         cost: true,

@@ -11,12 +11,19 @@ interface GroupDetail {
   description?: string;
   maxMembers: number;
   status: string;
+  enterpriseId?: string;
+  enterpriseName?: string;
   stats: {
     memberCount: number;
-    apiKeyCount: number;
     totalCost: number;
   };
-  aiServices: any[];
+  resourceBinding?: {
+    id: string;
+    bindingMode: 'dedicated' | 'shared' | 'hybrid';
+    dailyTokenLimit: number;
+    monthlyBudget?: number;
+    priorityLevel: string;
+  };
 }
 
 interface GroupHeaderProps {
@@ -68,8 +75,10 @@ export function GroupHeader({ group, isAdmin }: GroupHeaderProps) {
             <div className="flex items-center">
               <Key className="w-5 h-5 text-green-600 mr-3" />
               <div>
-                <div className="text-2xl font-bold">{group.stats.apiKeyCount}</div>
-                <div className="text-sm text-gray-600">API密钥</div>
+                <div className="text-2xl font-bold">
+                  {group.resourceBinding ? '已配置' : '未配置'}
+                </div>
+                <div className="text-sm text-gray-600">资源绑定</div>
               </div>
             </div>
           </CardContent>
@@ -80,8 +89,10 @@ export function GroupHeader({ group, isAdmin }: GroupHeaderProps) {
             <div className="flex items-center">
               <Activity className="w-5 h-5 text-purple-600 mr-3" />
               <div>
-                <div className="text-2xl font-bold">{group.aiServices.length}</div>
-                <div className="text-sm text-gray-600">AI服务</div>
+                <div className="text-2xl font-bold">
+                  {group.resourceBinding?.bindingMode || 'N/A'}
+                </div>
+                <div className="text-sm text-gray-600">绑定模式</div>
               </div>
             </div>
           </CardContent>

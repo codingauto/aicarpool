@@ -1,196 +1,285 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+/**
+ * AI服务监控统计页面
+ * 
+ * 功能：
+ * - 实时服务状态监控
+ * - 性能指标分析
+ * - 成本统计和趋势
+ * - 使用量统计
+ * - 异常告警
+ */
+
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
-  Activity, 
-  AlertTriangle, 
-  CheckCircle, 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { 
+  Activity,
+  DollarSign,
+  Clock,
+  Server,
+  AlertTriangle,
+  CheckCircle,
   XCircle,
   TrendingUp,
   TrendingDown,
-  Server,
-  Database,
-  Globe,
-  Users,
-  DollarSign,
-  Clock,
+  BarChart3,
   RefreshCw,
-  Settings
+  Download,
+  Filter,
+  Zap,
+  Users,
+  Database
 } from 'lucide-react';
 
-interface SystemOverview {
-  users: { total: number; active: number };
-  groups: { total: number; active: number };
-  requests: { today: number; total: number };
-  costs: { today: number; total: number };
-  nodes: { active: number; total: number };
+interface ServiceMetrics {
+  serviceType: string;
+  serviceName: string;
+  status: 'healthy' | 'warning' | 'error';
+  responseTime: number;
+  successRate: number;
+  totalRequests: number;
+  errorCount: number;
+  dailyCost: number;
+  currentLoad: number;
+  lastCheck: string;
 }
 
-interface HealthCheck {
-  overall: 'healthy' | 'warning' | 'critical';
-  services: Record<string, {
-    status: 'healthy' | 'warning' | 'critical';
-    metrics: Record<string, number>;
-    message?: string;
+interface UsageStats {
+  timeRange: string;
+  totalRequests: number;
+  totalCost: number;
+  totalTokens: number;
+  avgResponseTime: number;
+  successRate: number;
+  topUsers: Array<{
+    name: string;
+    requests: number;
+    cost: number;
+  }>;
+  topGroups: Array<{
+    name: string;
+    requests: number;
+    cost: number;
   }>;
 }
 
-interface AlertIncident {
+interface AlertItem {
   id: string;
-  ruleId: string;
-  status: 'active' | 'resolved' | 'suppressed';
-  severity: string;
-  title: string;
-  description: string;
-  startTime: Date;
-  endTime?: Date;
-  resolvedBy?: string;
-}
-
-interface MetricData {
-  timestamp: Date;
-  value: number;
-  component: string;
-  metricName: string;
-  tags: Record<string, any>;
+  type: 'error' | 'warning' | 'info';
+  service: string;
+  message: string;
+  timestamp: string;
+  isResolved: boolean;
 }
 
 export default function MonitoringPage() {
-  const [overview, setOverview] = useState<SystemOverview | null>(null);
-  const [healthCheck, setHealthCheck] = useState<HealthCheck | null>(null);
-  const [incidents, setIncidents] = useState<AlertIncident[]>([]);
-  const [metrics, setMetrics] = useState<MetricData[]>([]);
+  const [serviceMetrics, setServiceMetrics] = useState<ServiceMetrics[]>([]);
+  const [usageStats, setUsageStats] = useState<UsageStats | null>(null);
+  const [alerts, setAlerts] = useState<AlertItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [activeTab, setActiveTab] = useState('overview');
-  const router = useRouter();
+  const [selectedTimeRange, setSelectedTimeRange] = useState('24h');
+  const [autoRefresh, setAutoRefresh] = useState(true);
 
   useEffect(() => {
-    fetchData();
-    // 每30秒自动刷新
-    const interval = setInterval(fetchData, 30000);
-    return () => clearInterval(interval);
-  }, []);
+    fetchMonitoringData();
+    
+    if (autoRefresh) {
+      const interval = setInterval(fetchMonitoringData, 30000); // 30秒刷新
+      return () => clearInterval(interval);
+    }
+  }, [selectedTimeRange, autoRefresh]);
 
-  const fetchData = async () => {
+  const fetchMonitoringData = async () => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        router.push('/auth/login');
-        return;
-      }
+      // 模拟数据，实际应该调用API
+      const mockServiceMetrics: ServiceMetrics[] = [
+        {
+          serviceType: 'claude',
+          serviceName: 'Claude (Anthropic)',
+          status: 'healthy',
+          responseTime: 1234,
+          successRate: 99.8,
+          totalRequests: 4567,
+          errorCount: 9,
+          dailyCost: 156.78,
+          currentLoad: 45,
+          lastCheck: new Date().toISOString()
+        },
+        {
+          serviceType: 'gemini',
+          serviceName: 'Gemini (Google)',
+          status: 'healthy',
+          responseTime: 892,
+          successRate: 99.5,
+          totalRequests: 3421,
+          errorCount: 17,
+          dailyCost: 98.45,
+          currentLoad: 32,
+          lastCheck: new Date().toISOString()
+        },
+        {
+          serviceType: 'openai',
+          serviceName: 'OpenAI GPT',
+          status: 'warning',
+          responseTime: 2156,
+          successRate: 97.8,
+          totalRequests: 2234,
+          errorCount: 49,
+          dailyCost: 234.56,
+          currentLoad: 78,
+          lastCheck: new Date().toISOString()
+        },
+        {
+          serviceType: 'qwen',
+          serviceName: '通义千问',
+          status: 'error',
+          responseTime: 5432,
+          successRate: 89.2,
+          totalRequests: 1567,
+          errorCount: 169,
+          dailyCost: 67.89,
+          currentLoad: 15,
+          lastCheck: new Date().toISOString()
+        }
+      ];
 
-      const [overviewRes, healthRes, incidentsRes, metricsRes] = await Promise.all([
-        fetch('/api/monitoring/overview', {
-          headers: { 'Authorization': `Bearer ${token}` },
-        }),
-        fetch('/api/monitoring/health', {
-          headers: { 'Authorization': `Bearer ${token}` },
-        }),
-        fetch('/api/monitoring/incidents?status=active', {
-          headers: { 'Authorization': `Bearer ${token}` },
-        }),
-        fetch('/api/monitoring/metrics?component=api&startTime=' + new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), {
-          headers: { 'Authorization': `Bearer ${token}` },
-        }),
-      ]);
+      const mockUsageStats: UsageStats = {
+        timeRange: selectedTimeRange,
+        totalRequests: 11789,
+        totalCost: 557.68,
+        totalTokens: 2345678,
+        avgResponseTime: 1578,
+        successRate: 96.8,
+        topUsers: [
+          { name: '张三', requests: 1234, cost: 89.45 },
+          { name: '李四', requests: 987, cost: 67.23 },
+          { name: '王五', requests: 765, cost: 45.67 }
+        ],
+        topGroups: [
+          { name: '前端开发组', requests: 3456, cost: 234.56 },
+          { name: '后端开发组', requests: 2345, cost: 178.90 },
+          { name: '产品设计组', requests: 1234, cost: 98.76 }
+        ]
+      };
 
-      const [overviewData, healthData, incidentsData, metricsData] = await Promise.all([
-        overviewRes.json(),
-        healthRes.json(),
-        incidentsRes.json(),
-        metricsRes.json(),
-      ]);
+      const mockAlerts: AlertItem[] = [
+        {
+          id: '1',
+          type: 'error',
+          service: '通义千问',
+          message: '服务响应时间过长，平均5.4秒',
+          timestamp: new Date(Date.now() - 300000).toISOString(),
+          isResolved: false
+        },
+        {
+          id: '2',
+          type: 'warning',
+          service: 'OpenAI GPT',
+          message: 'API调用失败率较高，当前2.2%',
+          timestamp: new Date(Date.now() - 600000).toISOString(),
+          isResolved: false
+        },
+        {
+          id: '3',
+          type: 'warning',
+          service: 'Claude',
+          message: '日成本接近预算上限',
+          timestamp: new Date(Date.now() - 900000).toISOString(),
+          isResolved: true
+        }
+      ];
 
-      if (overviewData.success) setOverview(overviewData.data);
-      if (healthData.success) setHealthCheck(healthData.data);
-      if (incidentsData.success) setIncidents(incidentsData.data);
-      if (metricsData.success) setMetrics(metricsData.data);
+      setServiceMetrics(mockServiceMetrics);
+      setUsageStats(mockUsageStats);
+      setAlerts(mockAlerts);
     } catch (error) {
       console.error('获取监控数据失败:', error);
     } finally {
       setLoading(false);
-      setRefreshing(false);
-    }
-  };
-
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await fetchData();
-  };
-
-  const resolveIncident = async (incidentId: string) => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/monitoring/incidents/${incidentId}/resolve`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ resolvedBy: 'current_user' }),
-      });
-
-      if (response.ok) {
-        await fetchData();
-      }
-    } catch (error) {
-      console.error('解决告警失败:', error);
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'healthy':
-        return 'text-green-600 bg-green-50';
-      case 'warning':
-        return 'text-yellow-600 bg-yellow-50';
-      case 'critical':
-        return 'text-red-600 bg-red-50';
-      default:
-        return 'text-gray-600 bg-gray-50';
     }
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'healthy':
-        return <CheckCircle className="w-5 h-5 text-green-600" />;
+        return <CheckCircle className="h-5 w-5 text-green-500" />;
       case 'warning':
-        return <AlertTriangle className="w-5 h-5 text-yellow-600" />;
-      case 'critical':
-        return <XCircle className="w-5 h-5 text-red-600" />;
+        return <AlertTriangle className="h-5 w-5 text-yellow-500" />;
+      case 'error':
+        return <XCircle className="h-5 w-5 text-red-500" />;
       default:
-        return <Activity className="w-5 h-5 text-gray-600" />;
+        return <Activity className="h-5 w-5 text-gray-500" />;
     }
   };
 
-  const getSeverityColor = (severity: string) => {
-    switch (severity) {
-      case 'info':
-        return 'default';
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'healthy':
+        return <Badge variant="default" className="bg-green-500">正常</Badge>;
       case 'warning':
-        return 'secondary';
+        return <Badge variant="secondary" className="bg-yellow-500 text-white">警告</Badge>;
       case 'error':
-        return 'destructive';
-      case 'critical':
-        return 'destructive';
+        return <Badge variant="destructive">错误</Badge>;
       default:
-        return 'default';
+        return <Badge variant="outline">未知</Badge>;
     }
+  };
+
+  const getAlertIcon = (type: string) => {
+    switch (type) {
+      case 'error':
+        return <XCircle className="h-4 w-4 text-red-500" />;
+      case 'warning':
+        return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
+      case 'info':
+        return <CheckCircle className="h-4 w-4 text-blue-500" />;
+      default:
+        return <Activity className="h-4 w-4 text-gray-500" />;
+    }
+  };
+
+  const exportData = () => {
+    const data = {
+      serviceMetrics,
+      usageStats,
+      alerts: alerts.filter(alert => !alert.isResolved),
+      exportTime: new Date().toISOString()
+    };
+    
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `monitoring-report-${selectedTimeRange}-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-lg">加载监控数据...</div>
+      <div className="container mx-auto p-6">
+        <div className="animate-pulse space-y-6">
+          <div className="h-8 bg-gray-200 rounded w-1/3"></div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="h-32 bg-gray-200 rounded"></div>
+            ))}
+          </div>
         </div>
       </div>
     );

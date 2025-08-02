@@ -52,11 +52,10 @@ export async function POST(request: NextRequest) {
     // 生成JWT令牌
     const token = generateToken(user.id);
 
-    return createApiResponse({
+    return createApiResponse(true, {
       user: userData,
       token,
-      message: '登录成功',
-    });
+    }, '登录成功', 200);
 
   } catch (error) {
     if (error instanceof z.ZodError) {

@@ -138,11 +138,11 @@ async function handler(req: NextRequest, user: any) {
       ],
     };
 
-    return createApiResponse(result, true, 200);
+    return createApiResponse(true, result, '获取用户统计数据成功', 200);
 
   } catch (error) {
     console.error('Get usage stats error:', error);
-    return createApiResponse({ error: '获取用户统计数据失败' }, false, 500);
+    return createApiResponse(false, null, '获取用户统计数据失败', 500);
   }
 }
 

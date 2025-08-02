@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
 
     const aiServiceInfo = staticAiServices[apiKeyRecord.aiServiceId as keyof typeof staticAiServices];
     if (!aiServiceInfo || !aiServiceInfo.isEnabled) {
-      return createApiResponse({ error: 'AI服务已被禁用' }, false, 403);
+      return createApiResponse(false, null, 'AI服务已被禁用', 403);
     }
 
     // 检查配额
@@ -141,12 +141,12 @@ export async function POST(request: NextRequest) {
         });
 
         if (!groupAiService || !groupAiService.authConfig) {
-          return createApiResponse({ error: '拼车组未配置该AI服务' }, false, 400);
+          return createApiResponse(false, null, '拼车组未配置该AI服务', 400);
         }
 
         const authConfig = groupAiService.authConfig as Record<string, unknown>;
         if (!authConfig.apiKey) {
-          return createApiResponse({ error: 'AI服务未配置API密钥' }, false, 400);
+          return createApiResponse(false, null, 'AI服务未配置API密钥', 400);
         }
 
         // 创建AI服务实例
@@ -204,7 +204,7 @@ export async function POST(request: NextRequest) {
         });
       });
 
-      return createApiResponse(response, true, 200);
+      return createApiResponse(true, response, 'AI服务调用成功', 200);
 
     } catch (aiError) {
       const endTime = Date.now();
@@ -233,15 +233,15 @@ export async function POST(request: NextRequest) {
       });
 
       const errorMessage = aiError instanceof Error ? aiError.message : 'AI服务调用失败';
-      return createApiResponse({ error: errorMessage }, false, 500);
+      return createApiResponse(false, null, errorMessage, 500);
     }
 
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return createApiResponse({ error: error.issues[0].message }, false, 400);
+      return createApiResponse(false, null, error.issues[0].message, 400);
     }
 
     console.error('Chat proxy error:', error);
-    return createApiResponse({ error: '请求处理失败' }, false, 500);
+    return createApiResponse(false, null, '请求处理失败', 500);
   }
 }
