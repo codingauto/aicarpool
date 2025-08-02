@@ -71,7 +71,7 @@ export function SimpleEnterpriseLayout({ children }: SimpleEnterpriseLayoutProps
           </Button>
 
           {/* 页面内容 */}
-          <main className="min-h-screen">
+          <main className="min-h-screen p-4 md:p-6 lg:p-8">
             {children}
           </main>
         </div>

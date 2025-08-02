@@ -168,7 +168,7 @@ function DashboardContent() {
   return (
     <div className="space-y-6">
         {/* 欢迎区域 */}
-        <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-6 rounded-lg mb-8">
+        <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-6 rounded-lg">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-2xl font-bold">欢迎来到 {currentEnterprise?.name || stats?.enterprise.name}</h2>
@@ -183,7 +183,7 @@ function DashboardContent() {
         </div>
 
         {/* 统计卡片 */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
@@ -246,7 +246,7 @@ function DashboardContent() {
         </div>
 
         {/* 系统状态和快速操作 */}
-        <div className="grid gap-6 md:grid-cols-2 mb-8">
+        <div className="grid gap-6 md:grid-cols-2">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
