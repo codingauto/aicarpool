@@ -39,6 +39,10 @@ import {
   ChevronLeft,
   Building2
 } from 'lucide-react';
+import { UserDetailsDialog } from '@/components/user-details-dialog';
+import { UserInviteDialog } from '@/components/user-invite-dialog';
+import { RoleManagementDialog } from '@/components/role-management-dialog';
+import { BatchUserManagementDialog } from '@/components/batch-user-management-dialog';
 import { useRouter } from 'next/navigation';
 import { useEnterpriseContext } from '@/contexts/enterprise-context';
 
@@ -72,14 +76,22 @@ interface Permission {
 }
 
 interface PermissionsData {
-  users: User[];
-  roles: Role[];
-  permissions: Permission[];
-  departments: {
+  enterprise: {
     id: string;
     name: string;
-    userCount: number;
-  }[];
+  };
+  users: User[];
+  currentUser: {
+    id: string;
+    role: string;
+    permissions: string[];
+  };
+  availableRoles: Array<{
+    key: string;
+    name: string;
+    permissions: string[];
+  }>;
+  availablePermissions: string[];
 }
 
 export default function EnterprisePermissionsPage({ params }: { params: Promise<{ enterpriseId: string }> }) {
@@ -93,16 +105,20 @@ export default function EnterprisePermissionsPage({ params }: { params: Promise<
   const [roleFilter, setRoleFilter] = useState('all');
   const [showUserDialog, setShowUserDialog] = useState(false);
   const [showRoleDialog, setShowRoleDialog] = useState(false);
+  const [showRoleManagementDialog, setShowRoleManagementDialog] = useState(false);
+  const [showBatchManagementDialog, setShowBatchManagementDialog] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [showUserDetailsDialog, setShowUserDetailsDialog] = useState(false);
 
   useEffect(() => {
-    if (hasRole('owner') || hasRole('admin')) {
+    // 开发模式下直接加载数据，生产环境下检查角色
+    if (process.env.NODE_ENV === 'development' || hasRole('owner') || hasRole('admin')) {
       fetchPermissionsData();
     }
   }, [enterpriseId, hasRole]);
 
-  // 权限检查
-  if (!hasRole('owner') && !hasRole('admin')) {
+  // 权限检查（开发模式下跳过）
+  if (process.env.NODE_ENV !== 'development' && !hasRole('owner') && !hasRole('admin')) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="text-center py-12">
@@ -116,12 +132,20 @@ export default function EnterprisePermissionsPage({ params }: { params: Promise<
 
   const fetchPermissionsData = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/enterprises/${enterpriseId}/permissions`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json'
+      };
+
+      // 生产环境下添加认证头
+      if (process.env.NODE_ENV !== 'development') {
+        const token = localStorage.getItem('token');
+        if (token) {
+          headers.Authorization = `Bearer ${token}`;
         }
+      }
+
+      const response = await fetch(`/api/enterprises/${enterpriseId}/permissions`, {
+        headers
       });
 
       if (response.ok) {
@@ -188,6 +212,57 @@ export default function EnterprisePermissionsPage({ params }: { params: Promise<
     return matchesSearch && matchesRole;
   }) || [];
 
+  const handleUserUpdate = async (userId: string, updates: {
+    role?: string;
+    permissions?: string[];
+    status?: string;
+  }) => {
+    try {
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json'
+      };
+
+      // 生产环境下添加认证头
+      if (process.env.NODE_ENV !== 'development') {
+        const token = localStorage.getItem('token');
+        if (token) {
+          headers.Authorization = `Bearer ${token}`;
+        }
+      }
+
+      const response = await fetch(`/api/enterprises/${enterpriseId}/permissions`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          action: 'update_user',
+          targetUserId: userId,
+          role: updates.role,
+          status: updates.status,
+          permissions: updates.permissions,
+          scope: 'enterprise'
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          // 重新获取数据
+          await fetchPermissionsData();
+          return true;
+        }
+      }
+      return false;
+    } catch (error) {
+      console.error('更新用户失败:', error);
+      return false;
+    }
+  };
+
+  const handleViewUserDetails = (user: User) => {
+    setSelectedUser(user);
+    setShowUserDetailsDialog(true);
+  };
+
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -250,43 +325,27 @@ export default function EnterprisePermissionsPage({ params }: { params: Promise<
             </p>
           </div>
           <div className="flex gap-2">
-            <Dialog open={showRoleDialog} onOpenChange={setShowRoleDialog}>
-              <DialogTrigger asChild>
-                <Button variant="outline">
-                  <Key className="w-4 h-4 mr-2" />
-                  管理角色
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>角色管理</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div className="text-center py-8">
-                    <Key className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-600">角色管理功能开发中...</p>
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
+            <Button 
+              variant="outline"
+              onClick={() => setShowBatchManagementDialog(true)}
+            >
+              <Users className="w-4 h-4 mr-2" />
+              批量管理
+            </Button>
+            <Button 
+              variant="outline"
+              onClick={() => setShowRoleManagementDialog(true)}
+            >
+              <Key className="w-4 h-4 mr-2" />
+              管理角色
+            </Button>
             <Dialog open={showUserDialog} onOpenChange={setShowUserDialog}>
               <DialogTrigger asChild>
-                <Button>
+                <Button onClick={() => setShowUserDialog(true)}>
                   <Plus className="w-4 h-4 mr-2" />
                   邀请用户
                 </Button>
               </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>邀请用户</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div className="text-center py-8">
-                    <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-600">用户邀请功能开发中...</p>
-                  </div>
-                </div>
-              </DialogContent>
             </Dialog>
           </div>
         </div>
@@ -324,7 +383,7 @@ export default function EnterprisePermissionsPage({ params }: { params: Promise<
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">角色数量</p>
-                  <p className="text-2xl font-bold text-gray-900">{permissionsData.roles.length}</p>
+                  <p className="text-2xl font-bold text-gray-900">{permissionsData.availableRoles?.length || 0}</p>
                 </div>
                 <Key className="w-8 h-8 text-purple-500" />
               </div>
@@ -336,7 +395,7 @@ export default function EnterprisePermissionsPage({ params }: { params: Promise<
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">部门数量</p>
-                  <p className="text-2xl font-bold text-gray-900">{permissionsData.departments.length}</p>
+                  <p className="text-2xl font-bold text-gray-900">0</p>
                 </div>
                 <Shield className="w-8 h-8 text-orange-500" />
               </div>
@@ -410,7 +469,7 @@ export default function EnterprisePermissionsPage({ params }: { params: Promise<
                         <Button 
                           variant="ghost" 
                           size="sm"
-                          onClick={() => setSelectedUser(user)}
+                          onClick={() => handleViewUserDetails(user)}
                         >
                           <Eye className="w-4 h-4" />
                         </Button>
@@ -429,21 +488,18 @@ export default function EnterprisePermissionsPage({ params }: { params: Promise<
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {permissionsData.roles.map((role) => (
-                    <div key={role.id} className="flex items-center justify-between p-4 border rounded-lg">
+                  {permissionsData.availableRoles?.map((role) => (
+                    <div key={role.key} className="flex items-center justify-between p-4 border rounded-lg">
                       <div className="flex items-center space-x-3">
                         <Key className="w-5 h-5 text-blue-500" />
                         <div>
-                          <h4 className="font-medium text-gray-900">{role.displayName}</h4>
-                          <p className="text-sm text-gray-600">{role.description}</p>
+                          <h4 className="font-medium text-gray-900">{role.name}</h4>
+                          <p className="text-sm text-gray-600">{role.key}</p>
                         </div>
                       </div>
                       <div className="flex items-center space-x-3">
-                        {role.isBuiltIn && (
-                          <Badge variant="secondary">内置角色</Badge>
-                        )}
+                        <Badge variant="secondary">系统角色</Badge>
                         <div className="text-right text-sm text-gray-500">
-                          <p>{role.userCount} 名用户</p>
                           <p>{role.permissions.length} 个权限</p>
                         </div>
                         <Button variant="ghost" size="sm">
@@ -464,26 +520,37 @@ export default function EnterprisePermissionsPage({ params }: { params: Promise<
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {permissionsData.permissions.map((permission) => (
-                    <div key={permission.id} className="flex items-center justify-between p-4 border rounded-lg">
+                  {permissionsData.availablePermissions?.map((permission) => (
+                    <div key={permission} className="flex items-center justify-between p-4 border rounded-lg">
                       <div className="flex items-center space-x-3">
                         <Shield className="w-5 h-5 text-purple-500" />
                         <div>
-                          <h4 className="font-medium text-gray-900">{permission.name}</h4>
-                          <p className="text-sm text-gray-600">{permission.description}</p>
-                          <p className="text-xs text-gray-500">分类: {permission.category}</p>
+                          <h4 className="font-medium text-gray-900">{permission}</h4>
+                          <p className="text-sm text-gray-600">
+                            {permission.includes('system') ? '系统级权限' :
+                             permission.includes('enterprise') ? '企业级权限' :
+                             permission.includes('group') ? '拼车组权限' :
+                             permission.includes('ai') ? 'AI服务权限' :
+                             permission.includes('user') ? '用户管理权限' : '其他权限'}
+                          </p>
                         </div>
                       </div>
                       <div className="flex items-center space-x-3">
                         <Badge 
-                          variant={permission.level === 'admin' ? 'destructive' : 
-                                  permission.level === 'write' ? 'default' : 'secondary'}
+                          variant={permission.includes('admin') || permission.includes('manage') ? 'destructive' : 
+                                  permission.includes('create') || permission.includes('invite') ? 'default' : 'secondary'}
                         >
-                          {permission.level}
+                          {permission.includes('admin') || permission.includes('manage') ? '管理' :
+                           permission.includes('create') || permission.includes('invite') ? '创建' : '查看'}
                         </Badge>
                       </div>
                     </div>
-                  ))}
+                  )) || (
+                    <div className="text-center py-8 text-gray-500">
+                      <Shield className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                      <p>暂无权限数据</p>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -495,29 +562,220 @@ export default function EnterprisePermissionsPage({ params }: { params: Promise<
                 <CardTitle>部门权限</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {permissionsData.departments.map((department) => (
-                    <div key={department.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center space-x-3">
-                        <Users className="w-5 h-5 text-green-500" />
-                        <div>
-                          <h4 className="font-medium text-gray-900">{department.name}</h4>
-                          <p className="text-sm text-gray-600">{department.userCount} 名用户</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-3">
-                        <Button variant="outline" size="sm">
-                          <Edit className="w-4 h-4 mr-2" />
-                          编辑权限
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
+                <div className="text-center py-8 text-gray-500">
+                  <Users className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                  <p>暂无部门数据</p>
+                  <p className="text-sm mt-2">部门权限管理功能正在开发中</p>
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* 用户详情对话框 */}
+        <UserDetailsDialog
+          open={showUserDetailsDialog}
+          onOpenChange={setShowUserDetailsDialog}
+          user={selectedUser}
+          availableRoles={permissionsData?.availableRoles || []}
+          availablePermissions={permissionsData?.availablePermissions || []}
+          onUpdateUser={handleUserUpdate}
+        />
+
+        {/* 用户邀请对话框 */}
+        <UserInviteDialog
+          open={showUserDialog}
+          onOpenChange={setShowUserDialog}
+          enterpriseId={enterpriseId}
+          availableRoles={permissionsData?.availableRoles || []}
+          onInviteSuccess={fetchPermissionsData}
+        />
+        
+        {/* 角色管理对话框 */}
+        <RoleManagementDialog
+          open={showRoleManagementDialog}
+          onOpenChange={setShowRoleManagementDialog}
+          availableRoles={permissionsData?.availableRoles || []}
+          users={permissionsData?.users || []}
+          availablePermissions={permissionsData?.availablePermissions || []}
+          onCreateRole={async (role) => {
+            try {
+              const headers: HeadersInit = {
+                'Content-Type': 'application/json'
+              };
+              
+              if (process.env.NODE_ENV !== 'development') {
+                const token = localStorage.getItem('token');
+                if (token) {
+                  headers.Authorization = `Bearer ${token}`;
+                }
+              }
+              
+              const response = await fetch(`/api/enterprises/${enterpriseId}/roles`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({
+                  action: 'create',
+                  roleKey: role.key,
+                  roleName: role.name,
+                  permissions: role.permissions
+                })
+              });
+              
+              if (response.ok) {
+                await fetchPermissionsData();
+                return true;
+              }
+              return false;
+            } catch (error) {
+              console.error('创建角色失败:', error);
+              return false;
+            }
+          }}
+          onUpdateRole={async (roleKey, updates) => {
+            try {
+              const headers: HeadersInit = {
+                'Content-Type': 'application/json'
+              };
+              
+              if (process.env.NODE_ENV !== 'development') {
+                const token = localStorage.getItem('token');
+                if (token) {
+                  headers.Authorization = `Bearer ${token}`;
+                }
+              }
+              
+              const response = await fetch(`/api/enterprises/${enterpriseId}/roles`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({
+                  action: 'update',
+                  roleKey,
+                  permissions: updates.permissions
+                })
+              });
+              
+              if (response.ok) {
+                await fetchPermissionsData();
+                return true;
+              }
+              return false;
+            } catch (error) {
+              console.error('更新角色失败:', error);
+              return false;
+            }
+          }}
+          onDeleteRole={async (roleKey) => {
+            try {
+              const headers: HeadersInit = {
+                'Content-Type': 'application/json'
+              };
+              
+              if (process.env.NODE_ENV !== 'development') {
+                const token = localStorage.getItem('token');
+                if (token) {
+                  headers.Authorization = `Bearer ${token}`;
+                }
+              }
+              
+              const response = await fetch(`/api/enterprises/${enterpriseId}/roles`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({
+                  action: 'delete',
+                  roleKey
+                })
+              });
+              
+              if (response.ok) {
+                await fetchPermissionsData();
+                return true;
+              }
+              return false;
+            } catch (error) {
+              console.error('删除角色失败:', error);
+              return false;
+            }
+          }}
+        />
+        
+        {/* 批量用户管理对话框 */}
+        <BatchUserManagementDialog
+          open={showBatchManagementDialog}
+          onOpenChange={setShowBatchManagementDialog}
+          users={permissionsData?.users || []}
+          availableRoles={permissionsData?.availableRoles || []}
+          availablePermissions={permissionsData?.availablePermissions || []}
+          onBatchUpdate={async (userIds, updates) => {
+            try {
+              const headers: HeadersInit = {
+                'Content-Type': 'application/json'
+              };
+              
+              if (process.env.NODE_ENV !== 'development') {
+                const token = localStorage.getItem('token');
+                if (token) {
+                  headers.Authorization = `Bearer ${token}`;
+                }
+              }
+              
+              const response = await fetch(`/api/enterprises/${enterpriseId}/permissions`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({
+                  action: 'batch_update',
+                  userIds,
+                  role: updates.role,
+                  status: updates.status,
+                  permissions: updates.permissions,
+                  scope: 'enterprise'
+                })
+              });
+              
+              if (response.ok) {
+                await fetchPermissionsData();
+                return true;
+              }
+              return false;
+            } catch (error) {
+              console.error('批量更新用户失败:', error);
+              return false;
+            }
+          }}
+          onBatchDelete={async (userIds) => {
+            try {
+              const headers: HeadersInit = {
+                'Content-Type': 'application/json'
+              };
+              
+              if (process.env.NODE_ENV !== 'development') {
+                const token = localStorage.getItem('token');
+                if (token) {
+                  headers.Authorization = `Bearer ${token}`;
+                }
+              }
+              
+              const response = await fetch(`/api/enterprises/${enterpriseId}/permissions`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({
+                  action: 'batch_delete',
+                  userIds,
+                  scope: 'enterprise'
+                })
+              });
+              
+              if (response.ok) {
+                await fetchPermissionsData();
+                return true;
+              }
+              return false;
+            } catch (error) {
+              console.error('批量删除用户失败:', error);
+              return false;
+            }
+          }}
+        />
         </div>
       </div>
     </div>

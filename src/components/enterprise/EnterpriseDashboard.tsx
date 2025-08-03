@@ -23,9 +23,7 @@ import {
 
 // 导入子组件
 import { OrganizationStructure } from './OrganizationStructure';
-import { AccountPoolManager } from './AccountPoolManager';
 import { ModelHealthMonitor } from './ModelHealthMonitor';
-import { BudgetManagement } from './BudgetManagement';
 import { PermissionManagement } from './PermissionManagement';
 import { AlertMonitor } from './AlertMonitor';
 import { UsageChart } from '@/components/charts/UsageChart';
@@ -73,35 +71,18 @@ export function EnterpriseDashboard({ enterpriseId, isAdmin }: EnterpriseDashboa
     try {
       const token = localStorage.getItem('token');
       
-      // 并行获取所有统计数据
-      const [departmentsRes, poolsRes] = await Promise.all([
-        fetch(`/api/enterprises/${enterpriseId}/departments`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        }),
-        fetch(`/api/enterprises/${enterpriseId}/account-pools`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        })
-      ]);
+      // 获取部门统计数据
+      const departmentsRes = await fetch(`/api/enterprises/${enterpriseId}/departments`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
 
-      const [departmentsData, poolsData] = await Promise.all([
-        departmentsRes.json(),
-        poolsRes.json()
-      ]);
+      const departmentsData = await departmentsRes.json();
 
-      if (departmentsData.success && poolsData.success) {
+      if (departmentsData.success) {
         // 计算统计数据
         const departmentStats = {
           total: departmentsData.data?.totalCount || 0,
           active: departmentsData.data?.totalCount || 0
-        };
-
-        const pools = Array.isArray(poolsData.data) ? poolsData.data : [];
-        const poolStats = {
-          total: pools.length || 0,
-          active: pools.filter((pool: any) => pool.isActive).length || 0,
-          totalAccounts: pools.reduce((sum: number, pool: any) => 
-            sum + (pool._count?.accountBindings || 0), 0
-          )
         };
 
         const departments = departmentsData.data?.departments || [];
@@ -119,7 +100,11 @@ export function EnterpriseDashboard({ enterpriseId, isAdmin }: EnterpriseDashboa
         setStats({
           enterprise,
           departments: departmentStats,
-          accountPools: poolStats,
+          accountPools: {
+            total: 0,
+            active: 0,
+            totalAccounts: 0
+          },
           groups: {
             total: groupCount,
             active: groupCount
@@ -131,9 +116,8 @@ export function EnterpriseDashboard({ enterpriseId, isAdmin }: EnterpriseDashboa
           }
         });
       } else {
-        // 提供更详细的错误信息
-        const errorMsg = departmentsData.error || poolsData.error || '获取企业统计数据失败';
-        console.error('API错误详情:', { departmentsData, poolsData });
+        const errorMsg = departmentsData.error || '获取企业统计数据失败';
+        console.error('API错误详情:', departmentsData);
         setError(errorMsg);
       }
     } catch (error) {
@@ -782,17 +766,15 @@ export function EnterpriseDashboard({ enterpriseId, isAdmin }: EnterpriseDashboa
         </TabsContent>
 
         <TabsContent value="pools">
-          <AccountPoolManager 
-            enterpriseId={enterpriseId} 
-            isAdmin={isAdmin} 
-          />
+          <div className="text-center py-8">
+            <div className="text-gray-500">账号池功能已简化为直接账号绑定</div>
+          </div>
         </TabsContent>
 
         <TabsContent value="budget">
-          <BudgetManagement 
-            enterpriseId={enterpriseId} 
-            isAdmin={isAdmin} 
-          />
+          <div className="text-center py-8">
+            <div className="text-gray-500">预算管理功能已简化为基础成本监控</div>
+          </div>
         </TabsContent>
 
         <TabsContent value="permissions">

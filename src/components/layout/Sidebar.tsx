@@ -36,8 +36,6 @@ interface User {
 const navigationItems: NavigationItem[] = [
   { label: '仪表盘', path: '/dashboard', icon: LayoutDashboard },
   { label: '企业管理', path: '/enterprise', icon: Building2 },
-  { label: '账号池', path: '/account-pools', icon: Database },
-  { label: '预算管理', path: '/budget', icon: DollarSign },
   { label: '权限管理', path: '/permissions', icon: Shield },
   { label: '监控中心', path: '/monitoring', icon: Activity },
   { label: '边缘节点', path: '/edge-nodes', icon: Server },

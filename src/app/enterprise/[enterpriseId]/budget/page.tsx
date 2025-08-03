@@ -1,441 +1,430 @@
 'use client';
 
 /**
- * 企业专属预算管理页面
+ * 企业预算管理页面
  * 
  * 功能：
- * - 预算设置和监控
- * - 成本分配管理
- * - 预算告警设置
- * - 费用报告生成
+ * - 查看企业AI账号使用成本
+ * - 设置预算限制和告警
+ * - 分析成本趋势
+ * - 管理付费计划
  */
 
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
-  DollarSign,
-  TrendingUp,
-  TrendingDown,
-  AlertTriangle,
-  CheckCircle,
-  Plus,
-  Edit,
-  Bell,
-  Download,
+  DollarSign, 
+  CreditCard, 
+  TrendingUp, 
+  AlertTriangle, 
+  Settings,
+  BarChart3,
   Calendar,
   Target,
-  PieChart,
-  ChevronLeft,
-  Building2
+  Zap,
+  PiggyBank,
+  TrendingDown,
+  CheckCircle,
+  Clock
 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { useEnterpriseContext } from '@/contexts/enterprise-context';
 
-interface BudgetData {
-  overview: {
-    totalBudget: number;
-    usedBudget: number;
-    remainingBudget: number;
-    monthlyBudget: number;
-    currentMonthUsed: number;
-    budgetUtilization: number;
-  };
-  departments: {
-    id: string;
-    name: string;
-    budget: number;
-    used: number;
-    utilization: number;
-    status: 'normal' | 'warning' | 'critical';
-  }[];
-  alerts: {
-    id: string;
-    type: 'budget_exceeded' | 'budget_warning' | 'unusual_usage';
-    message: string;
-    department?: string;
-    threshold: number;
-    current: number;
-    timestamp: string;
-  }[];
-  recentTransactions: {
-    id: string;
-    date: string;
-    description: string;
-    amount: number;
-    department: string;
-    service: string;
-  }[];
+interface BudgetPageProps {
+  params: Promise<{ enterpriseId: string }>;
 }
 
-interface BudgetAllocation {
-  departmentId: string;
-  departmentName: string;
-  monthlyBudget: number;
-  warningThreshold: number;
-  criticalThreshold: number;
-}
+export default function BudgetPage({ params }: BudgetPageProps) {
+  const [activeTab, setActiveTab] = useState('overview');
+  const [monthlyBudget, setMonthlyBudget] = useState('5000');
+  const [alertThreshold, setAlertThreshold] = useState('80');
 
-export default function EnterpriseBudgetPage({ params }: { params: Promise<{ enterpriseId: string }> }) {
-  const { enterpriseId } = React.use(params);
-  const router = useRouter();
-  const { currentEnterprise, hasRole } = useEnterpriseContext();
-  const [budgetData, setBudgetData] = useState<BudgetData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [showBudgetDialog, setShowBudgetDialog] = useState(false);
-  const [selectedDepartment, setSelectedDepartment] = useState<BudgetAllocation | null>(null);
-
-  useEffect(() => {
-    fetchBudgetData();
-  }, [enterpriseId]);
-
-  const fetchBudgetData = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/enterprises/${enterpriseId}/budget`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          setBudgetData(data.data);
-        } else {
-          setError(data.message || '获取预算数据失败');
-        }
-      } else {
-        setError('获取预算数据失败');
-      }
-    } catch (error) {
-      console.error('获取预算数据失败:', error);
-      setError('获取预算数据失败');
-    } finally {
-      setLoading(false);
-    }
+  // 模拟预算数据
+  const budgetData = {
+    currentSpent: 3250.50,
+    monthlyBudget: 5000,
+    lastMonthSpent: 2980.30,
+    budgetUsagePercent: 65,
+    remainingBudget: 1749.50,
+    dailyAverage: 108.35,
+    projectedMonthEnd: 4350.80,
+    alerts: [
+      { type: 'warning', message: '本月已使用预算的65%，接近告警阈值' },
+      { type: 'info', message: 'Claude-3.5 Sonnet 使用量较上月增长15%' }
+    ],
+    costByService: [
+      { name: 'Claude-3.5 Sonnet', cost: 1850.30, usage: '2.5M tokens', percent: 57 },
+      { name: 'GPT-4 Turbo', cost: 980.20, usage: '1.8M tokens', percent: 30 },
+      { name: 'Gemini Pro', cost: 320.00, usage: '1.2M tokens', percent: 10 },
+      { name: '其他服务', cost: 100.00, usage: '500K tokens', percent: 3 }
+    ],
+    dailyCosts: [
+      { date: '01/08', cost: 120.50 },
+      { date: '02/08', cost: 95.30 },
+      { date: '03/08', cost: 134.20 },
+      // 更多数据...
+    ]
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'critical':
-        return 'text-red-600 bg-red-50 border-red-200';
-      case 'warning':
-        return 'text-yellow-600 bg-yellow-50 border-yellow-200';
-      default:
-        return 'text-green-600 bg-green-50 border-green-200';
-    }
+  const getUsageColor = (percent: number) => {
+    if (percent >= 90) return 'text-red-600 bg-red-50';
+    if (percent >= 70) return 'text-orange-600 bg-orange-50';
+    return 'text-green-600 bg-green-50';
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'critical':
-        return <AlertTriangle className="w-4 h-4" />;
-      case 'warning':
-        return <AlertTriangle className="w-4 h-4" />;
-      default:
-        return <CheckCircle className="w-4 h-4" />;
-    }
+  const getProgressColor = (percent: number) => {
+    if (percent >= 90) return 'bg-red-500';
+    if (percent >= 70) return 'bg-orange-500';
+    return 'bg-green-500';
   };
-
-  const getAlertIcon = (type: string) => {
-    switch (type) {
-      case 'budget_exceeded':
-        return <AlertTriangle className="w-4 h-4 text-red-500" />;
-      case 'budget_warning':
-        return <Bell className="w-4 h-4 text-yellow-500" />;
-      default:
-        return <Bell className="w-4 h-4 text-blue-500" />;
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="animate-pulse space-y-6">
-          <div className="h-8 bg-gray-200 rounded w-1/3"></div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-32 bg-gray-200 rounded"></div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error || !budgetData) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center py-12">
-          <DollarSign className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">预算数据加载失败</h3>
-          <p className="text-gray-600 mb-4">{error || '暂无预算数据'}</p>
-          <Button onClick={fetchBudgetData}>重试</Button>
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="max-w-6xl mx-auto">
-        {/* 面包屑和标题 */}
-        <div className="flex items-center gap-4 mb-6">
-          <Button 
-            variant="ghost" 
-            size="sm"
-            onClick={() => router.push(`/enterprise/${enterpriseId}/dashboard`)}
-          >
-            <ChevronLeft className="w-4 h-4 mr-2" />
-            返回企业控制面板
+    <div className="space-y-6">
+      {/* 页面标题 */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <DollarSign className="w-6 h-6 text-green-600" />
+            预算管理
+          </h1>
+          <p className="text-gray-600 mt-1">管理AI服务成本和预算控制</p>
+        </div>
+        <div className="flex gap-3">
+          <Button variant="outline">
+            <BarChart3 className="w-4 h-4 mr-2" />
+            导出报告
           </Button>
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <Building2 className="w-4 h-4" />
-            <span>{currentEnterprise?.name || '未知企业'}</span>
-            <span>/</span>
-            <span>预算管理</span>
-          </div>
-        </div>
-
-        <div className="space-y-6">
-        {/* 页面标题 */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-              <DollarSign className="w-6 h-6 text-green-600" />
-              预算管理
-            </h1>
-            <p className="text-gray-600 mt-1">
-              管理企业AI资源预算分配和成本控制
-            </p>
-          </div>
-          {hasRole(['owner', 'admin']) && (
-            <div className="flex gap-2">
-              <Button variant="outline">
-                <Download className="w-4 h-4 mr-2" />
-                导出报告
-              </Button>
-              <Dialog open={showBudgetDialog} onOpenChange={setShowBudgetDialog}>
-                <DialogTrigger asChild>
-                  <Button>
-                    <Plus className="w-4 h-4 mr-2" />
-                    设置预算
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>预算设置</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div className="text-center py-8">
-                      <Target className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                      <p className="text-gray-600">预算设置功能开发中...</p>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </div>
-          )}
-        </div>
-
-        {/* 预算概览 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">总预算</p>
-                  <p className="text-2xl font-bold text-gray-900">${budgetData.overview.totalBudget.toFixed(2)}</p>
-                </div>
-                <Target className="w-8 h-8 text-blue-500" />
-              </div>
-              <div className="mt-4">
-                <div className="text-sm text-gray-600">本年度预算总额</div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">已使用</p>
-                  <p className="text-2xl font-bold text-gray-900">${budgetData.overview.usedBudget.toFixed(2)}</p>
-                </div>
-                <TrendingUp className="w-8 h-8 text-green-500" />
-              </div>
-              <div className="mt-4">
-                <Progress value={budgetData.overview.budgetUtilization} className="h-2" />
-                <div className="text-sm text-gray-600 mt-1">
-                  {budgetData.overview.budgetUtilization.toFixed(1)}% 预算使用率
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">剩余预算</p>
-                  <p className="text-2xl font-bold text-gray-900">${budgetData.overview.remainingBudget.toFixed(2)}</p>
-                </div>
-                <DollarSign className="w-8 h-8 text-yellow-500" />
-              </div>
-              <div className="mt-4">
-                <div className="text-sm text-gray-600">可用余额</div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">本月使用</p>
-                  <p className="text-2xl font-bold text-gray-900">${budgetData.overview.currentMonthUsed.toFixed(2)}</p>
-                </div>
-                <Calendar className="w-8 h-8 text-purple-500" />
-              </div>
-              <div className="mt-4">
-                <div className="text-sm text-gray-600">
-                  / ${budgetData.overview.monthlyBudget.toFixed(2)} 月预算
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* 详细信息标签页 */}
-        <Tabs defaultValue="departments" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="departments">部门预算</TabsTrigger>
-            <TabsTrigger value="alerts">预算告警</TabsTrigger>
-            <TabsTrigger value="transactions">费用明细</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="departments">
-            <Card>
-              <CardHeader>
-                <CardTitle>部门预算分配</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {budgetData.departments.map((dept) => (
-                    <div key={dept.id} className={`p-4 border rounded-lg ${getStatusColor(dept.status)}`}>
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center space-x-3">
-                          {getStatusIcon(dept.status)}
-                          <div>
-                            <h4 className="font-medium">{dept.name}</h4>
-                            <p className="text-sm opacity-75">
-                              使用率 {dept.utilization.toFixed(1)}%
-                            </p>
-                          </div>
-                        </div>
-                        {hasRole(['owner', 'admin']) && (
-                          <Button variant="ghost" size="sm">
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                        )}
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span>已使用: ${dept.used.toFixed(2)}</span>
-                          <span>预算: ${dept.budget.toFixed(2)}</span>
-                        </div>
-                        <Progress value={dept.utilization} className="h-2" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="alerts">
-            <Card>
-              <CardHeader>
-                <CardTitle>预算告警</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {budgetData.alerts.length > 0 ? (
-                    budgetData.alerts.map((alert) => (
-                      <div key={alert.id} className="flex items-start space-x-3 p-4 border rounded-lg">
-                        {getAlertIcon(alert.type)}
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-gray-900">{alert.message}</p>
-                          {alert.department && (
-                            <p className="text-xs text-gray-600 mt-1">部门: {alert.department}</p>
-                          )}
-                          <div className="flex items-center space-x-4 mt-2 text-xs text-gray-500">
-                            <span>阈值: ${alert.threshold.toFixed(2)}</span>
-                            <span>当前: ${alert.current.toFixed(2)}</span>
-                            <span>{new Date(alert.timestamp).toLocaleString('zh-CN')}</span>
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-8">
-                      <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-4" />
-                      <p className="text-gray-600">暂无预算告警</p>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="transactions">
-            <Card>
-              <CardHeader>
-                <CardTitle>费用明细</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {budgetData.recentTransactions.map((transaction) => (
-                    <div key={transaction.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                          <PieChart className="w-5 h-5 text-blue-600" />
-                        </div>
-                        <div>
-                          <h4 className="font-medium text-gray-900">{transaction.description}</h4>
-                          <div className="flex items-center space-x-2 text-sm text-gray-600">
-                            <span>{transaction.department}</span>
-                            <span>•</span>
-                            <span>{transaction.service}</span>
-                            <span>•</span>
-                            <span>{new Date(transaction.date).toLocaleDateString('zh-CN')}</span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-lg font-semibold text-gray-900">
-                          ${transaction.amount.toFixed(2)}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+          <Button>
+            <Settings className="w-4 h-4 mr-2" />
+            预算设置
+          </Button>
         </div>
       </div>
+
+      {/* 预算概览卡片 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <DollarSign className="w-4 h-4 text-green-600" />
+              本月已使用
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">
+              ¥{budgetData.currentSpent.toLocaleString()}
+            </div>
+            <div className="text-xs text-gray-500 mt-1">
+              较上月 {((budgetData.currentSpent - budgetData.lastMonthSpent) / budgetData.lastMonthSpent * 100).toFixed(1)}%
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Target className="w-4 h-4 text-blue-600" />
+              月度预算
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              ¥{budgetData.monthlyBudget.toLocaleString()}
+            </div>
+            <Progress 
+              value={budgetData.budgetUsagePercent} 
+              className="mt-2 h-2"
+            />
+            <div className="text-xs text-gray-500 mt-1">
+              已使用 {budgetData.budgetUsagePercent}%
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <PiggyBank className="w-4 h-4 text-purple-600" />
+              剩余预算
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-purple-600">
+              ¥{budgetData.remainingBudget.toLocaleString()}
+            </div>
+            <div className="text-xs text-gray-500 mt-1">
+              预计可用 {Math.ceil(budgetData.remainingBudget / budgetData.dailyAverage)} 天
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-orange-600" />
+              月末预测
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-600">
+              ¥{budgetData.projectedMonthEnd.toLocaleString()}
+            </div>
+            <div className="text-xs text-gray-500 mt-1">
+              基于当前使用趋势
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* 告警信息 */}
+      {budgetData.alerts.length > 0 && (
+        <div className="space-y-2">
+          {budgetData.alerts.map((alert, index) => (
+            <div 
+              key={index}
+              className={`flex items-center gap-3 p-3 rounded-lg ${
+                alert.type === 'warning' ? 'bg-orange-50 border border-orange-200' : 'bg-blue-50 border border-blue-200'
+              }`}
+            >
+              {alert.type === 'warning' ? (
+                <AlertTriangle className="w-5 h-5 text-orange-500" />
+              ) : (
+                <Clock className="w-5 h-5 text-blue-500" />
+              )}
+              <span className={`text-sm ${
+                alert.type === 'warning' ? 'text-orange-800' : 'text-blue-800'
+              }`}>
+                {alert.message}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* 详细标签页 */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid grid-cols-4 w-full">
+          <TabsTrigger value="overview">使用概览</TabsTrigger>
+          <TabsTrigger value="services">服务分析</TabsTrigger>
+          <TabsTrigger value="trends">趋势分析</TabsTrigger>
+          <TabsTrigger value="settings">预算设置</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* 本月使用情况 */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5" />
+                  本月使用情况
+                </CardTitle>
+                <CardDescription>按日统计的成本使用</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="text-center p-6 bg-gray-50 rounded-lg">
+                    <BarChart3 className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                    <p className="text-gray-600">成本趋势图表</p>
+                    <p className="text-sm text-gray-500">（图表组件待实现）</p>
+                  </div>
+                  <div className="grid grid-cols-3 gap-4 text-center">
+                    <div>
+                      <p className="text-lg font-semibold">¥{budgetData.dailyAverage}</p>
+                      <p className="text-xs text-gray-500">日均成本</p>
+                    </div>
+                    <div>
+                      <p className="text-lg font-semibold">{new Date().getDate()}</p>
+                      <p className="text-xs text-gray-500">已用天数</p>
+                    </div>
+                    <div>
+                      <p className="text-lg font-semibold">{31 - new Date().getDate()}</p>
+                      <p className="text-xs text-gray-500">剩余天数</p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 预算健康度 */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CheckCircle className="w-5 h-5" />
+                  预算健康度
+                </CardTitle>
+                <CardDescription>基于使用趋势的预算分析</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm">预算使用率</span>
+                    <Badge className={getUsageColor(budgetData.budgetUsagePercent)}>
+                      {budgetData.budgetUsagePercent}%
+                    </Badge>
+                  </div>
+                  <Progress 
+                    value={budgetData.budgetUsagePercent} 
+                    className="h-3"
+                  />
+                  
+                  <div className="flex justify-between items-center pt-2">
+                    <span className="text-sm">预测超支风险</span>
+                    <Badge className="text-green-600 bg-green-50">
+                      低风险
+                    </Badge>
+                  </div>
+                  
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm">成本效率</span>
+                    <Badge className="text-blue-600 bg-blue-50">
+                      良好
+                    </Badge>
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t">
+                  <h4 className="font-medium mb-2">建议操作</h4>
+                  <ul className="text-sm text-gray-600 space-y-1">
+                    <li>• 当前使用趋势健康，预算控制良好</li>
+                    <li>• 可考虑优化Claude使用以降低成本</li>
+                    <li>• 建议设置75%使用率告警</li>
+                  </ul>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="services" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>AI服务成本分析</CardTitle>
+              <CardDescription>各AI服务的详细成本统计</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {budgetData.costByService.map((service, index) => (
+                  <div key={index} className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-3">
+                        <Zap className="w-4 h-4 text-blue-500" />
+                        <span className="font-medium">{service.name}</span>
+                        <Badge variant="outline">{service.usage}</Badge>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-semibold">¥{service.cost.toLocaleString()}</div>
+                        <div className="text-sm text-gray-500">{service.percent}%</div>
+                      </div>
+                    </div>
+                    <Progress value={service.percent} className="h-2" />
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="trends" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>成本趋势分析</CardTitle>
+              <CardDescription>历史成本数据和趋势预测</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center p-12 bg-gray-50 rounded-lg">
+                <TrendingUp className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-600 mb-2">趋势分析图表</h3>
+                <p className="text-gray-500">详细的成本趋势分析图表将在此显示</p>
+                <p className="text-sm text-gray-400 mt-2">包含月度对比、同比分析、预测模型等</p>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="settings" className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>预算设置</CardTitle>
+                <CardDescription>配置月度预算和告警阈值</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="monthly-budget">月度预算限额 (¥)</Label>
+                  <Input
+                    id="monthly-budget"
+                    value={monthlyBudget}
+                    onChange={(e) => setMonthlyBudget(e.target.value)}
+                    placeholder="输入月度预算"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="alert-threshold">告警阈值 (%)</Label>
+                  <Input
+                    id="alert-threshold"
+                    value={alertThreshold}
+                    onChange={(e) => setAlertThreshold(e.target.value)}
+                    placeholder="输入告警阈值"
+                  />
+                  <p className="text-sm text-gray-500">
+                    当使用率达到此阈值时发送告警通知
+                  </p>
+                </div>
+
+                <Button className="w-full">
+                  <Settings className="w-4 h-4 mr-2" />
+                  保存设置
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>通知设置</CardTitle>
+                <CardDescription>配置预算告警和通知方式</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">邮件通知</p>
+                      <p className="text-sm text-gray-500">通过邮件接收预算告警</p>
+                    </div>
+                    <input type="checkbox" defaultChecked className="rounded" />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">每日报告</p>
+                      <p className="text-sm text-gray-500">每日成本使用情况汇总</p>
+                    </div>
+                    <input type="checkbox" className="rounded" />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">超支警告</p>
+                      <p className="text-sm text-gray-500">预算即将超支时发送警告</p>
+                    </div>
+                    <input type="checkbox" defaultChecked className="rounded" />
+                  </div>
+                </div>
+
+                <Button variant="outline" className="w-full">
+                  <AlertTriangle className="w-4 h-4 mr-2" />
+                  测试通知
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

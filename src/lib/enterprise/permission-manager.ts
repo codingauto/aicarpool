@@ -64,17 +64,21 @@ export class PermissionManager {
     { id: 'user.delete', name: '删除用户', resource: 'user', action: 'delete', description: '删除用户' },
     { id: 'user.manage', name: '用户管理', resource: 'user', action: 'manage', description: '完整的用户管理权限' },
     
-    // 账号池管理权限
-    { id: 'pool.create', name: '创建账号池', resource: 'account_pool', action: 'create', description: '创建新账号池' },
-    { id: 'pool.read', name: '查看账号池', resource: 'account_pool', action: 'read', description: '查看账号池信息' },
-    { id: 'pool.update', name: '编辑账号池', resource: 'account_pool', action: 'update', description: '编辑账号池配置' },
-    { id: 'pool.delete', name: '删除账号池', resource: 'account_pool', action: 'delete', description: '删除账号池' },
-    { id: 'pool.manage', name: '账号池管理', resource: 'account_pool', action: 'manage', description: '完整的账号池管理权限' },
+    // v2.4简化：AI账号管理权限（替代账号池）
+    { id: 'account.create', name: '创建AI账号', resource: 'ai_account', action: 'create', description: '添加新的AI服务账号' },
+    { id: 'account.read', name: '查看AI账号', resource: 'ai_account', action: 'read', description: '查看AI账号信息' },
+    { id: 'account.update', name: '编辑AI账号', resource: 'ai_account', action: 'update', description: '编辑AI账号配置' },
+    { id: 'account.delete', name: '删除AI账号', resource: 'ai_account', action: 'delete', description: '删除AI账号' },
+    { id: 'account.manage', name: 'AI账号管理', resource: 'ai_account', action: 'manage', description: '完整的AI账号管理权限' },
     
-    // 预算管理权限
-    { id: 'budget.read', name: '查看预算', resource: 'budget', action: 'read', description: '查看预算信息' },
-    { id: 'budget.update', name: '编辑预算', resource: 'budget', action: 'update', description: '编辑预算配置' },
-    { id: 'budget.manage', name: '预算管理', resource: 'budget', action: 'manage', description: '完整的预算管理权限' },
+    // v2.4简化：账号绑定权限（替代复杂分配）
+    { id: 'binding.create', name: '创建账号绑定', resource: 'account_binding', action: 'create', description: '为拼车组绑定AI账号' },
+    { id: 'binding.read', name: '查看账号绑定', resource: 'account_binding', action: 'read', description: '查看账号绑定状态' },
+    { id: 'binding.update', name: '修改账号绑定', resource: 'account_binding', action: 'update', description: '修改绑定配置' },
+    { id: 'binding.delete', name: '删除账号绑定', resource: 'account_binding', action: 'delete', description: '解除账号绑定' },
+    
+    // v2.4简化：基础成本监控（替代复杂预算管理）
+    { id: 'cost.read', name: '查看成本统计', resource: 'cost', action: 'read', description: '查看基础成本统计' },
     
     // 监控权限
     { id: 'monitor.read', name: '查看监控', resource: 'monitoring', action: 'read', description: '查看系统监控数据' },
@@ -97,9 +101,10 @@ export class PermissionManager {
         'department.create', 'department.read', 'department.update', 'department.delete', 'department.manage',
         'group.create', 'group.read', 'group.update', 'group.delete', 'group.manage',
         'user.create', 'user.read', 'user.update', 'user.delete', 'user.manage',
-        'pool.create', 'pool.read', 'pool.update', 'pool.delete', 'pool.manage',
-        'budget.read', 'budget.update', 'budget.manage',
-        'permission.manage'
+        'account.create', 'account.read', 'account.update', 'account.delete', 'account.manage',
+        'binding.create', 'binding.read', 'binding.update', 'binding.delete',
+        'cost.read', 'monitor.read', 'monitor.manage',
+        'ai_service.use', 'ai_service.manage'
       ],
       isBuiltIn: true,
       isActive: true
@@ -114,8 +119,9 @@ export class PermissionManager {
         'department.create', 'department.read', 'department.update', 'department.manage',
         'group.create', 'group.read', 'group.update', 'group.manage',
         'user.read', 'user.update',
-        'pool.create', 'pool.read', 'pool.update', 'pool.manage',
-        'budget.read', 'budget.update'
+        'account.create', 'account.read', 'account.update', 'account.manage',
+        'binding.create', 'binding.read', 'binding.update',
+        'cost.read', 'ai_service.use', 'ai_service.manage'
       ],
       isBuiltIn: true,
       isActive: true
@@ -129,8 +135,9 @@ export class PermissionManager {
         'department.read', 'department.update',
         'group.create', 'group.read', 'group.update', 'group.delete', 'group.manage',
         'user.read', 'user.update',
-        'pool.read', 'pool.update',
-        'budget.read'
+        'account.read', 'account.update',
+        'binding.create', 'binding.read', 'binding.update',
+        'cost.read', 'ai_service.use'
       ],
       isBuiltIn: true,
       isActive: true
@@ -142,7 +149,9 @@ export class PermissionManager {
       description: '管理特定拼车组',
       permissions: [
         'group.read', 'group.update', 'group.manage',
-        'user.read'
+        'user.read',
+        'binding.create', 'binding.read', 'binding.update', 'binding.delete',
+        'ai_service.use', 'cost.read'
       ],
       isBuiltIn: true,
       isActive: true
@@ -153,7 +162,27 @@ export class PermissionManager {
       displayName: '拼车组成员',
       description: '拼车组的普通成员',
       permissions: [
-        'group.read'
+        'group.read',
+        'binding.read',
+        'ai_service.use',
+        'cost.read'
+      ],
+      isBuiltIn: true,
+      isActive: true
+    },
+    // v2.4新增：拼车组所有者角色
+    {
+      id: 'carpool_group_owner',
+      name: 'carpool_group_owner',
+      displayName: '拼车组所有者',
+      description: 'v2.4拼车组模式的组创建者，拥有完整控制权',
+      permissions: [
+        'group.read', 'group.update', 'group.manage', 'group.delete',
+        'user.read', 'user.update',
+        'account.create', 'account.read', 'account.update', 'account.delete',
+        'binding.create', 'binding.read', 'binding.update', 'binding.delete',
+        'ai_service.use', 'ai_service.manage',
+        'cost.read', 'monitor.read'
       ],
       isBuiltIn: true,
       isActive: true
@@ -498,6 +527,157 @@ export class PermissionManager {
    */
   getBuiltInRoles(): Role[] {
     return this.BUILT_IN_ROLES;
+  }
+
+  /**
+   * v2.4特定：检查拼车组账号绑定权限
+   * 简化权限检查，专门用于一对一绑定场景
+   */
+  async checkAccountBindingPermission(
+    userId: string,
+    groupId: string,
+    action: 'create' | 'read' | 'update' | 'delete'
+  ): Promise<PermissionCheck> {
+    try {
+      // 检查用户在该拼车组的角色
+      const groupMember = await prisma.groupMember.findFirst({
+        where: {
+          groupId,
+          userId
+        },
+        include: {
+          group: {
+            select: {
+              organizationType: true,
+              bindingMode: true,
+              enterpriseId: true
+            }
+          }
+        }
+      });
+
+      if (!groupMember) {
+        return { hasPermission: false, reason: '不是该拼车组成员' };
+      }
+
+      // v2.4简化逻辑：拼车组所有者和管理员可以管理绑定
+      if (groupMember.role === 'owner' || groupMember.role === 'admin') {
+        return { 
+          hasPermission: true, 
+          scope: 'group',
+          inheritedFrom: groupMember.role === 'owner' ? '拼车组所有者' : '拼车组管理员'
+        };
+      }
+
+      // 普通成员只能查看绑定信息
+      if (action === 'read') {
+        return { 
+          hasPermission: true, 
+          scope: 'group',
+          inheritedFrom: '拼车组成员'
+        };
+      }
+
+      return { hasPermission: false, reason: '权限不足' };
+
+    } catch (error) {
+      console.error('Check account binding permission error:', error);
+      return { hasPermission: false, reason: '权限检查失败' };
+    }
+  }
+
+  /**
+   * v2.4特定：检查企业资源管理权限
+   * 简化企业级权限检查
+   */
+  async checkEnterpriseResourcePermission(
+    userId: string,
+    enterpriseId: string,
+    action: 'create' | 'read' | 'update' | 'delete' | 'allocate'
+  ): Promise<PermissionCheck> {
+    try {
+      // 检查用户在企业的角色
+      const userEnterprise = await prisma.userEnterprise.findFirst({
+        where: {
+          userId,
+          enterpriseId,
+          isActive: true
+        }
+      });
+
+      if (!userEnterprise) {
+        return { hasPermission: false, reason: '不是该企业成员' };
+      }
+
+      // v2.4简化逻辑：基于角色的简单权限检查
+      const role = userEnterprise.role;
+      
+      if (role === 'owner') {
+        return { 
+          hasPermission: true, 
+          scope: 'enterprise',
+          inheritedFrom: '企业所有者'
+        };
+      }
+
+      if (role === 'admin') {
+        // 管理员可以进行所有操作
+        return { 
+          hasPermission: true, 
+          scope: 'enterprise',
+          inheritedFrom: '企业管理员'
+        };
+      }
+
+      if (role === 'manager') {
+        // 经理可以查看和分配，但不能删除
+        if (action === 'delete') {
+          return { hasPermission: false, reason: '经理角色无删除权限' };
+        }
+        return { 
+          hasPermission: true, 
+          scope: 'enterprise',
+          inheritedFrom: '企业经理'
+        };
+      }
+
+      // 普通成员只能查看
+      if (action === 'read') {
+        return { 
+          hasPermission: true, 
+          scope: 'enterprise',
+          inheritedFrom: '企业成员'
+        };
+      }
+
+      return { hasPermission: false, reason: '权限不足' };
+
+    } catch (error) {
+      console.error('Check enterprise resource permission error:', error);
+      return { hasPermission: false, reason: '权限检查失败' };
+    }
+  }
+
+  /**
+   * v2.4特定：获取用户在拼车组的权限角色
+   */
+  async getUserGroupRole(userId: string, groupId: string): Promise<string | null> {
+    try {
+      const groupMember = await prisma.groupMember.findFirst({
+        where: {
+          userId,
+          groupId
+        },
+        select: {
+          role: true
+        }
+      });
+
+      return groupMember?.role || null;
+    } catch (error) {
+      console.error('Get user group role error:', error);
+      return null;
+    }
   }
 }
 

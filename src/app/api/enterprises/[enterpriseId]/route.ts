@@ -51,20 +51,12 @@ export async function GET(
             }
           }
         },
-        accountPools: {
-          include: {
-            _count: {
-              select: {
-                accountBindings: true,
-                groupBindings: true
-              }
-            }
-          }
-        },
+        aiAccounts: true,
+        enterpriseSettings: true,
         _count: {
           select: {
             departments: true,
-            accountPools: true,
+            aiAccounts: true,
             userEnterprises: true,
             groups: true
           }
@@ -130,20 +122,14 @@ export async function PUT(
             }
           }
         },
-        accountPools: {
-          include: {
-            _count: {
-              select: {
-                accountBindings: true,
-                groupBindings: true
-              }
-            }
-          }
-        },
+        aiAccounts: true,
+        enterpriseSettings: true,
         _count: {
           select: {
             departments: true,
-            accountPools: true
+            aiAccounts: true,
+            userEnterprises: true,
+            groups: true
           }
         }
       }
@@ -183,7 +169,8 @@ export async function DELETE(
       where: { id: enterpriseId },
       include: {
         departments: true,
-        accountPools: true
+        aiAccounts: true,
+        groups: true
       }
     });
 
@@ -191,13 +178,17 @@ export async function DELETE(
       return createNextResponse(false, null, '企业不存在', 404);
     }
 
-    // 检查是否有关联的部门或账号池
+    // 检查是否有关联的部门、AI账号或拼车组
     if (enterprise.departments.length > 0) {
       return createNextResponse(false, null, '该企业下还有部门，请先删除所有部门', 400);
     }
 
-    if (enterprise.accountPools.length > 0) {
-      return createNextResponse(false, null, '该企业下还有账号池，请先删除所有账号池', 400);
+    if (enterprise.aiAccounts.length > 0) {
+      return createNextResponse(false, null, '该企业下还有AI账号，请先删除所有AI账号', 400);
+    }
+
+    if (enterprise.groups.length > 0) {
+      return createNextResponse(false, null, '该企业下还有拼车组，请先删除所有拼车组', 400);
     }
 
     await prisma.enterprise.delete({

@@ -52,6 +52,17 @@ export async function getUserFromRequest(request: NextRequest): Promise<AuthUser
 
     const authHeader = request.headers.get('authorization');
     
+    // 开发模式：如果没有认证头，返回默认测试用户
+    if (process.env.NODE_ENV === 'development' && !authHeader) {
+      console.log('🔐 开发模式：使用默认测试用户认证');
+      return {
+        id: 'user_test_001',
+        email: 'test@example.com',
+        name: '测试用户',
+        role: 'user'
+      };
+    }
+    
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return null;
     }

@@ -24,7 +24,7 @@ async function verifyToken(request: NextRequest) {
 // GET /api/carpool-groups/[groupId] - 获取拼车组详情
 export async function GET(
   request: NextRequest,
-  { params }: { params: { groupId: string } }
+  { params }: { params: Promise<{ groupId: string }> }
 ) {
   try {
     const user = await verifyToken(request);
@@ -35,7 +35,7 @@ export async function GET(
       );
     }
 
-    const { groupId } = params;
+    const { groupId } = await params;
 
     // 验证用户是否有访问此拼车组的权限
     const userEnterprise = await prisma.userEnterprise.findFirst({
@@ -111,7 +111,7 @@ export async function GET(
 // PUT /api/carpool-groups/[groupId] - 更新拼车组信息
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { groupId: string } }
+  { params }: { params: Promise<{ groupId: string }> }
 ) {
   try {
     const user = await verifyToken(request);
@@ -122,7 +122,7 @@ export async function PUT(
       );
     }
 
-    const { groupId } = params;
+    const { groupId } = await params;
     const body = await request.json();
 
     // 验证用户是否是拼车组长
@@ -199,7 +199,7 @@ export async function PUT(
 // DELETE /api/carpool-groups/[groupId] - 删除拼车组
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { groupId: string } }
+  { params }: { params: Promise<{ groupId: string }> }
 ) {
   try {
     const user = await verifyToken(request);
@@ -210,7 +210,7 @@ export async function DELETE(
       );
     }
 
-    const { groupId } = params;
+    const { groupId } = await params;
 
     // 验证用户是否是拼车组长
     const userEnterprise = await prisma.userEnterprise.findFirst({

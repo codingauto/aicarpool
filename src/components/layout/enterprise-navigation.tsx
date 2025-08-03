@@ -98,13 +98,6 @@ export function EnterpriseNavigation({
           requiredRoles: ['owner', 'admin', 'member', 'viewer']
         },
         {
-          id: 'budget',
-          label: '费用分摊',
-          path: `/enterprise/${enterpriseId}/budget`,
-          icon: DollarSign,
-          requiredRoles: ['owner', 'admin']
-        },
-        {
           id: 'settings',
           label: '拼车组设置',
           path: `/enterprise/${enterpriseId}/settings`,
@@ -156,14 +149,6 @@ export function EnterpriseNavigation({
         icon: BarChart3,
         requiredRoles: ['owner', 'admin', 'member', 'viewer'],
         requiredPermissions: ['analytics.view']
-      },
-      {
-        id: 'budget',
-        label: '预算管理',
-        path: `/enterprise/${enterpriseId}/budget`,
-        icon: DollarSign,
-        requiredRoles: ['owner', 'admin'],
-        requiredPermissions: ['budget.manage']
       },
       {
         id: 'permissions',
@@ -543,30 +528,6 @@ function EnterpriseTopBar({ enterpriseId, onMobileMenuToggle }: EnterpriseTopBar
                   >
                     <LayoutDashboard className="w-4 h-4" />
                     仪表盘
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      router.push('/account-pools');
-                      setShowGlobalMenu(false);
-                    }}
-                    className="w-full justify-start gap-2 text-left"
-                  >
-                    <Database className="w-4 h-4" />
-                    账号池
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      router.push('/budget');
-                      setShowGlobalMenu(false);
-                    }}
-                    className="w-full justify-start gap-2 text-left"
-                  >
-                    <DollarSign className="w-4 h-4" />
-                    预算管理
                   </Button>
                   <Button
                     variant="ghost"

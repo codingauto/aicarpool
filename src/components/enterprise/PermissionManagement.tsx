@@ -276,7 +276,7 @@ export function PermissionManagement({ enterpriseId, isAdmin }: PermissionManage
       {/* 头部 */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold">权限管理</h2>
+          <h2 className="text-2xl font-bold">权限管理 - v2.4简化版</h2>
           <p className="text-gray-600">管理企业用户角色和权限分配</p>
         </div>
         {isAdmin && (

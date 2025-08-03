@@ -31,17 +31,22 @@ model User {
 }
 
 model Group {
-  id                      String                   @id @default(cuid())
-  name                    String
-  description             String?
-  maxMembers              Int                      @default(5)
-  status                  String                   @default("active")
-  settings                Json?
-  createdById             String
-  createdAt               DateTime                 @default(now())
-  updatedAt               DateTime                 @updatedAt
-  departmentId            String?
-  enterpriseId            String?
+  id               String                   @id @default(cuid())
+  name             String
+  description      String?
+  maxMembers       Int                      @default(5)
+  status           String                   @default("active")
+  settings         Json?
+  createdById      String
+  createdAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
+  departmentId     String?
+  enterpriseId     String?
+  
+  // v2.4 简化字段
+  organizationType String                   @default("carpool_group") // carpool_group, enterprise_group
+  bindingMode      String                   @default("exclusive")     // exclusive, shared
+  
   alertRules              AlertRule[]
   apiKeys                 ApiKey[]
   deploymentModes         DeploymentMode[]
@@ -49,7 +54,6 @@ model Group {
   accountBindings         GroupAccountBinding[]
   aiServices              GroupAiService[]
   members                 GroupMember[]
-  poolBindings            GroupPoolBinding[]
   resourceBinding         GroupResourceBinding?
   createdBy               User                     @relation("GroupCreator", fields: [createdById], references: [id], onDelete: Cascade)
   department              Department?              @relation("DepartmentGroups", fields: [departmentId], references: [id])
@@ -69,6 +73,7 @@ model Group {
   @@index([createdById], map: "groups_createdById_fkey")
   @@index([enterpriseId])
   @@index([departmentId])
+  @@index([organizationType])
   @@map("groups")
 }
 
@@ -294,40 +299,44 @@ model UserQuotaUsage {
 }
 
 model AiServiceAccount {
-  id                   String                @id @default(cuid())
-  enterpriseId         String
-  name                 String
-  description          String?
-  serviceType          String
-  accountType          String                @default("shared")
-  authType             AuthType
-  encryptedCredentials String                @db.Text
-  oauthAccessToken     String?               @db.Text
-  oauthRefreshToken    String?               @db.Text
-  oauthExpiresAt       DateTime?
-  oauthScopes          String?
-  apiEndpoint          String?
-  proxyType            String?
-  proxyHost            String?
-  proxyPort            Int?
-  proxyUsername        String?
-  proxyPassword        String?
-  supportedModels      Json
-  currentModel         String?
-  dailyLimit           Int                   @default(10000)
-  costPerToken         Decimal               @default(0.00001000) @db.Decimal(10, 8)
-  isEnabled            Boolean               @default(true)
-  status               String                @default("active")
-  currentLoad          Int                   @default(0)
-  totalRequests        BigInt                @default(0)
-  totalTokens          BigInt                @default(0)
-  totalCost            Decimal               @default(0.0000) @db.Decimal(12, 4)
-  lastUsedAt           DateTime?
-  errorMessage         String?
-  createdAt            DateTime              @default(now())
-  updatedAt            DateTime              @updatedAt
+  id                     String                @id @default(cuid())
+  enterpriseId           String
+  name                   String
+  description            String?
+  serviceType            String
+  accountType            String                @default("shared")
+  authType               AuthType
+  encryptedCredentials   String                @db.Text
+  oauthAccessToken       String?               @db.Text
+  oauthRefreshToken      String?               @db.Text
+  oauthExpiresAt         DateTime?
+  oauthScopes            String?
+  apiEndpoint            String?
+  proxyType              String?
+  proxyHost              String?
+  proxyPort              Int?
+  proxyUsername          String?
+  proxyPassword          String?
+  supportedModels        Json
+  currentModel           String?
+  dailyLimit             Int                   @default(10000)
+  costPerToken           Decimal               @default(0.00001000) @db.Decimal(10, 8)
+  isEnabled              Boolean               @default(true)
+  status                 String                @default("active")
+  currentLoad            Int                   @default(0)
+  totalRequests          BigInt                @default(0)
+  totalTokens            BigInt                @default(0)
+  totalCost              Decimal               @default(0.0000) @db.Decimal(12, 4)
+  lastUsedAt             DateTime?
+  errorMessage           String?
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
+  
+  // v2.4 简化字段
+  ownerType              String                @default("enterprise") // enterprise, carpool_group
+  maxConcurrentGroups    Int                   @default(1) // 拼车模式为1，企业模式可多个
+  
   healthChecks         AccountHealthCheck[]
-  poolBindings         AccountPoolBinding[]
   enterprise           Enterprise            @relation(fields: [enterpriseId], references: [id], onDelete: Cascade)
   groupBindings        GroupAccountBinding[]
   groupAiServices      GroupAiService[]
@@ -337,6 +346,7 @@ model AiServiceAccount {
   @@index([serviceType])
   @@index([status])
   @@index([accountType])
+  @@index([ownerType])
   @@map("ai_service_accounts")
 }
 
@@ -568,7 +578,6 @@ model Enterprise {
   settings           Json?
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
-  accountPools       AccountPool[]
   aiAccounts         AiServiceAccount[]
   departments        Department[]
   enterpriseSettings EnterpriseSettings?
@@ -632,65 +641,8 @@ model Department {
   @@map("departments")
 }
 
-model AccountPool {
-  id                  String               @id @default(cuid())
-  enterpriseId        String
-  name                String
-  description         String?
-  poolType            String               @default("shared")
-  loadBalanceStrategy String               @default("round_robin")
-  maxLoadPerAccount   Int                  @default(80)
-  priority            Int                  @default(1)
-  maxConcurrent       Int                  @default(10)
-  dailyLimit          Int                  @default(1000)
-  costLimit           Decimal?             @db.Decimal(10, 2)
-  isActive            Boolean              @default(true)
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
-  accountBindings     AccountPoolBinding[]
-  enterprise          Enterprise           @relation(fields: [enterpriseId], references: [id], onDelete: Cascade)
-  groupBindings       GroupPoolBinding[]
 
-  @@index([enterpriseId])
-  @@map("account_pools")
-}
 
-model AccountPoolBinding {
-  id                String           @id @default(cuid())
-  poolId            String
-  accountId         String
-  weight            Int              @default(1)
-  maxLoadPercentage Int              @default(80)
-  isActive          Boolean          @default(true)
-  createdAt         DateTime         @default(now())
-  account           AiServiceAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  pool              AccountPool      @relation(fields: [poolId], references: [id], onDelete: Cascade)
-
-  @@unique([poolId, accountId])
-  @@index([accountId])
-  @@map("account_pool_bindings")
-}
-
-model GroupPoolBinding {
-  id                String      @id @default(cuid())
-  groupId           String
-  poolId            String
-  bindingType       String      @default("shared")
-  priority          Int         @default(1)
-  usageWeight       Int         @default(1)
-  usageLimitHourly  Int         @default(0)
-  usageLimitDaily   Int         @default(0)
-  usageLimitMonthly Int         @default(0)
-  isActive          Boolean     @default(true)
-  createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @updatedAt
-  group             Group       @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  pool              AccountPool @relation(fields: [poolId], references: [id], onDelete: Cascade)
-
-  @@unique([groupId, poolId])
-  @@index([poolId])
-  @@map("group_pool_bindings")
-}
 
 model GroupResourceBinding {
   id               String   @id @default(cuid())
@@ -710,18 +662,21 @@ model GroupResourceBinding {
 }
 
 model GroupAccountBinding {
-  id        String           @id @default(cuid())
-  groupId   String
-  accountId String
-  priority  Int              @default(1)
-  weight    Int              @default(1)
-  isActive  Boolean          @default(true)
-  createdAt DateTime         @default(now())
-  account   AiServiceAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  group     Group            @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  id            String           @id @default(cuid())
+  groupId       String
+  accountId     String
+  bindingType   String           @default("exclusive") // v2.4: exclusive, shared
+  dailyLimit    Int?             // v2.4: 日使用限制  
+  monthlyBudget Decimal?         @db.Decimal(10, 2) // v2.4: 月预算限制
+  isActive      Boolean          @default(true)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt // v2.4: 添加更新时间
+  account       AiServiceAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  group         Group            @relation(fields: [groupId], references: [id], onDelete: Cascade)
 
   @@unique([groupId, accountId])
   @@index([accountId])
+  @@index([bindingType])
   @@map("group_account_bindings")
 }
 
@@ -757,48 +712,25 @@ model BudgetAllocation {
 }
 
 model UserEnterpriseRole {
-  id           String         @id @default(cuid())
+  id           String   @id @default(cuid())
   userId       String
   enterpriseId String?
-  roleId       String
-  scope        String         @default("enterprise")
-  resourceId   String?
-  isActive     Boolean        @default(true)
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
-  role         EnterpriseRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  role         String   // 简化：直接存储角色名称，不使用外键
+  scope        String   @default("enterprise") // 'global', 'enterprise', 'group'
+  resourceId   String?  // 具体资源ID（如groupId）
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   @@index([userId])
   @@index([enterpriseId])
-  @@index([roleId])
+  @@index([role, scope])
+  @@index([userId, enterpriseId])
   @@map("user_enterprise_roles")
 }
 
-model EnterpriseRole {
-  id          String               @id @default(cuid())
-  name        String               @unique
-  displayName String
-  description String?
-  isBuiltIn   Boolean              @default(false)
-  isActive    Boolean              @default(true)
-  createdAt   DateTime             @default(now())
-  updatedAt   DateTime             @updatedAt
-  permissions RolePermission[]
-  userRoles   UserEnterpriseRole[]
-
-  @@map("enterprise_roles")
-}
-
-model RolePermission {
-  id         String         @id @default(cuid())
-  roleId     String
-  permission String
-  createdAt  DateTime       @default(now())
-  role       EnterpriseRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
-
-  @@unique([roleId, permission])
-  @@map("role_permissions")
-}
+// 移除EnterpriseRole和RolePermission表
+// 简化设计：权限直接在代码中定义，不存储在数据库中
 
 enum AuthType {
   api_key
