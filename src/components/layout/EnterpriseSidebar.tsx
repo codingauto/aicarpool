@@ -16,11 +16,8 @@ import {
   Users,
   Brain,
   TrendingUp,
-  DollarSign,
   Shield,
   Building,
-  Monitor,
-  AlertTriangle,
   Settings,
   ChevronLeft,
   ChevronRight,
@@ -81,11 +78,6 @@ export function EnterpriseSidebar({
       icon: TrendingUp,
     },
     {
-      title: '预算管理',
-      href: `/enterprise/${enterpriseId}/budget`,
-      icon: DollarSign,
-    },
-    {
       title: '权限管理',
       href: `/enterprise/${enterpriseId}/permissions`,
       icon: Shield,
@@ -94,16 +86,6 @@ export function EnterpriseSidebar({
       title: '组织架构',
       href: `/enterprise/${enterpriseId}/organization`,
       icon: Building,
-    },
-    {
-      title: '监控中心',
-      href: `/enterprise/${enterpriseId}/monitoring`,
-      icon: Monitor,
-    },
-    {
-      title: '告警管理',
-      href: `/enterprise/${enterpriseId}/alerts`,
-      icon: AlertTriangle,
     },
     {
       title: '企业设置',
