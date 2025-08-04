@@ -2,9 +2,14 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { createApiResponse } from '@/lib/middleware';
-import { AIServiceFactory, SupportedAIService } from '@/lib/ai-services/factory';
-import { ChatRequest } from '@/lib/ai-services/base';
-import { EnhancedAiServiceRouter } from '@/lib/ai-services/enhanced-router';
+// 临时注释掉旧的引用，将迁移到新架构
+// import { AIServiceFactory, SupportedAIService } from '@/lib/ai-services/factory';
+// import { ChatRequest } from '@/lib/ai-services/base';
+// import { EnhancedAiServiceRouter } from '@/lib/ai-services/enhanced-router';
+
+// 新架构的引用
+import { AiServiceClient, AiRequest } from '@/lib/ai-platforms/ai-service-client';
+import { ServiceType } from '@/lib/ai-platforms/platform-configs';
 
 const chatRequestSchema = z.object({
   messages: z.array(z.object({
@@ -20,6 +25,9 @@ const chatRequestSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    // 临时返回维护中状态，直到新架构迁移完成
+    return createApiResponse(false, null, 'AI Proxy正在升级中，暂时不可用', 503);
+    
     // 从请求头获取API密钥
     const apiKey = request.headers.get('authorization')?.replace('Bearer ', '');
     if (!apiKey) {

@@ -9,7 +9,26 @@
  */
 
 import { PrismaClient } from '@prisma/client';
-import { AiServiceClient, AiServiceAccount } from '@/lib/ai-services/client';
+// 暂时注释掉，将使用新的适配器架构  
+// import { AiServiceClient, AiServiceAccount } from '@/lib/ai-services/client';
+
+// 临时接口定义，之后会迁移到新架构
+interface AiServiceAccount {
+  id: string;
+  name: string;
+  serviceType: string;
+  authType: 'api_key' | 'oauth';
+  encryptedCredentials: string;
+  apiEndpoint?: string;
+  proxyType?: string;
+  proxyHost?: string;
+  proxyPort?: number;
+  proxyUsername?: string;
+  proxyPassword?: string;
+  supportedModels: string[];
+  currentModel?: string;
+  costPerToken: number;
+}
 import { LoadBalancer, LoadBalanceAccount, LoadBalanceStrategy } from '@/lib/services/load-balancer';
 
 const prisma = new PrismaClient();

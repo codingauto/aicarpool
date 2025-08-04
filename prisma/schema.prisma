@@ -304,7 +304,7 @@ model AiServiceAccount {
   enterpriseId           String
   name                   String
   description            String?
-  serviceType            String
+  serviceType            ServiceType
   accountType            String                @default("shared")
   authType               AuthType
   encryptedCredentials   String                @db.Text
@@ -336,6 +336,15 @@ model AiServiceAccount {
   // v2.4 简化字段
   ownerType              String                @default("enterprise") // enterprise, carpool_group
   maxConcurrentGroups    Int                   @default(1) // 拼车模式为1，企业模式可多个
+  
+  // 多平台扩展字段
+  platformConfig         Json?                 // 平台特定配置 (projectId, accessKeyId等)
+  region                 String?               // 服务区域 (如阿里云的region)
+  endpointUrl            String?               // 自定义API端点
+  modelVersion           String?               // 模型版本 (如GPT-4, Claude-3等)
+  rateLimitConfig        Json?                 // 速率限制配置
+  headerConfig           Json?                 // 自定义请求头
+  timeout                Int?                  @default(30000) // 请求超时时间(ms)
   
   healthChecks         AccountHealthCheck[]
   enterprise           Enterprise            @relation(fields: [enterpriseId], references: [id], onDelete: Cascade)
@@ -756,4 +765,26 @@ model UserEnterpriseRole {
 enum AuthType {
   api_key
   oauth
+  session_token
+  access_key
+  bearer_token
+  app_key
+  project_key
+}
+
+enum ServiceType {
+  claude
+  claude_console  
+  openai
+  gemini
+  qwen           // 通义千问
+  glm            // 智谱AI
+  kimi           // 月之暗面
+  wenxin         // 文心一言
+  spark          // 讯飞星火
+  hunyuan        // 腾讯混元
+  minimax        // MiniMax
+  baichuan       // 百川AI
+  sensetime      // 商汤
+  doubao         // 豆包
 }
