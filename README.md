@@ -9,7 +9,7 @@
 
 **🚗 企业级AI服务拼车管理平台，支持多AI服务聚合、智能路由、成本分摊**
 
-**🆕 v0.8.6 - 权限管理与预算控制全面升级：RBAC权限系统、角色管理对话框、预算管理模块** 
+**🆕 v0.9.0 - Docker化部署全面升级：容器化部署、Docker Hub自动构建、CI/CD流水线** 
 
 </div>
 
@@ -17,7 +17,7 @@
 
 ## 🚀 核心功能
 
-### 🏢 企业级管理 (v0.8.6 全面升级)
+### 🏢 企业级管理 (v0.9.0 容器化升级)
 - ✅ **企业组织**: 创建和管理企业级组织架构
 - ✅ **权限管理**: 完整的RBAC权限系统，支持角色管理对话框
 - ✅ **预算控制**: 全新预算管理模块，AI服务成本分析与监控
@@ -42,11 +42,14 @@
 - ✅ **告警通知**: 配额预警、服务异常等智能告警
 - ✅ **数据分析**: 使用趋势、成本分析、性能报告
 
-### 🌐 代理与部署
+### 🌐 部署与容器化 (v0.9.0 新增)
+- ✅ **Docker化部署**: 完整Docker容器化方案，2分钟一键部署
+- ✅ **多架构支持**: AMD64 + ARM64镜像，支持各种硬件平台
+- ✅ **CI/CD流水线**: GitHub Actions自动构建发布到Docker Hub
+- ✅ **服务编排**: Docker Compose完整服务栈管理
 - ✅ **代理管理**: 支持HTTP/SOCKS5代理，确保服务可达性
 - ✅ **多部署模式**: 集中化、分布式、混合部署架构
 - ✅ **边缘节点**: 分布式边缘节点，就近处理请求
-- ✅ **IP管理**: 静态IP代理配置，稳定访问海外服务
 
 ---
 
@@ -54,10 +57,14 @@
 
 - **前端**: Next.js 15 + React 19 + TypeScript + Tailwind CSS
 - **后端**: Next.js API Routes + Prisma ORM
-- **数据库**: MySQL + Redis
+- **数据库**: MySQL 8.0 + Redis 7
+- **容器化**: Docker + Docker Compose + 多架构镜像
+- **CI/CD**: GitHub Actions + Docker Hub自动构建
 - **认证**: JWT + NextAuth.js
 - **邮件**: React Email + Nodemailer
 - **UI组件**: shadcn/ui + Radix UI
+- **监控**: 可选Prometheus + Grafana + 健康检查
+- **运行时**: Node.js 22 LTS + Alpine Linux
 
 ---
 
@@ -68,19 +75,65 @@
 - MySQL 8.0+
 - Redis 6+
 
-### 一键服务器部署（推荐）
+### 🐳 Docker部署（推荐）
+
+**一键Docker部署（最简单、最快速）：**
+```bash
+# Docker一键部署，自动配置所有服务
+curl -fsSL https://raw.githubusercontent.com/codingauto/aicarpool/main/scripts/docker-deploy.sh | bash
+```
+
+**使用Docker Compose：**
+```bash
+# 1. 下载配置文件
+curl -fsSL https://raw.githubusercontent.com/codingauto/aicarpool/main/docker-compose.yml -o docker-compose.yml
+curl -fsSL https://raw.githubusercontent.com/codingauto/aicarpool/main/.env.docker.example -o .env
+
+# 2. 编辑环境变量
+nano .env  # 配置必要的环境变量
+
+# 3. 启动服务
+docker-compose up -d
+
+# 4. 查看服务状态
+docker-compose ps
+```
+
+**Docker Hub镜像：**
+```bash
+# 直接运行最新版本
+docker run -d \
+  --name aicarpool \
+  -p 4000:4000 \
+  -e DATABASE_URL="mysql://user:pass@host:3306/aicarpool" \
+  -e NEXTAUTH_SECRET="your-secret-key" \
+  codingauto/aicarpool:latest
+```
+
+**Docker优势：**
+- ⚡ 2-5分钟快速部署
+- 🔒 环境隔离，安全可靠
+- 📦 包含完整服务栈（应用+数据库+缓存）
+- 🔄 易于升级和备份
+- 🌐 支持多架构（AMD64 + ARM64）
+
+### 传统服务器部署
 
 **快速部署模式（自动避免数据库迁移冲突）：**
 ```bash
 # 快速模式部署，适用于生产服务器和开发环境
 curl -fsSL https://raw.githubusercontent.com/codingauto/aicarpool/main/scripts/install.sh | QUICK_MODE=true bash
+
+# 如果系统已安装Docker，脚本会自动使用Docker模式
+# 强制使用传统模式: DOCKER_MODE=false bash
 ```
 
 **标准部署（传统迁移模式）：**
 ```bash
-# 通用安装脚本（自动检测系统）
+# 通用安装脚本（自动检测系统和Docker）
 curl -fsSL https://raw.githubusercontent.com/codingauto/aicarpool/main/scripts/install.sh | bash
 
+# 手动指定系统类型
 # Ubuntu/Debian 系统
 curl -fsSL https://raw.githubusercontent.com/codingauto/aicarpool/main/scripts/deploy-ubuntu.sh | bash
 
@@ -280,12 +333,130 @@ aicarpool/
 - **网络**: 稳定的网络连接
 
 **技术栈：**
-- **Node.js** 18+
+- **Node.js** 22+ (推荐)
 - **MySQL** 8.0+
-- **Redis** 6+
-- **Docker** (可选)
+- **Redis** 7+
+- **Docker** (推荐)
 
-### 手动部署
+### 🐳 Docker部署（推荐方式）
+
+Docker部署是最简单、最可靠的部署方式，适合生产环境和开发环境。
+
+#### Docker一键部署
+
+```bash
+# 自动下载并运行Docker部署脚本
+curl -fsSL https://raw.githubusercontent.com/codingauto/aicarpool/main/scripts/docker-deploy.sh | bash
+```
+
+这个脚本会自动：
+- 检查Docker环境
+- 下载docker-compose.yml配置
+- 生成安全的环境变量
+- 启动完整的服务栈
+- 配置数据库和管理员账号
+
+#### 手动Docker部署
+
+**1. 准备环境文件**
+```bash
+# 下载配置文件
+wget https://raw.githubusercontent.com/codingauto/aicarpool/main/docker-compose.yml
+wget https://raw.githubusercontent.com/codingauto/aicarpool/main/.env.docker.example -O .env
+```
+
+**2. 配置环境变量**
+```bash
+# 编辑 .env 文件，配置必要参数
+nano .env
+
+# 必须配置的参数：
+# NEXTAUTH_SECRET=your-random-secret-key-at-least-32-chars
+# MYSQL_ROOT_PASSWORD=your-secure-root-password
+# DB_PASSWORD=your-secure-db-password
+```
+
+**3. 启动服务**
+```bash
+# 启动核心服务
+docker-compose up -d aicarpool mysql redis
+
+# 启动开发环境（包含管理工具）
+docker-compose --profile development up -d
+
+# 启动生产环境（包含监控）
+docker-compose --profile production up -d
+```
+
+**4. 验证部署**
+```bash
+# 查看服务状态
+docker-compose ps
+
+# 查看应用日志
+docker-compose logs -f aicarpool
+
+# 访问应用
+curl http://localhost:4000/health
+```
+
+#### Docker管理命令
+
+```bash
+# 服务管理
+docker-compose start     # 启动服务
+docker-compose stop      # 停止服务
+docker-compose restart   # 重启服务
+docker-compose down      # 停止并删除容器
+
+# 日志查看
+docker-compose logs aicarpool     # 查看应用日志
+docker-compose logs mysql         # 查看数据库日志
+docker-compose logs -f             # 查看所有日志
+
+# 数据备份
+docker-compose exec mysql mysqldump -u root -p aicarpool > backup.sql
+
+# 进入容器
+docker-compose exec aicarpool sh  # 进入应用容器
+docker-compose exec mysql mysql -u root -p  # 进入数据库
+```
+
+#### Docker环境配置
+
+**生产环境配置示例：**
+```bash
+# .env 文件配置
+NEXTAUTH_SECRET=your-super-secure-secret-key-32-chars-minimum
+NEXTAUTH_URL=https://your-domain.com
+MYSQL_ROOT_PASSWORD=your-secure-root-password
+DB_PASSWORD=your-secure-db-password
+QUICK_MODE=true
+NODE_ENV=production
+
+# 可选：邮件配置
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-email@gmail.com
+SMTP_PASSWORD=your-app-password
+
+# 可选：AI服务配置
+CLAUDE_API_KEY=your-claude-api-key
+OPENAI_API_KEY=your-openai-api-key
+```
+
+**反向代理配置（Nginx）：**
+```bash
+# 启用Nginx反向代理
+docker-compose --profile nginx up -d
+
+# 或手动配置外部Nginx
+# upstream aicarpool {
+#     server localhost:4000;
+# }
+```
+
+### 传统手动部署
 
 #### 第一步：环境准备
 
@@ -777,6 +948,33 @@ bash /opt/aicarpool/scripts/update.sh
 ---
 
 ## 📝 版本更新日志
+
+### v0.9.0 (2025-08-04) - Docker化部署全面升级
+- 🐳 **完整Docker支持**
+  - 多阶段Dockerfile优化，基于Node.js 22 Alpine
+  - 支持AMD64 + ARM64多架构镜像
+  - 完整的docker-compose.yml服务编排
+  - 智能docker-entrypoint.sh启动脚本
+- 🚀 **CI/CD自动化**
+  - GitHub Actions工作流自动构建
+  - Docker Hub自动发布和标签管理
+  - 安全扫描和多平台构建
+  - 自动同步README到Docker Hub
+- ⚡ **部署体验优化**
+  - 一键Docker部署脚本 (2-5分钟部署)
+  - 自动检测Docker环境的智能安装脚本
+  - 完整的环境变量模板和配置
+  - 支持开发、生产、监控多种配置profile
+- 📊 **监控和管理**
+  - 内置健康检查和状态监控
+  - 可选Prometheus + Grafana监控栈
+  - phpMyAdmin + Redis Commander管理界面
+  - 完整的日志聚合和备份方案
+- 🔧 **开发体验改进**
+  - 环境隔离，避免系统污染
+  - 热重载和调试支持
+  - 一键卸载和数据清理
+  - 完整的Docker管理命令文档
 
 ### v0.8.6 (2025-08-04) - 权限管理与预算控制全面升级
 - 🏢 **RBAC权限系统优化**

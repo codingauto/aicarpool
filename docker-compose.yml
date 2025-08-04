@@ -1,0 +1,252 @@
+version: '3.8'
+
+# AiCarpool Enterprise Platform Docker Compose Configuration
+# Complete service orchestration with database, cache, and monitoring
+
+services:
+  # 🚀 AiCarpool Main Application
+  aicarpool:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - NODE_ENV=production
+    image: codingauto/aicarpool:latest
+    container_name: aicarpool-app
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-4000}:4000"
+    environment:
+      # 🌐 Application Configuration
+      - NODE_ENV=production
+      - PORT=4000
+      - HOSTNAME=0.0.0.0
+      
+      # 🔐 Authentication (Required)
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      - NEXTAUTH_URL=${NEXTAUTH_URL:-http://localhost:4000}
+      
+      # 📊 Database Configuration (Required)
+      - DATABASE_URL=mysql://aicarpool:${DB_PASSWORD:-aicarpool123}@mysql:3306/aicarpool
+      
+      # 🔄 Redis Configuration
+      - REDIS_URL=redis://redis:6379
+      
+      # ⚡ Deployment Mode
+      - QUICK_MODE=${QUICK_MODE:-true}
+      
+      # 📧 Email Configuration (Optional)
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      
+      # 🤖 AI Service Configuration (Optional)
+      - CLAUDE_API_KEY=${CLAUDE_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      
+      # 🛠️ System Configuration
+      - TZ=${TIMEZONE:-Asia/Shanghai}
+      - NEXT_TELEMETRY_DISABLED=1
+    volumes:
+      - ./logs:/app/logs
+      - ./data:/app/data
+      - ./uploads:/app/uploads
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - aicarpool-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # 🗄️ MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: aicarpool-mysql
+    restart: unless-stopped
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-rootpassword}
+      - MYSQL_DATABASE=aicarpool
+      - MYSQL_USER=aicarpool
+      - MYSQL_PASSWORD=${DB_PASSWORD:-aicarpool123}
+      - TZ=${TIMEZONE:-Asia/Shanghai}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./mysql/conf.d:/etc/mysql/conf.d:ro
+      - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    command: >
+      --default-authentication-plugin=mysql_native_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --innodb-buffer-pool-size=256M
+      --max-connections=200
+      --query-cache-type=1
+      --query-cache-size=64M
+    networks:
+      - aicarpool-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "aicarpool", "-p${DB_PASSWORD:-aicarpool123}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # 📊 Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: aicarpool-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    environment:
+      - TZ=${TIMEZONE:-Asia/Shanghai}
+    volumes:
+      - redis_data:/data
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    command: >
+      redis-server
+      --save 60 1
+      --appendonly yes
+      --appendfsync everysec
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+    networks:
+      - aicarpool-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # 🌐 Nginx Reverse Proxy (Optional)
+  nginx:
+    image: nginx:alpine
+    container_name: aicarpool-nginx
+    restart: unless-stopped
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./ssl:/etc/ssl/certs:ro
+      - ./logs/nginx:/var/log/nginx
+    depends_on:
+      - aicarpool
+    networks:
+      - aicarpool-network
+    profiles:
+      - nginx
+      - production
+
+  # 📈 Redis Commander (Development/Monitoring)
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: aicarpool-redis-ui
+    restart: unless-stopped
+    ports:
+      - "${REDIS_WEB_PORT:-8081}:8081"
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+      - HTTP_USER=${REDIS_WEB_USER:-admin}
+      - HTTP_PASSWORD=${REDIS_WEB_PASSWORD:-admin123}
+    depends_on:
+      - redis
+    networks:
+      - aicarpool-network
+    profiles:
+      - monitoring
+      - development
+
+  # 📊 phpMyAdmin (Development/Monitoring)
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    container_name: aicarpool-phpmyadmin
+    restart: unless-stopped
+    ports:
+      - "${PMA_PORT:-8080}:80"
+    environment:
+      - PMA_HOST=mysql
+      - PMA_PORT=3306
+      - PMA_USER=aicarpool
+      - PMA_PASSWORD=${DB_PASSWORD:-aicarpool123}
+      - UPLOAD_LIMIT=64M
+    depends_on:
+      - mysql
+    networks:
+      - aicarpool-network
+    profiles:
+      - monitoring
+      - development
+
+  # 📈 Prometheus Monitoring (Optional)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: aicarpool-prometheus
+    restart: unless-stopped
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+      - '--storage.tsdb.retention.time=30d'
+    networks:
+      - aicarpool-network
+    profiles:
+      - monitoring
+      - production
+
+  # 📊 Grafana Dashboard (Optional)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: aicarpool-grafana
+    restart: unless-stopped
+    ports:
+      - "${GRAFANA_PORT:-3001}:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin123}
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana:/etc/grafana/provisioning:ro
+    depends_on:
+      - prometheus
+    networks:
+      - aicarpool-network
+    profiles:
+      - monitoring
+      - production
+
+# 📦 Named Volumes for Data Persistence
+volumes:
+  mysql_data:
+    driver: local
+  redis_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+# 🌐 Network Configuration
+networks:
+  aicarpool-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

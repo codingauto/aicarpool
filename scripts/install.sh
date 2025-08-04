@@ -6,6 +6,13 @@
 
 set -e
 
+# 环境变量说明
+# DOCKER_MODE=true         - 强制使用Docker部署模式
+# DOCKER_MODE=false        - 强制使用传统部署模式
+# QUICK_MODE=true          - 使用快速部署模式，避免迁移冲突
+# FORCE_ROOT=true          - 强制允许root用户运行，跳过确认
+# SKIP_NETWORK_CHECK=true  - 跳过GitHub网络连接检查
+
 # 颜色定义
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -180,6 +187,41 @@ download_and_run() {
     rm -f "$TEMP_SCRIPT"
 }
 
+# 检查Docker是否可用
+check_docker() {
+    if command -v docker &> /dev/null && command -v docker-compose &> /dev/null; then
+        if docker info &> /dev/null; then
+            return 0
+        fi
+    fi
+    return 1
+}
+
+# Docker部署模式
+docker_deploy() {
+    log_step "检测到Docker环境，使用Docker部署模式"
+    
+    # 下载Docker部署脚本
+    DOCKER_SCRIPT_URL="https://raw.githubusercontent.com/codingauto/aicarpool/main/scripts/docker-deploy.sh"
+    TEMP_DOCKER_SCRIPT="/tmp/docker-deploy.sh"
+    
+    log_info "下载Docker部署脚本..."
+    if ! curl -fsSL "$DOCKER_SCRIPT_URL" -o "$TEMP_DOCKER_SCRIPT"; then
+        log_error "下载Docker部署脚本失败"
+        return 1
+    fi
+    
+    chmod +x "$TEMP_DOCKER_SCRIPT"
+    
+    log_info "启动Docker部署..."
+    bash "$TEMP_DOCKER_SCRIPT"
+    
+    # 清理临时文件
+    rm -f "$TEMP_DOCKER_SCRIPT"
+    
+    exit 0
+}
+
 # 显示安装前确认
 show_confirmation() {
     echo -e "${YELLOW}"
@@ -188,22 +230,42 @@ show_confirmation() {
     echo "=================================="
     echo -e "${NC}"
     echo -e "${BLUE}系统类型:${NC} $PRETTY_NAME"
-    echo -e "${BLUE}部署脚本:${NC} $SCRIPT_NAME"
-    echo -e "${BLUE}安装位置:${NC} /opt/aicarpool"
-    echo -e "${BLUE}服务端口:${NC} 4000"
-    echo ""
-    echo -e "${YELLOW}此脚本将会安装以下组件:${NC}"
-    echo "- Node.js 18+"
-    echo "- MySQL 8.0+"
-    echo "- Redis 6+"
-    echo "- PM2 进程管理器"
-    echo "- AiCarpool 应用程序"
-    echo ""
-    echo -e "${YELLOW}安装模式:${NC}"
-    if [[ "$QUICK_MODE" == "true" ]]; then
-        echo "- 快速模式：使用最新数据库schema，避免迁移冲突"
+    
+    # 检查部署模式
+    if [[ "$DOCKER_MODE" == "true" ]] || (check_docker && [[ "$DOCKER_MODE" != "false" ]]); then
+        echo -e "${BLUE}部署模式:${NC} Docker (推荐)"
+        echo -e "${BLUE}部署位置:${NC} ~/aicarpool-docker"
+        echo -e "${BLUE}服务端口:${NC} 4000"
+        echo ""
+        echo -e "${YELLOW}此脚本将会部署以下服务:${NC}"
+        echo "- AiCarpool 应用程序 (Docker镜像)"
+        echo "- MySQL 8.0 (Docker容器)"
+        echo "- Redis 7 (Docker容器)"
+        echo "- 可选监控服务 (phpMyAdmin, Grafana等)"
+        echo ""
+        echo -e "${YELLOW}Docker模式优势:${NC}"
+        echo "- 更快的部署速度 (2-5分钟)"
+        echo "- 环境隔离，避免系统污染"
+        echo "- 易于升级和管理"
+        echo "- 支持一键卸载"
     else
-        echo "- 标准模式：使用数据库迁移（可能遇到迁移冲突）"
+        echo -e "${BLUE}部署脚本:${NC} $SCRIPT_NAME"
+        echo -e "${BLUE}安装位置:${NC} /opt/aicarpool"
+        echo -e "${BLUE}服务端口:${NC} 4000"
+        echo ""
+        echo -e "${YELLOW}此脚本将会安装以下组件:${NC}"
+        echo "- Node.js 22+"
+        echo "- MySQL 8.0+"
+        echo "- Redis 7+"
+        echo "- PM2 进程管理器"
+        echo "- AiCarpool 应用程序"
+        echo ""
+        echo -e "${YELLOW}安装模式:${NC}"
+        if [[ "$QUICK_MODE" == "true" ]]; then
+            echo "- 快速模式：使用最新数据库schema，避免迁移冲突"
+        else
+            echo "- 标准模式：使用数据库迁移（可能遇到迁移冲突）"
+        fi
     fi
     echo ""
     echo -e "${YELLOW}注意事项:${NC}"
@@ -230,7 +292,13 @@ main() {
     check_network
     check_requirements
     show_confirmation
-    download_and_run
+    
+    # 检查是否使用Docker部署
+    if [[ "$DOCKER_MODE" == "true" ]] || (check_docker && [[ "$DOCKER_MODE" != "false" ]]); then
+        docker_deploy
+    else
+        download_and_run
+    fi
 }
 
 # 错误处理
