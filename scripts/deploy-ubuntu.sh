@@ -488,12 +488,24 @@ init_database() {
     # 生成Prisma客户端
     npx prisma generate
     
-    # 运行数据库迁移
-    npx prisma migrate deploy
-    
-    # 初始化种子数据
-    if [[ -f "scripts/seed-ai-services.js" ]]; then
-        npm run seed 2>/dev/null || node scripts/seed-ai-services.js
+    # 数据库初始化（支持快速模式）
+    if [[ "$QUICK_MODE" == "true" ]]; then
+        log_info "快速模式：使用最新数据库schema，避免迁移冲突"
+        npx prisma db push --force-reset
+        log_info "初始化管理员权限数据..."
+        npm run db:create-admin
+        npx tsx scripts/init-admin-permissions.ts || true
+    else
+        log_info "标准模式：使用数据库迁移"
+        npx prisma migrate deploy
+        
+        # 初始化种子数据
+        if [[ -f "scripts/seed-ai-services.js" ]]; then
+            npm run seed 2>/dev/null || node scripts/seed-ai-services.js
+        fi
+        
+        # 创建管理员账号
+        npm run db:create-admin 2>/dev/null || true
     fi
     
     log_info "数据库初始化完成"

@@ -199,9 +199,16 @@ show_confirmation() {
     echo "- PM2 进程管理器"
     echo "- AiCarpool 应用程序"
     echo ""
+    echo -e "${YELLOW}安装模式:${NC}"
+    if [[ "$QUICK_MODE" == "true" ]]; then
+        echo "- 快速模式：使用最新数据库schema，避免迁移冲突"
+    else
+        echo "- 标准模式：使用数据库迁移（可能遇到迁移冲突）"
+    fi
+    echo ""
     echo -e "${YELLOW}注意事项:${NC}"
     echo "- 安装过程需要sudo权限"
-    echo "- 安装时间约10-20分钟（取决于网络速度）"
+    echo "- 安装时间约5-15分钟（取决于网络速度和模式）"
     echo "- 会自动生成数据库密码等敏感信息"
     echo "- 安装后需要手动配置AI服务密钥"
     echo ""
