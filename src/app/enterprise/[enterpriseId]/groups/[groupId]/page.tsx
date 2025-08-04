@@ -25,7 +25,15 @@ import {
   Database,
   TrendingUp,
   Shield,
-  Save
+  Save,
+  Link,
+  Unlink,
+  CheckCircle,
+  XCircle,
+  AlertTriangle,
+  RefreshCw,
+  Plus,
+  Search
 } from 'lucide-react';
 
 interface Group {
@@ -40,6 +48,8 @@ interface Group {
   resourceBinding?: GroupResourceBinding;
   members?: GroupMember[];
   usageStats?: UsageStat[];
+  // 当前绑定的AI账号信息
+  boundAccountId?: string;
 }
 
 interface GroupResourceBinding {
@@ -81,10 +91,20 @@ interface Enterprise {
 interface AiServiceAccount {
   id: string;
   name: string;
+  description?: string;
   serviceType: string;
   accountType: string;
   isEnabled: boolean;
   status: string;
+  currentLoad?: number;
+  supportedModels?: string[];
+  currentModel?: string;
+  createdAt?: string;
+  lastUsedAt?: string;
+  // 绑定状态
+  isBound?: boolean;
+  boundToGroupId?: string;
+  boundToGroupName?: string;
 }
 
 interface PageProps {
@@ -100,15 +120,20 @@ export default function EnterpriseGroupDetailPage({ params }: PageProps) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [accountSelectionOpen, setAccountSelectionOpen] = useState(false);
+  const [unbindConfirmOpen, setUnbindConfirmOpen] = useState(false);
   const [enterpriseId, setEnterpriseId] = useState<string>('');
   const [groupId, setGroupId] = useState<string>('');
+  const [selectedAccountId, setSelectedAccountId] = useState<string>('');
+  const [bindingAccount, setBindingAccount] = useState(false);
+  const [unbindingAccount, setUnbindingAccount] = useState(false);
 
   // 编辑表单状态
   const [editForm, setEditForm] = useState({
     name: '',
     description: '',
     maxMembers: 5,
-    bindingMode: 'shared' as 'dedicated' | 'shared' | 'hybrid',
+    bindingMode: 'dedicated' as 'dedicated', // 只支持专属模式
     dailyTokenLimit: 10000,
     monthlyBudget: 100,
     priorityLevel: 'medium' as 'high' | 'medium' | 'low',
@@ -181,26 +206,106 @@ export default function EnterpriseGroupDetailPage({ params }: PageProps) {
         setError(groupData.error || '获取拼车组信息失败');
       }
 
-      // 获取可用的AI账号
-      const accountsResponse = await fetch(`/api/enterprises/${entId}/ai-accounts`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (accountsResponse.ok) {
-        const accountsData = await accountsResponse.json();
-        if (accountsData.success) {
-          setAvailableAccounts(accountsData.data || []);
-        }
-      }
+      // 获取可用的AI账号（包含绑定状态）
+      await fetchAvailableAccounts(entId);
 
     } catch (error) {
       console.error('获取数据失败:', error);
       setError('获取数据失败，请检查网络连接');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchAvailableAccounts = async (entId: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/enterprises/${entId}/ai-accounts/available`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const accountsData = await response.json();
+        if (accountsData.success) {
+          // 处理API返回的数据格式
+          const accounts = accountsData.data.accounts || [];
+          setAvailableAccounts(accounts);
+          console.log('获取到AI账号:', accounts.length, '个');
+        } else {
+          console.error('获取可用账号失败:', accountsData.message);
+        }
+      } else {
+        console.error('API请求失败:', response.status, response.statusText);
+      }
+    } catch (error) {
+      console.error('获取可用账号失败:', error);
+    }
+  };
+
+  const handleBindAccount = async () => {
+    if (!selectedAccountId) return;
+    
+    setBindingAccount(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/groups/${groupId}/bind-account`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          accountId: selectedAccountId
+        })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        await fetchData(enterpriseId, groupId);
+        await fetchAvailableAccounts(enterpriseId);
+        setAccountSelectionOpen(false);
+        setSelectedAccountId('');
+        alert('账号绑定成功！');
+      } else {
+        alert(data.error || '绑定账号失败');
+      }
+    } catch (error) {
+      console.error('绑定账号失败:', error);
+      alert('绑定账号失败');
+    } finally {
+      setBindingAccount(false);
+    }
+  };
+
+  const handleUnbindAccount = async () => {
+    setUnbindingAccount(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/groups/${groupId}/bind-account`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        await fetchData(enterpriseId, groupId);
+        await fetchAvailableAccounts(enterpriseId);
+        setUnbindConfirmOpen(false);
+        alert('账号解绑成功！');
+      } else {
+        alert(data.error || '解绑账号失败');
+      }
+    } catch (error) {
+      console.error('解绑账号失败:', error);
+      alert('解绑账号失败');
+    } finally {
+      setUnbindingAccount(false);
     }
   };
 
@@ -295,6 +400,47 @@ export default function EnterpriseGroupDetailPage({ params }: PageProps) {
     return <Badge className={config.className}>{config.label}</Badge>;
   };
 
+  const getServiceTypeIcon = (serviceType: string) => {
+    switch (serviceType.toLowerCase()) {
+      case 'claude':
+        return '🤖';
+      case 'openai':
+      case 'gpt':
+        return '🧠';
+      case 'gemini':
+        return '💎';
+      default:
+        return '🔮';
+    }
+  };
+
+  const getAccountStatusBadge = (status: string, isEnabled: boolean) => {
+    if (!isEnabled) {
+      return <Badge variant="secondary" className="text-gray-600">已禁用</Badge>;
+    }
+    
+    switch (status) {
+      case 'healthy':
+        return <Badge className="bg-green-100 text-green-800">健康</Badge>;
+      case 'warning':
+        return <Badge className="bg-yellow-100 text-yellow-800">警告</Badge>;
+      case 'error':
+        return <Badge className="bg-red-100 text-red-800">错误</Badge>;
+      case 'maintenance':
+        return <Badge variant="outline">维护中</Badge>;
+      default:
+        return <Badge variant="secondary">{status}</Badge>;
+    }
+  };
+
+  const getBoundAccount = () => {
+    if (!group) return null;
+    // 查找绑定到当前拼车组的AI账号 - 兼容新的API数据结构
+    return availableAccounts.find(account => 
+      account.isBound && account.boundToGroupId === group.id
+    );
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -372,11 +518,6 @@ export default function EnterpriseGroupDetailPage({ params }: PageProps) {
             >
               <Edit className="w-4 h-4 mr-2" />
               编辑配置
-            </Button>
-            <Button 
-              onClick={() => router.push(`/groups/${group.id}`)}
-            >
-              查看用户视角
             </Button>
           </div>
         </div>
@@ -493,75 +634,186 @@ export default function EnterpriseGroupDetailPage({ params }: PageProps) {
           </TabsContent>
 
           <TabsContent value="resources">
-            <Card>
-              <CardHeader>
-                <CardTitle>资源绑定配置</CardTitle>
-                <CardDescription>
-                  配置拼车组如何使用企业的AI资源
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {group.resourceBinding ? (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label>绑定模式</Label>
-                        <p className="text-sm text-gray-600 mt-1">
-                          {getBindingModeBadge(group.resourceBinding.bindingMode)}
-                        </p>
-                      </div>
-                      <div>
-                        <Label>优先级</Label>
-                        <p className="text-sm text-gray-600 mt-1">
-                          {getPriorityBadge(group.resourceBinding.priorityLevel)}
-                        </p>
-                      </div>
+            <div className="space-y-6">
+              {/* AI账号绑定卡片 */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        <Link className="w-5 h-5" />
+                        AI账号绑定
+                      </CardTitle>
+                      <CardDescription>
+                        拼车组专属AI账号绑定（一对一绑定）
+                      </CardDescription>
                     </div>
-                    
-                    <Separator />
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label>日Token限制</Label>
-                        <p className="text-lg font-medium">
-                          {group.resourceBinding.dailyTokenLimit.toLocaleString()} tokens
-                        </p>
-                      </div>
-                      <div>
-                        <Label>月预算</Label>
-                        <p className="text-lg font-medium">
-                          ${group.resourceBinding.monthlyBudget}
-                        </p>
-                      </div>
-                    </div>
-                    
-                    <Separator />
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label>预警阈值</Label>
-                        <p className="text-lg font-medium">
-                          {group.resourceBinding.warningThreshold}%
-                        </p>
-                      </div>
-                      <div>
-                        <Label>告警阈值</Label>
-                        <p className="text-lg font-medium">
-                          {group.resourceBinding.alertThreshold}%
-                        </p>
-                      </div>
-                    </div>
+                    {!getBoundAccount() && (
+                      <Button onClick={() => setAccountSelectionOpen(true)}>
+                        <Plus className="w-4 h-4 mr-2" />
+                        绑定账号
+                      </Button>
+                    )}
                   </div>
-                ) : (
-                  <Alert>
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>
-                      此拼车组尚未配置资源绑定，点击"编辑配置"按钮进行设置。
-                    </AlertDescription>
-                  </Alert>
-                )}
-              </CardContent>
-            </Card>
+                </CardHeader>
+                <CardContent>
+                  {getBoundAccount() ? (
+                    <div className="border rounded-lg p-4 bg-blue-50">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="text-2xl">
+                            {getServiceTypeIcon(getBoundAccount()!.serviceType)}
+                          </div>
+                          <div>
+                            <h4 className="font-medium text-lg">{getBoundAccount()!.name}</h4>
+                            <p className="text-sm text-gray-600 mt-1">
+                              {getBoundAccount()!.description || '暂无描述'}
+                            </p>
+                            <div className="flex items-center gap-2 mt-2">
+                              {getAccountStatusBadge(getBoundAccount()!.status, getBoundAccount()!.isEnabled)}
+                              <Badge variant="outline">
+                                {getBoundAccount()!.serviceType.toUpperCase()}
+                              </Badge>
+                              {getBoundAccount()!.currentModel && (
+                                <Badge variant="secondary">
+                                  {getBoundAccount()!.currentModel}
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button variant="outline" size="sm">
+                            <Settings className="w-4 h-4 mr-1" />
+                            详情
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => setUnbindConfirmOpen(true)}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <Unlink className="w-4 h-4 mr-1" />
+                            解绑
+                          </Button>
+                        </div>
+                      </div>
+                      
+                      {/* 账号负载和性能指标 */}
+                      {getBoundAccount()!.currentLoad !== undefined && (
+                        <div className="mt-4 grid grid-cols-3 gap-4">
+                          <div className="text-center">
+                            <div className="text-sm text-gray-600">当前负载</div>
+                            <div className="text-lg font-semibold text-blue-600">
+                              {getBoundAccount()!.currentLoad}%
+                            </div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-sm text-gray-600">绑定时间</div>
+                            <div className="text-sm font-medium">
+                              {group.createdAt ? new Date(group.createdAt).toLocaleDateString() : '--'}
+                            </div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-sm text-gray-600">最后使用</div>
+                            <div className="text-sm font-medium">
+                              {getBoundAccount()!.lastUsedAt ? new Date(getBoundAccount()!.lastUsedAt).toLocaleDateString() : '--'}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <Alert>
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertDescription>
+                        此拼车组尚未绑定AI账号。请点击"绑定账号"按钮选择一个专属AI账号。
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* 资源配置卡片 */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Settings className="w-5 h-5" />
+                    资源配置
+                  </CardTitle>
+                  <CardDescription>
+                    配置拼车组的资源使用限制和告警阈值
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {group.resourceBinding ? (
+                    <div className="space-y-6">
+                      <div className="grid grid-cols-2 gap-6">
+                        <div>
+                          <Label className="text-sm font-medium text-gray-700">绑定模式</Label>
+                          <div className="mt-1">
+                            {getBindingModeBadge(group.resourceBinding.bindingMode)}
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1">专属模式确保资源独享</p>
+                        </div>
+                        <div>
+                          <Label className="text-sm font-medium text-gray-700">优先级</Label>
+                          <div className="mt-1">
+                            {getPriorityBadge(group.resourceBinding.priorityLevel)}
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1">影响资源调度优先级</p>
+                        </div>
+                      </div>
+                      
+                      <Separator />
+                      
+                      <div className="grid grid-cols-2 gap-6">
+                        <div>
+                          <Label className="text-sm font-medium text-gray-700">日Token限制</Label>
+                          <p className="text-2xl font-bold text-blue-600 mt-1">
+                            {group.resourceBinding.dailyTokenLimit.toLocaleString()}
+                          </p>
+                          <p className="text-xs text-gray-500">tokens/天</p>
+                        </div>
+                        <div>
+                          <Label className="text-sm font-medium text-gray-700">月预算</Label>
+                          <p className="text-2xl font-bold text-green-600 mt-1">
+                            ${group.resourceBinding.monthlyBudget || '--'}
+                          </p>
+                          <p className="text-xs text-gray-500">美元/月</p>
+                        </div>
+                      </div>
+                      
+                      <Separator />
+                      
+                      <div className="grid grid-cols-2 gap-6">
+                        <div>
+                          <Label className="text-sm font-medium text-gray-700">预警阈值</Label>
+                          <p className="text-2xl font-bold text-yellow-600 mt-1">
+                            {group.resourceBinding.warningThreshold}%
+                          </p>
+                          <p className="text-xs text-gray-500">发送预警通知</p>
+                        </div>
+                        <div>
+                          <Label className="text-sm font-medium text-gray-700">告警阈值</Label>
+                          <p className="text-2xl font-bold text-red-600 mt-1">
+                            {group.resourceBinding.alertThreshold}%
+                          </p>
+                          <p className="text-xs text-gray-500">限制使用访问</p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <Alert>
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>
+                        此拼车组尚未配置资源限制。点击"编辑配置"按钮进行设置。
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
           <TabsContent value="members">
@@ -687,21 +939,14 @@ export default function EnterpriseGroupDetailPage({ params }: PageProps) {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>绑定模式</Label>
-                  <Select 
-                    value={editForm.bindingMode} 
-                    onValueChange={(value: 'dedicated' | 'shared' | 'hybrid') => 
-                      setEditForm(prev => ({ ...prev, bindingMode: value }))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="dedicated">专属模式</SelectItem>
-                      <SelectItem value="shared">共享模式</SelectItem>
-                      <SelectItem value="hybrid">混合模式</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-md">
+                    <Database className="w-4 h-4 text-blue-600" />
+                    <span className="text-sm font-medium text-blue-800">专属模式</span>
+                    <Badge className="bg-blue-100 text-blue-800 text-xs">推荐</Badge>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    一对一绑定，确保资源独享和公平性
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label>优先级</Label>
@@ -782,6 +1027,177 @@ export default function EnterpriseGroupDetailPage({ params }: PageProps) {
               >
                 <Save className="w-4 h-4 mr-2" />
                 {saving ? '保存中...' : '保存更改'}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* AI账号选择对话框 */}
+        <Dialog open={accountSelectionOpen} onOpenChange={setAccountSelectionOpen}>
+          <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Link className="w-5 h-5" />
+                选择AI账号进行绑定
+              </DialogTitle>
+              <DialogDescription>
+                为此拼车组选择一个专属AI账号。每个账号只能绑定一个拼车组。
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              {availableAccounts.length > 0 ? (
+                <div className="space-y-3">
+                  {(() => {
+                    const filteredAccounts = availableAccounts
+                      .filter(account => !account.isBound || account.boundToGroupId === group?.id);
+                    
+                    const groupedAccounts = filteredAccounts.reduce((groups, account) => {
+                      const serviceType = account.serviceType.toLowerCase();
+                      if (!groups[serviceType]) {
+                        groups[serviceType] = [];
+                      }
+                      groups[serviceType].push(account);
+                      return groups;
+                    }, {} as Record<string, AiServiceAccount[]>);
+
+                    return Object.entries(groupedAccounts).map(([serviceType, accounts]) => (
+                      <div key={serviceType}>
+                        <h4 className="font-medium text-gray-900 mb-2 flex items-center gap-2">
+                          <span className="text-lg">{getServiceTypeIcon(serviceType)}</span>
+                          {serviceType.toUpperCase()} 账号
+                        </h4>
+                        <div className="space-y-2">
+                          {accounts.map((account) => (
+                            <div 
+                              key={account.id} 
+                              className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+                                selectedAccountId === account.id 
+                                  ? 'border-blue-500 bg-blue-50' 
+                                  : account.isBound 
+                                    ? 'border-gray-200 bg-gray-50 cursor-not-allowed' 
+                                    : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                              }`}
+                              onClick={() => {
+                                if (!account.isBound) {
+                                  setSelectedAccountId(account.id);
+                                }
+                              }}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                  <div className={`w-4 h-4 rounded-full border-2 ${
+                                    selectedAccountId === account.id 
+                                      ? 'border-blue-500 bg-blue-500' 
+                                      : 'border-gray-300'
+                                  }`}>
+                                    {selectedAccountId === account.id && (
+                                      <CheckCircle className="w-4 h-4 text-white" />
+                                    )}
+                                  </div>
+                                  <div>
+                                    <p className="font-medium">{account.name}</p>
+                                    <p className="text-sm text-gray-600">
+                                      {account.description || '暂无描述'}
+                                    </p>
+                                    {account.currentModel && (
+                                      <p className="text-xs text-gray-500 mt-1">
+                                        模型: {account.currentModel}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {getAccountStatusBadge(account.status, account.isEnabled)}
+                                  {account.isBound && (
+                                    <Badge variant="secondary" className="text-xs">
+                                      已绑定到: {account.boundToGroupName}
+                                    </Badge>
+                                  )}
+                                  {account.currentLoad !== undefined && (
+                                    <Badge variant="outline" className="text-xs">
+                                      负载: {account.currentLoad}%
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ));
+                  })()}
+                </div>
+              ) : (
+                <Alert>
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>
+                    暂无可用的AI账号。请先在企业AI账号管理中添加账号。
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
+            <div className="flex justify-end gap-2 mt-6">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setAccountSelectionOpen(false);
+                  setSelectedAccountId('');
+                }}
+                disabled={bindingAccount}
+              >
+                取消
+              </Button>
+              <Button 
+                onClick={handleBindAccount}
+                disabled={!selectedAccountId || bindingAccount}
+              >
+                <Link className="w-4 h-4 mr-2" />
+                {bindingAccount ? '绑定中...' : '确认绑定'}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* 解绑确认对话框 */}
+        <Dialog open={unbindConfirmOpen} onOpenChange={setUnbindConfirmOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Unlink className="w-5 h-5 text-red-600" />
+                确认解绑AI账号
+              </DialogTitle>
+              <DialogDescription>
+                您确定要解绑当前的AI账号吗？解绑后拼车组将无法使用AI服务，直到重新绑定账号。
+              </DialogDescription>
+            </DialogHeader>
+            {getBoundAccount() && (
+              <div className="my-4 p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <span className="text-lg">{getServiceTypeIcon(getBoundAccount()!.serviceType)}</span>
+                  <div>
+                    <p className="font-medium">{getBoundAccount()!.name}</p>
+                    <p className="text-sm text-gray-600">
+                      {getBoundAccount()!.serviceType.toUpperCase()}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+            <div className="flex justify-end gap-2">
+              <Button 
+                variant="outline" 
+                onClick={() => setUnbindConfirmOpen(false)}
+                disabled={unbindingAccount}
+              >
+                取消
+              </Button>
+              <Button 
+                variant="destructive"
+                onClick={handleUnbindAccount}
+                disabled={unbindingAccount}
+              >
+                <Unlink className="w-4 h-4 mr-2" />
+                {unbindingAccount ? '解绑中...' : '确认解绑'}
               </Button>
             </div>
           </DialogContent>

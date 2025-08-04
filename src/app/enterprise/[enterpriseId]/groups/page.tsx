@@ -530,13 +530,6 @@ export default function EnterpriseGroupsPage({ params }: PageProps) {
                         配置
                       </Button>
                       <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => router.push(`/groups/${group.id}`)}
-                      >
-                        查看详情
-                      </Button>
-                      <Button 
                         variant="destructive" 
                         size="sm"
                         onClick={() => setDeleteDialogOpen(group.id)}

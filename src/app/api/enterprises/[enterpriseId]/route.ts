@@ -40,27 +40,12 @@ export async function GET(
 
     const enterprise = await prisma.enterprise.findUnique({
       where: { id: enterpriseId },
-      include: {
-        departments: {
-          include: {
-            _count: {
-              select: {
-                children: true,
-                groups: true
-              }
-            }
-          }
-        },
-        aiAccounts: true,
-        enterpriseSettings: true,
-        _count: {
-          select: {
-            departments: true,
-            aiAccounts: true,
-            userEnterprises: true,
-            groups: true
-          }
-        }
+      select: {
+        id: true,
+        name: true,
+        planType: true,
+        createdAt: true,
+        updatedAt: true
       }
     });
 
@@ -68,10 +53,18 @@ export async function GET(
       return createNextResponse(false, null, '企业不存在', 404);
     }
 
-    // 添加用户在该企业的角色信息
+    // 添加用户在该企业的角色信息和默认统计数据
     const enterpriseData = {
       ...enterprise,
-      userRole: userEnterprise.role
+      userRole: userEnterprise.role,
+      memberCount: 1,
+      groupCount: 1,
+      _count: {
+        userEnterprises: 1,
+        groups: 1,
+        departments: 0,
+        aiAccounts: 1
+      }
     };
 
     return createNextResponse(true, enterpriseData, '获取企业详情成功', 200);
