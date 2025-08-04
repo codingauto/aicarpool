@@ -5,6 +5,7 @@
 
 const { PrismaClient } = require('@prisma/client');
 const { seedGroups } = require('./seed-groups');
+const { seedEnterprises } = require('./seed-enterprise');
 
 const prisma = new PrismaClient();
 
@@ -15,6 +16,9 @@ async function main() {
     // 检查数据库连接
     await prisma.$connect();
     console.log('✅ 数据库连接成功');
+
+    // 创建企业和用户数据
+    await seedEnterprises();
 
     // 创建示例拼车组
     await seedGroups();
