@@ -11,7 +11,7 @@ services:
       dockerfile: Dockerfile
       args:
         - NODE_ENV=production
-    image: codingauto/aicarpool:latest
+    image: wutongci/aicarpool:latest
     container_name: aicarpool-app
     restart: unless-stopped
     ports:

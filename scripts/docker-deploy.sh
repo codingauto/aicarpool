@@ -160,7 +160,7 @@ pull_images() {
     log_step "拉取 Docker 镜像..."
     
     log_info "拉取 AiCarpool 应用镜像..."
-    docker pull codingauto/aicarpool:latest
+    docker pull wutongci/aicarpool:latest
     
     log_info "拉取依赖服务镜像..."
     docker pull mysql:8.0

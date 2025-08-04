@@ -107,7 +107,7 @@ docker run -d \
   -p 4000:4000 \
   -e DATABASE_URL="mysql://user:pass@host:3306/aicarpool" \
   -e NEXTAUTH_SECRET="your-secret-key" \
-  codingauto/aicarpool:latest
+  wutongci/aicarpool:latest
 ```
 
 **Docker优势：**

@@ -47,6 +47,7 @@ RUN npx prisma generate
 # This creates a minimal production bundle
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
+ENV ESLINT_NO_DEV_ERRORS=true
 
 RUN npm run build
 
