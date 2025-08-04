@@ -10,7 +10,7 @@
  * - 部门权限管理
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, use } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -94,7 +94,7 @@ interface PermissionsData {
 }
 
 export default function EnterprisePermissionsPage({ params }: { params: Promise<{ enterpriseId: string }> }) {
-  const { enterpriseId } = React.use(params);
+  const { enterpriseId } = use(params);
   const router = useRouter();
   const { currentEnterprise, hasRole } = useEnterpriseContext();
   const [permissionsData, setPermissionsData] = useState<PermissionsData | null>(null);

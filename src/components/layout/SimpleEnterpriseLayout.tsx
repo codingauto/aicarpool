@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Menu } from 'lucide-react';
 import { EnterpriseSidebar } from './EnterpriseSidebar';
+import { Toaster } from 'sonner';
 
 interface SimpleEnterpriseLayoutProps {
   children: React.ReactNode;
@@ -76,6 +77,15 @@ export function SimpleEnterpriseLayout({ children }: SimpleEnterpriseLayoutProps
           </main>
         </div>
       </div>
+      
+      {/* Toast 通知组件 */}
+      <Toaster 
+        position="top-right"
+        closeButton
+        richColors
+        expand
+        visibleToasts={5}
+      />
     </div>
   );
 }

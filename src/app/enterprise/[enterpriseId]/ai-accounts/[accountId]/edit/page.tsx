@@ -1,15 +1,16 @@
 'use client';
 
 /**
- * 企业AI账号创建页面
+ * 企业AI账号编辑页面
  * 
  * 功能：
- * - 创建新的AI服务账号
- * - 配置账号参数和认证信息
- * - 设置模型和限制
+ * - 编辑AI账号的基本信息
+ * - 修改认证配置
+ * - 更新模型配置和限制
+ * - 修改代理设置
  */
 
-import React, { useState, use } from 'react';
+import React, { useState, useEffect, use } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,11 +18,12 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { ArrowLeft, Save, ChevronLeft, Building2 } from 'lucide-react';
+import { ArrowLeft, Save, ChevronLeft, Building2, AlertTriangle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEnterpriseContext } from '@/contexts/enterprise-context';
+import { toast } from 'sonner';
 
-interface CreateAccountForm {
+interface EditAccountForm {
   name: string;
   description: string;
   serviceType: string;
@@ -39,15 +41,22 @@ interface CreateAccountForm {
   proxyPort: string;
   proxyUsername: string;
   proxyPassword: string;
+  isEnabled: boolean;
 }
 
-export default function CreateAiAccountPage({ params }: { params: Promise<{ enterpriseId: string }> }) {
-  const { enterpriseId } = use(params);
+export default function EditAiAccountPage({ 
+  params 
+}: { 
+  params: Promise<{ enterpriseId: string; accountId: string }> 
+}) {
+  const { enterpriseId, accountId } = use(params);
   const router = useRouter();
   const { currentEnterprise, hasRole } = useEnterpriseContext();
-  const [loading, setLoading] = useState(false);
+  
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [form, setForm] = useState<CreateAccountForm>({
+  const [form, setForm] = useState<EditAccountForm>({
     name: '',
     description: '',
     serviceType: '',
@@ -64,7 +73,8 @@ export default function CreateAiAccountPage({ params }: { params: Promise<{ ente
     proxyHost: '',
     proxyPort: '',
     proxyUsername: '',
-    proxyPassword: ''
+    proxyPassword: '',
+    isEnabled: true
   });
 
   // 检查权限
@@ -73,7 +83,7 @@ export default function CreateAiAccountPage({ params }: { params: Promise<{ ente
       <div className="container mx-auto px-4 py-8">
         <div className="text-center py-12">
           <h3 className="text-lg font-medium text-gray-900 mb-2">权限不足</h3>
-          <p className="text-gray-600 mb-4">您没有权限创建AI账号</p>
+          <p className="text-gray-600 mb-4">您没有权限编辑AI账号</p>
           <Button onClick={() => router.back()}>
             <ArrowLeft className="w-4 h-4 mr-2" />
             返回
@@ -83,7 +93,61 @@ export default function CreateAiAccountPage({ params }: { params: Promise<{ ente
     );
   }
 
-  const handleInputChange = (field: keyof CreateAccountForm, value: any) => {
+  useEffect(() => {
+    fetchAccountDetail();
+  }, [enterpriseId, accountId]);
+
+  const fetchAccountDetail = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/enterprises/${enterpriseId}/ai-accounts/${accountId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          const account = result.data.account;
+          setForm({
+            name: account.name || '',
+            description: account.description || '',
+            serviceType: account.serviceType || '',
+            accountType: account.accountType || 'shared',
+            authType: account.authType || 'api_key',
+            apiKey: '••••••••', // 不显示真实的API Key
+            apiSecret: '••••••••', // 不显示真实的API Secret
+            apiEndpoint: account.apiEndpoint || '',
+            supportedModels: account.supportedModels || [],
+            defaultModel: account.currentModel || '',
+            dailyLimit: account.dailyLimit || 10000,
+            costPerToken: account.costPerToken || 0.00001,
+            proxyEnabled: !!account.proxyConfig,
+            proxyHost: account.proxyConfig?.host || '',
+            proxyPort: account.proxyConfig?.port?.toString() || '',
+            proxyUsername: account.proxyConfig?.username || '',
+            proxyPassword: account.proxyConfig?.password ? '••••••••' : '',
+            isEnabled: account.isEnabled !== false // 默认为true
+          });
+          setError('');
+        } else {
+          setError(result.message || '获取账号信息失败');
+        }
+      } else {
+        setError('获取账号信息失败');
+      }
+    } catch (error) {
+      console.error('获取账号信息失败:', error);
+      setError('获取账号信息失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleInputChange = (field: keyof EditAccountForm, value: any) => {
     setForm(prev => ({
       ...prev,
       [field]: value
@@ -93,62 +157,76 @@ export default function CreateAiAccountPage({ params }: { params: Promise<{ ente
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!form.name || !form.serviceType || !form.apiKey) {
+    if (!form.name || !form.serviceType) {
       setError('请填写必要字段');
       return;
     }
 
     try {
-      setLoading(true);
+      setSaving(true);
       setError('');
       
       const token = localStorage.getItem('token');
-      const credentials = {
-        apiKey: form.apiKey,
-        ...(form.apiSecret && { apiSecret: form.apiSecret })
+      
+      // 构建更新数据，只包含修改过的字段
+      const updateData: any = {
+        name: form.name,
+        description: form.description,
+        supportedModels: form.supportedModels,
+        currentModel: form.defaultModel,
+        dailyLimit: form.dailyLimit,
+        costPerToken: form.costPerToken,
+        isEnabled: form.isEnabled
       };
 
-      const proxyConfig = form.proxyEnabled ? {
-        type: 'http',
-        host: form.proxyHost,
-        port: parseInt(form.proxyPort),
-        ...(form.proxyUsername && { username: form.proxyUsername }),
-        ...(form.proxyPassword && { password: form.proxyPassword })
-      } : null;
+      // API端点
+      if (form.apiEndpoint) {
+        updateData.apiEndpoint = form.apiEndpoint;
+      }
 
-      const response = await fetch(`/api/enterprises/${enterpriseId}/ai-accounts`, {
-        method: 'POST',
+      // 只有当API Key不是掩码时才更新认证信息
+      if (form.apiKey !== '••••••••') {
+        updateData.credentials = {
+          apiKey: form.apiKey,
+          ...(form.apiSecret !== '••••••••' && form.apiSecret && { apiSecret: form.apiSecret })
+        };
+      }
+
+      // 代理配置
+      if (form.proxyEnabled && form.proxyHost && form.proxyPort) {
+        updateData.proxyConfig = {
+          type: 'http',
+          host: form.proxyHost,
+          port: parseInt(form.proxyPort),
+          ...(form.proxyUsername && { username: form.proxyUsername }),
+          ...(form.proxyPassword !== '••••••••' && form.proxyPassword && { password: form.proxyPassword })
+        };
+      } else if (!form.proxyEnabled) {
+        updateData.proxyConfig = null;
+      }
+
+      const response = await fetch(`/api/enterprises/${enterpriseId}/ai-accounts/${accountId}`, {
+        method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          name: form.name,
-          description: form.description,
-          serviceType: form.serviceType,
-          accountType: form.accountType,
-          authType: form.authType,
-          credentials,
-          apiEndpoint: form.apiEndpoint || undefined,
-          proxyConfig,
-          supportedModels: form.supportedModels,
-          dailyLimit: form.dailyLimit,
-          costPerToken: form.costPerToken
-        })
+        body: JSON.stringify(updateData)
       });
 
       const result = await response.json();
       
       if (result.success) {
-        router.push(`/enterprise/${enterpriseId}/ai-resources?tab=accounts`);
+        toast.success('账号更新成功');
+        router.push(`/enterprise/${enterpriseId}/ai-accounts/${accountId}`);
       } else {
-        setError(result.message || '创建账号失败');
+        setError(result.message || '更新账号失败');
       }
     } catch (error) {
-      console.error('创建账号失败:', error);
-      setError('创建账号失败');
+      console.error('更新账号失败:', error);
+      setError('更新账号失败');
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
@@ -166,6 +244,42 @@ export default function CreateAiAccountPage({ params }: { params: Promise<{ ente
 
   const modelOptions = getServiceModelOptions(form.serviceType);
 
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="animate-pulse space-y-6">
+          <div className="h-8 bg-gray-200 rounded w-1/3"></div>
+          <div className="space-y-4">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="h-48 bg-gray-200 rounded"></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error && loading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center py-12">
+          <AlertTriangle className="w-12 h-12 text-yellow-500 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">加载失败</h3>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <div className="space-x-4">
+            <Button onClick={fetchAccountDetail}>重试</Button>
+            <Button 
+              variant="outline" 
+              onClick={() => router.push(`/enterprise/${enterpriseId}/ai-accounts/${accountId}`)}
+            >
+              返回详情页
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="max-w-4xl mx-auto">
@@ -174,10 +288,10 @@ export default function CreateAiAccountPage({ params }: { params: Promise<{ ente
           <Button 
             variant="ghost" 
             size="sm"
-            onClick={() => router.push(`/enterprise/${enterpriseId}/ai-resources?tab=accounts`)}
+            onClick={() => router.push(`/enterprise/${enterpriseId}/ai-accounts/${accountId}`)}
           >
             <ChevronLeft className="w-4 h-4 mr-2" />
-            返回AI账号管理
+            返回账号详情
           </Button>
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <Building2 className="w-4 h-4" />
@@ -185,17 +299,19 @@ export default function CreateAiAccountPage({ params }: { params: Promise<{ ente
             <span>/</span>
             <span>AI账号管理</span>
             <span>/</span>
-            <span>创建账号</span>
+            <span>{form.name}</span>
+            <span>/</span>
+            <span>编辑</span>
           </div>
         </div>
 
         {/* 页面标题 */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">创建AI账号</h1>
-          <p className="text-gray-600 mt-2">为企业添加新的AI服务账号，配置认证信息和使用限制</p>
+          <h1 className="text-3xl font-bold text-gray-900">编辑AI账号</h1>
+          <p className="text-gray-600 mt-2">修改AI服务账号的配置和设置</p>
         </div>
 
-        {/* 创建表单 */}
+        {/* 编辑表单 */}
         <form onSubmit={handleSubmit} className="space-y-8">
           {/* 基本信息 */}
           <Card className="shadow-sm">
@@ -222,11 +338,15 @@ export default function CreateAiAccountPage({ params }: { params: Promise<{ ente
                   <Label htmlFor="serviceType" className="text-sm font-medium text-gray-700">
                     AI服务类型 <span className="text-red-500">*</span>
                   </Label>
-                  <Select value={form.serviceType} onValueChange={(value) => {
-                    handleInputChange('serviceType', value);
-                    handleInputChange('supportedModels', []);
-                    handleInputChange('defaultModel', '');
-                  }}>
+                  <Select 
+                    value={form.serviceType} 
+                    onValueChange={(value) => {
+                      handleInputChange('serviceType', value);
+                      handleInputChange('supportedModels', []);
+                      handleInputChange('defaultModel', '');
+                    }}
+                    disabled // 通常不允许修改服务类型
+                  >
                     <SelectTrigger className="h-10">
                       <SelectValue placeholder="请选择AI服务" />
                     </SelectTrigger>
@@ -269,16 +389,16 @@ export default function CreateAiAccountPage({ params }: { params: Promise<{ ente
                 </div>
                 
                 <div className="space-y-3">
-                  <Label htmlFor="authType" className="text-sm font-medium text-gray-700">认证类型</Label>
-                  <Select value={form.authType} onValueChange={(value) => handleInputChange('authType', value)}>
-                    <SelectTrigger className="h-10">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="api_key">API Key</SelectItem>
-                      <SelectItem value="oauth">OAuth</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Label className="text-sm font-medium text-gray-700">账号状态</Label>
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      checked={form.isEnabled}
+                      onCheckedChange={(checked) => handleInputChange('isEnabled', checked)}
+                    />
+                    <Label className="text-sm text-gray-700">
+                      {form.isEnabled ? '启用' : '禁用'}
+                    </Label>
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -299,10 +419,10 @@ export default function CreateAiAccountPage({ params }: { params: Promise<{ ente
                   type="password"
                   value={form.apiKey}
                   onChange={(e) => handleInputChange('apiKey', e.target.value)}
-                  placeholder="请输入API Key"
+                  placeholder="保持不变请勿修改"
                   className="h-10"
-                  required
                 />
+                <p className="text-xs text-gray-500">留空或不修改将保持原有配置</p>
               </div>
               
               {form.authType === 'api_key' && (
@@ -313,7 +433,7 @@ export default function CreateAiAccountPage({ params }: { params: Promise<{ ente
                     type="password"
                     value={form.apiSecret}
                     onChange={(e) => handleInputChange('apiSecret', e.target.value)}
-                    placeholder="请输入API Secret（如果需要）"
+                    placeholder="保持不变请勿修改"
                     className="h-10"
                   />
                 </div>
@@ -497,25 +617,25 @@ export default function CreateAiAccountPage({ params }: { params: Promise<{ ente
             <Button 
               type="button" 
               variant="outline" 
-              onClick={() => router.back()}
+              onClick={() => router.push(`/enterprise/${enterpriseId}/ai-accounts/${accountId}`)}
               className="h-11 px-6"
             >
               取消
             </Button>
             <Button 
               type="submit" 
-              disabled={loading}
+              disabled={saving}
               className="h-11 px-6"
             >
-              {loading ? (
+              {saving ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                  创建中...
+                  保存中...
                 </>
               ) : (
                 <>
                   <Save className="w-4 h-4 mr-2" />
-                  创建账号
+                  保存更改
                 </>
               )}
             </Button>

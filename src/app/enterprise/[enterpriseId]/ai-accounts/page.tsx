@@ -10,7 +10,7 @@
  * - 账号健康检查
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, use } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEnterpriseContext } from '@/contexts/enterprise-context';
+import { toast } from 'sonner';
 
 interface AiAccount {
   id: string;
@@ -82,7 +83,7 @@ interface AiAccountsResponse {
 }
 
 export default function EnterpriseAiAccountsPage({ params }: { params: Promise<{ enterpriseId: string }> }) {
-  const { enterpriseId } = React.use(params);
+  const { enterpriseId } = use(params);
   const router = useRouter();
   const { currentEnterprise, hasRole } = useEnterpriseContext();
   const [accounts, setAccounts] = useState<AiAccount[]>([]);
@@ -180,11 +181,19 @@ export default function EnterpriseAiAccountsPage({ params }: { params: Promise<{
   };
 
   const handleEditAccount = (accountId: string) => {
-    router.push(`/enterprise/${enterpriseId}/ai-accounts/${accountId}/edit`);
+    // TODO: 实现编辑功能
+    toast.info('编辑功能正在开发中，敬请期待！', {
+      description: '我们正在努力完善此功能'
+    });
+    console.log('编辑账号:', accountId);
   };
 
   const handleViewAccount = (accountId: string) => {
-    router.push(`/enterprise/${enterpriseId}/ai-accounts/${accountId}`);
+    // TODO: 实现查看功能
+    toast.info('查看详情功能正在开发中，敬请期待！', {
+      description: '我们正在努力完善此功能'
+    });
+    console.log('查看账号:', accountId);
   };
 
   if (loading) {
@@ -335,6 +344,7 @@ export default function EnterpriseAiAccountsPage({ params }: { params: Promise<{
                           variant="ghost"
                           size="sm"
                           onClick={() => handleViewAccount(account.id)}
+                          title="查看账号详情"
                         >
                           <Eye className="w-4 h-4" />
                         </Button>
@@ -343,6 +353,7 @@ export default function EnterpriseAiAccountsPage({ params }: { params: Promise<{
                             variant="ghost"
                             size="sm"
                             onClick={() => handleEditAccount(account.id)}
+                            title="编辑账号"
                           >
                             <Edit className="w-4 h-4" />
                           </Button>

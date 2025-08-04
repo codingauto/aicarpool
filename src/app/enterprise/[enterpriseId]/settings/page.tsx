@@ -7,7 +7,7 @@
  * - 企业基本信息设置
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, use } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,7 +35,7 @@ interface EnterpriseSettings {
 }
 
 export default function EnterpriseSettingsPage({ params }: { params: Promise<{ enterpriseId: string }> }) {
-  const { enterpriseId } = React.use(params);
+  const { enterpriseId } = use(params);
   const router = useRouter();
   const { currentEnterprise, hasRole } = useEnterpriseContext();
   const [settings, setSettings] = useState<EnterpriseSettings | null>(null);

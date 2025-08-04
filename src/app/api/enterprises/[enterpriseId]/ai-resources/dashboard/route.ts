@@ -54,13 +54,26 @@ export async function GET(
   try {
     // 1. 认证验证
     const token = request.headers.get('authorization')?.replace('Bearer ', '');
-    if (!token) {
-      return createApiResponse(false, null, '缺少认证令牌', 401);
-    }
+    
+    // 开发模式：允许无token访问
+    let user = null;
+    if (process.env.NODE_ENV === 'development' && !token) {
+      console.log('🔐 开发模式：使用默认测试用户');
+      user = {
+        id: 'user_test_001',
+        email: 'test@example.com',
+        name: '测试用户',
+        role: 'user'
+      };
+    } else {
+      if (!token) {
+        return createApiResponse(false, null, '缺少认证令牌', 401);
+      }
 
-    const user = await verifyToken(token);
-    if (!user) {
-      return createApiResponse(false, null, '认证令牌无效', 401);
+      user = await verifyToken(token);
+      if (!user) {
+        return createApiResponse(false, null, '认证令牌无效', 401);
+      }
     }
 
     const resolvedParams = await params;

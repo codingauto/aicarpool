@@ -10,7 +10,7 @@
  * - 拼车组归属管理
  */
 
-import React from 'react';
+import React, { use } from 'react';
 import { Button } from '@/components/ui/button';
 import { Building2, ChevronLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -18,7 +18,7 @@ import { useEnterpriseContext } from '@/contexts/enterprise-context';
 import { OrganizationStructure } from '@/components/enterprise/OrganizationStructure';
 
 export default function EnterpriseOrganizationPage({ params }: { params: Promise<{ enterpriseId: string }> }) {
-  const { enterpriseId } = React.use(params);
+  const { enterpriseId } = use(params);
   const router = useRouter();
   const { currentEnterprise, hasRole } = useEnterpriseContext();
 

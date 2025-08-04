@@ -113,6 +113,14 @@ export async function GET(
       }
     }
 
+    // 开发模式：为测试用户强制允许访问
+    if (!hasAccess && process.env.NODE_ENV === 'development') {
+      if (user.id === 'user_test_001' || user.email === 'test@example.com') {
+        console.log('🔐 开发模式：测试用户强制允许访问');
+        hasAccess = true;
+      }
+    }
+
     if (!hasAccess) {
       console.log('🔐 用户无权限访问企业:', enterpriseId, '用户ID:', user.id);
       return NextResponse.json(
