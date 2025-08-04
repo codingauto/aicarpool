@@ -40,7 +40,6 @@ import {
   Building2
 } from 'lucide-react';
 import { UserDetailsDialog } from '@/components/user-details-dialog';
-import { UserInviteDialog } from '@/components/user-invite-dialog';
 import { RoleManagementDialog } from '@/components/role-management-dialog';
 import { BatchUserManagementDialog } from '@/components/batch-user-management-dialog';
 import { useRouter } from 'next/navigation';
@@ -103,7 +102,6 @@ export default function EnterprisePermissionsPage({ params }: { params: Promise<
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
-  const [showUserDialog, setShowUserDialog] = useState(false);
   const [showRoleDialog, setShowRoleDialog] = useState(false);
   const [showRoleManagementDialog, setShowRoleManagementDialog] = useState(false);
   const [showBatchManagementDialog, setShowBatchManagementDialog] = useState(false);
@@ -339,14 +337,6 @@ export default function EnterprisePermissionsPage({ params }: { params: Promise<
               <Key className="w-4 h-4 mr-2" />
               管理角色
             </Button>
-            <Dialog open={showUserDialog} onOpenChange={setShowUserDialog}>
-              <DialogTrigger asChild>
-                <Button onClick={() => setShowUserDialog(true)}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  邀请用户
-                </Button>
-              </DialogTrigger>
-            </Dialog>
           </div>
         </div>
 
@@ -582,14 +572,6 @@ export default function EnterprisePermissionsPage({ params }: { params: Promise<
           onUpdateUser={handleUserUpdate}
         />
 
-        {/* 用户邀请对话框 */}
-        <UserInviteDialog
-          open={showUserDialog}
-          onOpenChange={setShowUserDialog}
-          enterpriseId={enterpriseId}
-          availableRoles={permissionsData?.availableRoles || []}
-          onInviteSuccess={fetchPermissionsData}
-        />
         
         {/* 角色管理对话框 */}
         <RoleManagementDialog

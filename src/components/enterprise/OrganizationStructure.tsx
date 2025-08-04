@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -9,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { EnhancedUserInviteDialog } from './EnhancedUserInviteDialog';
 import { 
   Plus, 
   Building2, 
@@ -18,7 +20,8 @@ import {
   AlertCircle, 
   Edit,
   Trash2,
-  DollarSign
+  DollarSign,
+  UserPlus
 } from 'lucide-react';
 
 interface Department {
@@ -63,12 +66,14 @@ interface OrganizationStructureProps {
 }
 
 export function OrganizationStructure({ enterpriseId, isAdmin }: OrganizationStructureProps) {
+  const router = useRouter();
   const [organizationData, setOrganizationData] = useState<OrganizationData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [expandedDepartments, setExpandedDepartments] = useState<Set<string>>(new Set());
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editingDepartment, setEditingDepartment] = useState<Department | null>(null);
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
 
   // 新建/编辑部门表单状态
   const [departmentForm, setDepartmentForm] = useState({
@@ -270,6 +275,16 @@ export function OrganizationStructure({ enterpriseId, isAdmin }: OrganizationStr
                       <span>¥{department.budgetLimit.toLocaleString()}</span>
                     </div>
                   )}
+                  {department._count.groups > 0 && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => router.push(`/enterprise/${enterpriseId}/groups?department=${department.id}`)}
+                      className="text-blue-600 hover:text-blue-700"
+                    >
+                      查看拼车组
+                    </Button>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -384,10 +399,16 @@ export function OrganizationStructure({ enterpriseId, isAdmin }: OrganizationStr
           </p>
         </div>
         {isAdmin && (
-          <Button onClick={() => setCreateDialogOpen(true)}>
-            <Plus className="w-4 h-4 mr-2" />
-            创建部门
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={() => setInviteDialogOpen(true)} variant="outline">
+              <UserPlus className="w-4 h-4 mr-2" />
+              邀请成员
+            </Button>
+            <Button onClick={() => setCreateDialogOpen(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              创建部门
+            </Button>
+          </div>
         )}
       </div>
 
@@ -558,6 +579,23 @@ export function OrganizationStructure({ enterpriseId, isAdmin }: OrganizationStr
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* 增强版用户邀请对话框 */}
+      <EnhancedUserInviteDialog
+        open={inviteDialogOpen}
+        onOpenChange={setInviteDialogOpen}
+        enterpriseId={enterpriseId}
+        availableRoles={[
+          { key: 'member', name: '普通成员', permissions: ['basic'] },
+          { key: 'admin', name: '管理员', permissions: ['admin'] },
+          { key: 'owner', name: '所有者', permissions: ['owner'] }
+        ]}
+        onInviteSuccess={() => {
+          // 邀请成功后可以刷新数据
+          fetchOrganizationData();
+        }}
+      />
+
     </div>
   );
 }

@@ -21,7 +21,6 @@ import {
   CheckCircle,
   Clock,
   Building2,
-  UserPlus
 } from 'lucide-react';
 
 interface Permission {
@@ -82,16 +81,6 @@ export function PermissionManagement({ enterpriseId, isAdmin }: PermissionManage
   const [userRoles, setUserRoles] = useState<UserRole[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [assignRoleDialogOpen, setAssignRoleDialogOpen] = useState(false);
-
-  // 分配角色表单状态
-  const [roleAssignment, setRoleAssignment] = useState({
-    userId: '',
-    roleId: '',
-    departmentId: '',
-    groupId: '',
-    expiresAt: ''
-  });
 
   const fetchPermissions = async () => {
     try {
@@ -140,45 +129,6 @@ export function PermissionManagement({ enterpriseId, isAdmin }: PermissionManage
     }
   };
 
-  const handleAssignRole = async () => {
-    if (!roleAssignment.userId || !roleAssignment.roleId || !isAdmin) return;
-
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/enterprises/${enterpriseId}/users/${roleAssignment.userId}/roles`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          roleId: roleAssignment.roleId,
-          departmentId: roleAssignment.departmentId || undefined,
-          groupId: roleAssignment.groupId || undefined,
-          expiresAt: roleAssignment.expiresAt || undefined
-        }),
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        await fetchUserRoles(roleAssignment.userId);
-        setAssignRoleDialogOpen(false);
-        setRoleAssignment({
-          userId: '',
-          roleId: '',
-          departmentId: '',
-          groupId: '',
-          expiresAt: ''
-        });
-        alert('角色分配成功');
-      } else {
-        alert(data.error || '角色分配失败');
-      }
-    } catch (error) {
-      console.error('角色分配失败:', error);
-      alert('角色分配失败');
-    }
-  };
 
   const handleRevokeRole = async (userId: string, roleId: string, departmentId?: string, groupId?: string) => {
     if (!isAdmin) return;
@@ -279,86 +229,6 @@ export function PermissionManagement({ enterpriseId, isAdmin }: PermissionManage
           <h2 className="text-2xl font-bold">权限管理 - v2.4简化版</h2>
           <p className="text-gray-600">管理企业用户角色和权限分配</p>
         </div>
-        {isAdmin && (
-          <Dialog open={assignRoleDialogOpen} onOpenChange={setAssignRoleDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <UserPlus className="w-4 h-4 mr-2" />
-                分配角色
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>分配用户角色</DialogTitle>
-                <DialogDescription>
-                  为用户分配适当的角色和权限
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label>用户ID</Label>
-                  <Input
-                    value={roleAssignment.userId}
-                    onChange={(e) => setRoleAssignment(prev => ({ ...prev, userId: e.target.value }))}
-                    placeholder="输入用户ID"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>角色</Label>
-                  <Select 
-                    value={roleAssignment.roleId} 
-                    onValueChange={(value) => setRoleAssignment(prev => ({ ...prev, roleId: value }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="选择角色" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {roles.map(role => (
-                        <SelectItem key={role.id} value={role.id}>
-                          {role.name} ({role.level})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>部门ID（可选）</Label>
-                    <Input
-                      value={roleAssignment.departmentId}
-                      onChange={(e) => setRoleAssignment(prev => ({ ...prev, departmentId: e.target.value }))}
-                      placeholder="部门ID"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>组ID（可选）</Label>
-                    <Input
-                      value={roleAssignment.groupId}
-                      onChange={(e) => setRoleAssignment(prev => ({ ...prev, groupId: e.target.value }))}
-                      placeholder="组ID"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>过期时间（可选）</Label>
-                  <Input
-                    type="datetime-local"
-                    value={roleAssignment.expiresAt}
-                    onChange={(e) => setRoleAssignment(prev => ({ ...prev, expiresAt: e.target.value }))}
-                  />
-                </div>
-                <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={() => setAssignRoleDialogOpen(false)}>
-                    取消
-                  </Button>
-                  <Button onClick={handleAssignRole} disabled={!roleAssignment.userId || !roleAssignment.roleId}>
-                    分配
-                  </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
-        )}
       </div>
 
       {error && (

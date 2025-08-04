@@ -8,24 +8,25 @@ datasource db {
 }
 
 model User {
-  id              String           @id @default(cuid())
-  email           String           @unique
-  name            String
-  password        String
-  avatar          String?
-  role            String           @default("user")
-  status          String           @default("active")
-  emailVerified   Boolean          @default(false)
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  apiKeys         ApiKey[]
-  groups          GroupMember[]
-  createdGroups   Group[]          @relation("GroupCreator")
-  invitations     Invitation[]
-  inviteLinks     InviteLink[]
-  usageStats      UsageStat[]
-  userEnterprises UserEnterprise[]
-  userQuotaUsage  UserQuotaUsage[]
+  id               String             @id @default(cuid())
+  email            String             @unique
+  name             String
+  password         String
+  avatar           String?
+  role             String             @default("user")
+  status           String             @default("active")
+  emailVerified    Boolean            @default(false)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  apiKeys          ApiKey[]
+  groups           GroupMember[]
+  createdGroups    Group[]            @relation("GroupCreator")
+  invitations      Invitation[]
+  inviteLinks      InviteLink[]
+  usageStats       UsageStat[]
+  userEnterprises  UserEnterprise[]
+  userQuotaUsage   UserQuotaUsage[]
+  departmentMembers DepartmentMember[]
 
   @@map("users")
 }
@@ -635,10 +636,30 @@ model Department {
   parent       Department?  @relation("DepartmentHierarchy", fields: [parentId], references: [id])
   children     Department[] @relation("DepartmentHierarchy")
   groups       Group[]      @relation("DepartmentGroups")
+  members      DepartmentMember[]
 
   @@index([enterpriseId])
   @@index([parentId], map: "departments_parentId_fkey")
   @@map("departments")
+}
+
+model DepartmentMember {
+  id           String     @id @default(cuid())
+  departmentId String
+  userId       String
+  role         String     @default("member") // 'member', 'admin', 'owner'
+  status       String     @default("active") // 'active', 'pending', 'inactive'
+  joinedAt     DateTime   @default(now())
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([departmentId, userId])
+  @@index([departmentId])
+  @@index([userId])
+  @@map("department_members")
 }
 
 

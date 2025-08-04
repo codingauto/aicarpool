@@ -42,6 +42,7 @@ interface Group {
   maxMembers: number;
   status: string;
   enterpriseId: string | null;
+  departmentId: string | null;
   memberCount: number;
   role?: 'admin' | 'member'; // 用户在该组中的角色
   resourceBinding?: {
@@ -91,11 +92,21 @@ export default function EnterpriseGroupsPage({ params }: PageProps) {
   const [enterpriseId, setEnterpriseId] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterDepartment, setFilterDepartment] = useState<string>('all');
+  const [departments, setDepartments] = useState<any[]>([]);
 
   useEffect(() => {
     params.then(resolvedParams => {
       setEnterpriseId(resolvedParams.enterpriseId);
       fetchEnterpriseAndGroups(resolvedParams.enterpriseId);
+      fetchDepartments(resolvedParams.enterpriseId);
+      
+      // 检查URL参数是否指定了部门筛选
+      const urlParams = new URLSearchParams(window.location.search);
+      const departmentParam = urlParams.get('department');
+      if (departmentParam) {
+        setFilterDepartment(departmentParam);
+      }
     });
   }, []);
 
@@ -155,6 +166,7 @@ export default function EnterpriseGroupsPage({ params }: PageProps) {
               maxMembers: apiGroup.maxMembers,
               status: apiGroup.status,
               enterpriseId: apiGroup.enterpriseId,
+              departmentId: apiGroup.departmentId,
               memberCount: apiGroup.memberCount || 0,
               role: 'admin', // 企业管理员默认为组管理员
               resourceBinding: apiGroup.resourceBinding,
@@ -201,6 +213,38 @@ export default function EnterpriseGroupsPage({ params }: PageProps) {
       setError('获取数据失败，请检查网络连接');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchDepartments = async (entId: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/enterprises/${entId}/departments`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          // 扁平化部门结构
+          const flattenDepartments = (depts: any[]): any[] => {
+            let result: any[] = [];
+            depts.forEach(dept => {
+              result.push(dept);
+              if (dept.children && dept.children.length > 0) {
+                result = result.concat(flattenDepartments(dept.children));
+              }
+            });
+            return result;
+          };
+          
+          setDepartments(flattenDepartments(data.data.departments || []));
+        }
+      }
+    } catch (error) {
+      console.error('获取部门列表失败:', error);
     }
   };
 
@@ -281,8 +325,9 @@ export default function EnterpriseGroupsPage({ params }: PageProps) {
     const matchesSearch = group.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          group.description?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = filterStatus === 'all' || group.status === filterStatus;
+    const matchesDepartment = filterDepartment === 'all' || group.departmentId === filterDepartment;
     
-    return matchesSearch && matchesStatus;
+    return matchesSearch && matchesStatus && matchesDepartment;
   });
 
   if (loading) {
@@ -364,10 +409,23 @@ export default function EnterpriseGroupsPage({ params }: PageProps) {
               <SelectItem value="archived">已归档</SelectItem>
             </SelectContent>
           </Select>
+          <Select value={filterDepartment} onValueChange={setFilterDepartment}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="筛选部门" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">全部部门</SelectItem>
+              {departments.map(dept => (
+                <SelectItem key={dept.id} value={dept.id}>
+                  {dept.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* 搜索结果提示 */}
-        {(searchQuery || filterStatus !== 'all') && (
+        {(searchQuery || filterStatus !== 'all' || filterDepartment !== 'all') && (
           <div className="mb-6">
             <Alert>
               <AlertCircle className="h-4 w-4" />
@@ -375,6 +433,7 @@ export default function EnterpriseGroupsPage({ params }: PageProps) {
                 找到 {filteredGroups.length} 个匹配的拼车组
                 {searchQuery && ` (搜索: "${searchQuery}")`}
                 {filterStatus !== 'all' && ` (状态: ${filterStatus})`}
+                {filterDepartment !== 'all' && ` (部门: ${departments.find(d => d.id === filterDepartment)?.name || filterDepartment})`}
               </AlertDescription>
             </Alert>
           </div>
