@@ -172,8 +172,12 @@ export async function POST(
     const { 
       name, 
       description, 
-      quotaLimit, 
+      targetUserId,
       expiresInDays,
+      dailyCostLimit,
+      rateLimit,
+      servicePermissions,
+      resourceBinding,
       aiServiceId = 'smart-router' // 默认使用智能路由
     } = body;
 
@@ -181,7 +185,7 @@ export async function POST(
       return createApiResponse(null, false, '缺少API密钥名称', 400);
     }
 
-    // 验证当前用户是否为拼车组成员（管理员可创建，成员可为自己创建）
+    // 验证当前用户是否为拼车组成员
     const groupMembership = await prisma.groupMember.findFirst({
       where: {
         groupId,
@@ -192,6 +196,30 @@ export async function POST(
 
     if (!groupMembership) {
       return createApiResponse(null, false, '无权限创建API密钥', 403);
+    }
+
+    // 确定API密钥的目标用户ID
+    const finalTargetUserId = targetUserId || user.id;
+    
+    // 权限检查：只有管理员可以为其他成员创建API密钥
+    const isAdmin = ['admin', 'owner'].includes(groupMembership.role);
+    if (finalTargetUserId !== user.id && !isAdmin) {
+      return createApiResponse(null, false, '无权限为其他成员创建API密钥', 403);
+    }
+
+    // 验证目标用户是否为拼车组成员
+    if (finalTargetUserId !== user.id) {
+      const targetMembership = await prisma.groupMember.findFirst({
+        where: {
+          groupId,
+          userId: finalTargetUserId,
+          status: 'active'
+        }
+      });
+
+      if (!targetMembership) {
+        return createApiResponse(null, false, '目标用户不是拼车组成员', 400);
+      }
     }
 
     // 检查拼车组是否配置了资源绑定
@@ -229,8 +257,8 @@ export async function POST(
       return createApiResponse(null, false, `每个拼车组最多创建 ${maxKeysPerGroup} 个API密钥`, 400);
     }
 
-    // 生成API密钥
-    const apiKeyValue = generateApiKey(groupId);
+    // 生成API密钥，包含用户信息
+    const apiKeyValue = generateApiKey(groupId, finalTargetUserId);
     
     // 设置过期时间
     let expiresAt: Date | null = null;
@@ -246,12 +274,19 @@ export async function POST(
         name,
         description: description || '',
         groupId,
-        userId: user.id,
+        userId: finalTargetUserId, // 使用目标用户ID
         aiServiceId, // 使用智能路由
-        quotaLimit: quotaLimit ? BigInt(quotaLimit) : null,
+        quotaLimit: dailyCostLimit ? BigInt(dailyCostLimit * 1000) : null, // 转换为分
         quotaUsed: BigInt(0),
         status: 'active',
-        expiresAt
+        expiresAt,
+        // 存储扩展配置到 metadata 字段
+        metadata: {
+          rateLimit,
+          servicePermissions,
+          resourceBinding,
+          createdBy: user.id // 记录创建者
+        }
       },
       include: {
         user: {
@@ -417,11 +452,12 @@ export async function PATCH(
 /**
  * 生成API密钥
  */
-function generateApiKey(groupId: string): string {
-  // 生成格式: aicp_<groupId前8位>_<随机32位>
+function generateApiKey(groupId: string, userId: string): string {
+  // 生成格式: aicp_<groupId前8位>_<userId前8位>_<随机16位>
   const prefix = 'aicp';
   const groupPrefix = groupId.substring(0, 8);
-  const randomSuffix = crypto.randomBytes(16).toString('hex');
+  const userPrefix = userId.substring(0, 8);
+  const randomSuffix = crypto.randomBytes(8).toString('hex');
   
-  return `${prefix}_${groupPrefix}_${randomSuffix}`;
+  return `${prefix}_${groupPrefix}_${userPrefix}_${randomSuffix}`;
 }

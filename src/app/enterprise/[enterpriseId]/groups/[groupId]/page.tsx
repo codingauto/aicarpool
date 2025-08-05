@@ -34,11 +34,13 @@ import {
   RefreshCw,
   Plus,
   Search,
-  UserPlus
+  UserPlus,
+  Key
 } from 'lucide-react';
 import AccountSelector from '@/components/account/AccountSelector';
 import { MemberManagement } from '@/components/groups/MemberManagement';
 import { InvitationManagement } from '@/components/groups/InvitationManagement';
+import { ApiKeyManagement } from '@/components/groups/ApiKeyManagement';
 
 interface Group {
   id: string;
@@ -624,6 +626,10 @@ export default function EnterpriseGroupDetailPage({ params }: PageProps) {
               <TrendingUp className="w-4 h-4" />
               使用统计
             </TabsTrigger>
+            <TabsTrigger value="api-keys" className="flex items-center gap-2">
+              <Key className="w-4 h-4" />
+              API密钥
+            </TabsTrigger>
             <TabsTrigger value="permissions" className="flex items-center gap-2">
               <Shield className="w-4 h-4" />
               权限设置
@@ -939,6 +945,15 @@ export default function EnterpriseGroupDetailPage({ params }: PageProps) {
                 </Alert>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="api-keys">
+            <ApiKeyManagement
+              groupId={groupId}
+              canManageApiKeys={canManageMembers}
+              members={group?.members || []}
+              currentUserId={currentUser?.id}
+            />
           </TabsContent>
 
           <TabsContent value="permissions">

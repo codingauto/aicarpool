@@ -252,7 +252,7 @@ export default function AccountCreationWizard({
                     </li>
                   ))}
                 </ol>
-              </div>
+              </nav>
             </div>
           </div>
 
