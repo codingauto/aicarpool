@@ -33,9 +33,12 @@ import {
   AlertTriangle,
   RefreshCw,
   Plus,
-  Search
+  Search,
+  UserPlus
 } from 'lucide-react';
 import AccountSelector from '@/components/account/AccountSelector';
+import { MemberManagement } from '@/components/groups/MemberManagement';
+import { InvitationManagement } from '@/components/groups/InvitationManagement';
 
 interface Group {
   id: string;
@@ -128,6 +131,13 @@ export default function EnterpriseGroupDetailPage({ params }: PageProps) {
   const [selectedAccountId, setSelectedAccountId] = useState<string>('');
   const [bindingAccount, setBindingAccount] = useState(false);
   const [unbindingAccount, setUnbindingAccount] = useState(false);
+  
+  // 用户和权限状态
+  const [currentUser, setCurrentUser] = useState<{ id: string; name: string; email: string } | null>(null);
+  const [canManageMembers, setCanManageMembers] = useState(false);
+  
+  // 邀请相关状态
+  const [activeTab, setActiveTab] = useState('overview');
 
   // 编辑表单状态
   const [editForm, setEditForm] = useState({
@@ -149,6 +159,14 @@ export default function EnterpriseGroupDetailPage({ params }: PageProps) {
       fetchData(resolvedParams.enterpriseId, resolvedParams.groupId);
     });
   }, []);
+
+  // 当group和currentUser都加载完成后，更新权限状态
+  useEffect(() => {
+    if (group && currentUser) {
+      const userMember = group.members?.find(m => m.user.id === currentUser.id);
+      setCanManageMembers(userMember?.role === 'admin' || userMember?.role === 'owner');
+    }
+  }, [group, currentUser]);
 
   const fetchData = async (entId: string, grpId: string) => {
     try {
@@ -209,12 +227,36 @@ export default function EnterpriseGroupDetailPage({ params }: PageProps) {
 
       // 获取可用的AI账号（包含绑定状态）
       await fetchAvailableAccounts(entId);
+      
+      // 获取当前用户信息
+      await fetchCurrentUser();
 
     } catch (error) {
       console.error('获取数据失败:', error);
       setError('获取数据失败，请检查网络连接');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchCurrentUser = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/auth/me', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const userData = await response.json();
+        if (userData.success) {
+          setCurrentUser(userData.data);
+        }
+      }
+    } catch (error) {
+      console.error('获取用户信息失败:', error);
     }
   };
 
@@ -462,6 +504,11 @@ export default function EnterpriseGroupDetailPage({ params }: PageProps) {
     }
   };
 
+  // 处理邀请成员点击 - 切换到邀请管理标签页
+  const handleInviteClick = () => {
+    setActiveTab('invitations');
+  };
+
   const getBoundAccount = () => {
     if (!group || !group.resourceBinding) return null;
     
@@ -555,7 +602,7 @@ export default function EnterpriseGroupDetailPage({ params }: PageProps) {
           </div>
         </div>
 
-        <Tabs defaultValue="overview" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList>
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <Activity className="w-4 h-4" />
@@ -568,6 +615,10 @@ export default function EnterpriseGroupDetailPage({ params }: PageProps) {
             <TabsTrigger value="members" className="flex items-center gap-2">
               <Users className="w-4 h-4" />
               成员管理
+            </TabsTrigger>
+            <TabsTrigger value="invitations" className="flex items-center gap-2">
+              <UserPlus className="w-4 h-4" />
+              邀请管理
             </TabsTrigger>
             <TabsTrigger value="usage" className="flex items-center gap-2">
               <TrendingUp className="w-4 h-4" />
@@ -850,43 +901,25 @@ export default function EnterpriseGroupDetailPage({ params }: PageProps) {
           </TabsContent>
 
           <TabsContent value="members">
-            <Card>
-              <CardHeader>
-                <CardTitle>成员管理</CardTitle>
-                <CardDescription>
-                  管理拼车组成员和权限
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {group.members && group.members.length > 0 ? (
-                  <div className="space-y-4">
-                    {group.members.map((member) => (
-                      <div key={member.id} className="flex items-center justify-between p-4 border rounded-lg">
-                        <div>
-                          <p className="font-medium">{member.user.name}</p>
-                          <p className="text-sm text-gray-600">{member.user.email}</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant={member.role === 'admin' ? 'default' : 'secondary'}>
-                            {member.role === 'admin' ? '管理员' : '成员'}
-                          </Badge>
-                          <p className="text-sm text-gray-600">
-                            {new Date(member.joinedAt).toLocaleDateString()}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <Alert>
-                    <Users className="h-4 w-4" />
-                    <AlertDescription>
-                      此拼车组暂无成员
-                    </AlertDescription>
-                  </Alert>
-                )}
-              </CardContent>
-            </Card>
+            <MemberManagement
+              groupId={groupId}
+              groupName={group?.name || ''}
+              enterpriseId={enterpriseId}
+              members={group?.members || []}
+              currentUserId={currentUser?.id}
+              canManageMembers={canManageMembers}
+              onInviteClick={handleInviteClick}
+              onMembersChanged={() => {
+                fetchData(enterpriseId, groupId);
+              }}
+            />
+          </TabsContent>
+
+          <TabsContent value="invitations">
+            <InvitationManagement
+              groupId={groupId}
+              canManageMembers={canManageMembers}
+            />
           </TabsContent>
 
           <TabsContent value="usage">
@@ -1156,6 +1189,7 @@ export default function EnterpriseGroupDetailPage({ params }: PageProps) {
             </div>
           </DialogContent>
         </Dialog>
+
       </div>
     </div>
   );

@@ -173,10 +173,10 @@ export async function POST(
     const { groupId } = resolvedParams;
 
     const body = await request.json();
-    const { userEmail, role = 'member' } = body;
+    const { userEmail, userId, role = 'member' } = body;
 
-    if (!userEmail) {
-      return createApiResponse(false, null, '缺少用户邮箱', 400);
+    if (!userEmail && !userId) {
+      return createApiResponse(false, null, '缺少用户邮箱或用户ID', 400);
     }
 
     // 验证当前用户是否为拼车组管理员
@@ -195,7 +195,7 @@ export async function POST(
 
     // 查找要添加的用户
     const targetUser = await prisma.user.findUnique({
-      where: { email: userEmail }
+      where: userId ? { id: userId } : { email: userEmail }
     });
 
     if (!targetUser) {
@@ -273,7 +273,7 @@ export async function POST(
       });
     }
 
-    console.log(`✅ API 成员管理: 成功添加用户 ${targetUser.email} 到拼车组 ${groupId}`);
+    console.log(`✅ API 成员管理: 成功添加用户 ${targetUser.email} (ID: ${targetUser.id}) 到拼车组 ${groupId}`);
 
     return createApiResponse(true, {
       message: '成员添加成功',

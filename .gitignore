@@ -2,7 +2,11 @@
 
 # dependencies
 /node_modules
-/.docs
+/docs
+/.codebuddy
+/.cursor
+/.claude
+/.specstory
 /.pnp
 .pnp.*
 .yarn/*

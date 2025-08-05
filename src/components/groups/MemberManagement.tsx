@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Users, UserPlus, BarChart3, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { GroupManagerGuard } from '@/components/auth/PermissionGuard';
+import { OrganizationMemberSelector } from './OrganizationMemberSelector';
 
 interface Member {
   id: string;
@@ -29,20 +30,27 @@ interface Member {
 
 interface MemberManagementProps {
   groupId: string;
+  groupName: string;
+  enterpriseId: string;
   members: Member[];
   currentUserId?: string;
   canManageMembers: boolean;
   onInviteClick: () => void;
+  onMembersChanged?: () => void;
 }
 
 export function MemberManagement({ 
-  groupId, 
+  groupId,
+  groupName,
+  enterpriseId, 
   members, 
   currentUserId, 
   canManageMembers,
-  onInviteClick 
+  onInviteClick,
+  onMembersChanged
 }: MemberManagementProps) {
   const [loadingMember, setLoadingMember] = useState<string | null>(null);
+  const [orgSelectorOpen, setOrgSelectorOpen] = useState(false);
 
   const handleRoleChange = async (memberId: string, newRole: string) => {
     setLoadingMember(memberId);
@@ -59,8 +67,10 @@ export function MemberManagement({
 
       if (response.ok) {
         toast.success('成员角色更新成功');
-        // 触发页面刷新
-        window.location.reload();
+        // 触发数据刷新
+        if (onMembersChanged) {
+          onMembersChanged();
+        }
       } else {
         throw new Error('更新失败');
       }
@@ -88,8 +98,10 @@ export function MemberManagement({
 
       if (response.ok) {
         toast.success('成员已移除');
-        // 触发页面刷新
-        window.location.reload();
+        // 触发数据刷新
+        if (onMembersChanged) {
+          onMembersChanged();
+        }
       } else {
         throw new Error('移除失败');
       }
@@ -185,13 +197,22 @@ export function MemberManagement({
               <CardDescription>拼车组所有成员和权限管理</CardDescription>
             </div>
             <GroupManagerGuard groupId={groupId}>
-              <Button 
-                className="bg-blue-500 hover:bg-blue-600 text-white"
-                onClick={onInviteClick}
-              >
-                <UserPlus className="w-4 h-4 mr-2" />
-                邀请成员
-              </Button>
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline"
+                  onClick={() => setOrgSelectorOpen(true)}
+                >
+                  <Users className="w-4 h-4 mr-2" />
+                  从组织添加
+                </Button>
+                <Button 
+                  className="bg-blue-500 hover:bg-blue-600 text-white"
+                  onClick={onInviteClick}
+                >
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  邀请成员
+                </Button>
+              </div>
             </GroupManagerGuard>
           </div>
         </CardHeader>
@@ -284,7 +305,14 @@ export function MemberManagement({
                           disabled={isLoading}
                           className="text-red-600 hover:text-red-700 hover:bg-red-50"
                         >
-                          {isLoading ? '处理中...' : '移除'}
+                          {isLoading ? (
+                            <div className="flex items-center gap-1">
+                              <div className="animate-spin rounded-full h-3 w-3 border-b border-red-600"></div>
+                              <span>处理中...</span>
+                            </div>
+                          ) : (
+                            '移除'
+                          )}
                         </Button>
                       </div>
                     )}
@@ -346,6 +374,21 @@ export function MemberManagement({
           </CardContent>
         </Card>
       )}
+
+      {/* 组织架构成员选择对话框 */}
+      <OrganizationMemberSelector
+        open={orgSelectorOpen}
+        onOpenChange={setOrgSelectorOpen}
+        enterpriseId={enterpriseId}
+        groupId={groupId}
+        groupName={groupName}
+        existingMemberIds={members.map(m => m.user.id)}
+        onMembersAdded={() => {
+          if (onMembersChanged) {
+            onMembersChanged();
+          }
+        }}
+      />
     </div>
   );
 }

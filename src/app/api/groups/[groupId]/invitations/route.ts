@@ -76,20 +76,19 @@ export async function GET(
     const formattedInvitations = invitations.map(invitation => ({
       id: invitation.id,
       email: invitation.email,
+      role: 'member', // 默认角色，将来可扩展
       status: invitation.status,
+      message: '', // 邀请消息，将来可扩展
+      inviteCode: invitation.token,
       expiresAt: invitation.expiresAt,
       createdAt: invitation.createdAt,
-      inviter: invitation.inviter,
+      invitedBy: invitation.inviter, // 匹配前端组件期望的字段名
       token: ['admin', 'owner'].includes(groupMembership.role) ? invitation.token : undefined
     }));
 
     console.log(`📋 API 邀请管理: 返回拼车组 ${groupId} 的 ${formattedInvitations.length} 个邀请`);
 
-    return createApiResponse({
-      invitations: formattedInvitations,
-      totalCount: formattedInvitations.length,
-      isAdmin: ['admin', 'owner'].includes(groupMembership.role)
-    }, true, 200);
+    return createApiResponse(formattedInvitations, true, '获取邀请列表成功', 200);
 
   } catch (error) {
     console.error('获取邀请列表失败:', error);

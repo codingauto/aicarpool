@@ -56,10 +56,19 @@ export function InvitationManagement({ groupId, canManageMembers }: InvitationMa
 
       if (response.ok) {
         const data = await response.json();
-        setInvitations(data.data || []);
+        if (data.success) {
+          setInvitations(data.data || []);
+        } else {
+          console.error('获取邀请列表失败:', data.message);
+          toast.error(data.message || '获取邀请列表失败');
+        }
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        toast.error(errorData.message || '获取邀请列表失败');
       }
     } catch (error) {
       console.error('获取邀请列表失败:', error);
+      toast.error('获取邀请列表失败');
     } finally {
       setLoading(false);
     }
