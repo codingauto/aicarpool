@@ -52,7 +52,7 @@ export async function GET(
             select: {
               id: true,
               name: true,
-              status: true
+              planType: true
             }
           },
           _count: {
@@ -123,9 +123,12 @@ export async function GET(
       resourceBinding: resourceBinding ? {
         id: resourceBinding.id,
         bindingMode: resourceBinding.bindingMode,
+        bindingConfig: resourceBinding.bindingConfig,
         dailyTokenLimit: resourceBinding.dailyTokenLimit,
         monthlyBudget: resourceBinding.monthlyBudget,
-        priorityLevel: resourceBinding.priorityLevel
+        priorityLevel: resourceBinding.priorityLevel,
+        warningThreshold: resourceBinding.warningThreshold,
+        alertThreshold: resourceBinding.alertThreshold
       } : null
     };
 

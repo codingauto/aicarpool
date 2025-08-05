@@ -12,6 +12,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
+import AccountSelector from '@/components/account/AccountSelector';
 import { 
   ChevronLeft, 
   Building2, 
@@ -113,7 +114,7 @@ export default function CreateEnterpriseGroupPage({ params }: PageProps) {
       }
 
       // 获取可用的AI账号
-      const accountsResponse = await fetch(`/api/enterprises/${entId}/ai-accounts`, {
+      const accountsResponse = await fetch(`/api/enterprises/${entId}/ai-accounts/available`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -123,7 +124,9 @@ export default function CreateEnterpriseGroupPage({ params }: PageProps) {
       if (accountsResponse.ok) {
         const accountsData = await accountsResponse.json();
         if (accountsData.success) {
-          setAvailableAccounts(accountsData.data || []);
+          // 只显示未绑定的账号
+          const availableAccountsList = accountsData.data?.accounts?.filter((account: any) => !account.isBound) || [];
+          setAvailableAccounts(availableAccountsList);
         }
       }
 
@@ -141,6 +144,12 @@ export default function CreateEnterpriseGroupPage({ params }: PageProps) {
       return;
     }
 
+    // 验证专属模式必须选择账号
+    if (form.enableResourceBinding && form.bindingMode === 'dedicated' && form.dedicatedAccounts.length === 0) {
+      alert('专属模式需要选择一个AI账号');
+      return;
+    }
+
     setSubmitting(true);
     try {
       const token = localStorage.getItem('token');
@@ -153,7 +162,7 @@ export default function CreateEnterpriseGroupPage({ params }: PageProps) {
         enterpriseId: enterpriseId
       };
 
-      const groupResponse = await fetch('/api/groups', {
+      const groupResponse = await fetch(`/api/enterprises/${enterpriseId}/groups`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -176,6 +185,7 @@ export default function CreateEnterpriseGroupPage({ params }: PageProps) {
         switch (form.bindingMode) {
           case 'dedicated':
             bindingConfig = {
+              dedicatedAccounts: form.dedicatedAccounts,
               accounts: form.dedicatedAccounts.map((accountId, index) => ({
                 accountId,
                 priority: index + 1
@@ -394,13 +404,28 @@ export default function CreateEnterpriseGroupPage({ params }: PageProps) {
                       </div>
 
                       {form.bindingMode === 'dedicated' && (
-                        <Alert>
-                          <Info className="h-4 w-4" />
-                          <AlertDescription>
-                            专属模式：拼车组将独占选定的AI账号，享有最佳性能和可预测性。
-                            需要企业有足够的专用账号资源。
-                          </AlertDescription>
-                        </Alert>
+                        <>
+                          <Alert>
+                            <Info className="h-4 w-4" />
+                            <AlertDescription>
+                              专属模式：拼车组将独占选定的AI账号，享有最佳性能和可预测性。
+                              需要企业有足够的专用账号资源。
+                            </AlertDescription>
+                          </Alert>
+                          
+                          <div className="mt-4">
+                            <AccountSelector
+                              accounts={availableAccounts}
+                              selectedAccountIds={form.dedicatedAccounts}
+                              onSelectionChange={(accountIds) => {
+                                setForm(prev => ({ ...prev, dedicatedAccounts: accountIds }));
+                              }}
+                              mode="single"
+                              bindingMode="dedicated"
+                              enterpriseId={enterpriseId}
+                            />
+                          </div>
+                        </>
                       )}
 
                       {form.bindingMode === 'shared' && (
@@ -528,7 +553,11 @@ export default function CreateEnterpriseGroupPage({ params }: PageProps) {
           </Button>
           <Button 
             onClick={handleSubmit}
-            disabled={submitting || !form.name.trim()}
+            disabled={
+              submitting || 
+              !form.name.trim() || 
+              (form.enableResourceBinding && form.bindingMode === 'dedicated' && form.dedicatedAccounts.length === 0)
+            }
           >
             {submitting ? '创建中...' : '创建拼车组'}
           </Button>

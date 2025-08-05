@@ -79,27 +79,12 @@ export async function GET(
     const responseData = {
       id: resourceBinding.id,
       bindingMode: resourceBinding.bindingMode,
+      bindingConfig: resourceBinding.bindingConfig,
       dailyTokenLimit: resourceBinding.dailyTokenLimit,
       monthlyBudget: resourceBinding.monthlyBudget,
       priorityLevel: resourceBinding.priorityLevel,
-      isActive: resourceBinding.isActive,
-      config: {
-        dedicatedAccounts: resourceBinding.dedicatedAccounts || [],
-        sharedPoolAccess: resourceBinding.sharedPoolAccess,
-        hybridRatio: resourceBinding.hybridRatio,
-        autoFailover: resourceBinding.autoFailover,
-        costOptimization: resourceBinding.costOptimization
-      },
-      boundAccounts: resourceBinding.aiServiceAccounts.map(binding => ({
-        id: binding.aiServiceAccount.id,
-        name: binding.aiServiceAccount.name,
-        serviceType: binding.aiServiceAccount.serviceType,
-        status: binding.aiServiceAccount.status,
-        dailyQuota: binding.aiServiceAccount.dailyQuota,
-        monthlyBudget: binding.aiServiceAccount.monthlyBudget,
-        bindingType: binding.bindingType,
-        isActive: binding.isActive
-      })),
+      warningThreshold: resourceBinding.warningThreshold,
+      alertThreshold: resourceBinding.alertThreshold,
       createdAt: resourceBinding.createdAt,
       updatedAt: resourceBinding.updatedAt
     };
@@ -177,46 +162,76 @@ export async function POST(
       data: {
         groupId: groupId,
         bindingMode: bindingMode,
+        bindingConfig: config || {},
         dailyTokenLimit: dailyTokenLimit,
         monthlyBudget: monthlyBudget,
         priorityLevel: priorityLevel,
-        isActive: isActive !== false, // 默认为true
-        
-        // 配置选项
-        dedicatedAccounts: config?.dedicatedAccounts || [],
-        sharedPoolAccess: config?.sharedPoolAccess !== false, // 默认为true
-        hybridRatio: bindingMode === 'hybrid' ? (config?.hybridRatio || 50) : null,
-        autoFailover: config?.autoFailover !== false, // 默认为true
-        costOptimization: config?.costOptimization !== false, // 默认为true
-        
-        createdBy: user.id,
-        updatedBy: user.id
+        warningThreshold: body.warningThreshold || 80,
+        alertThreshold: body.alertThreshold || 95
       }
     });
 
-    // 如果是专属模式，需要分配专用账号
+    // 如果是专属模式，需要创建账号绑定关系
     if (bindingMode === 'dedicated' && config?.dedicatedAccounts?.length > 0) {
-      // 这里可以添加专用账号分配逻辑
       console.log(`🔒 为拼车组 ${groupId} 分配专用账号:`, config.dedicatedAccounts);
+      
+      // 创建账号绑定关系
+      for (const accountId of config.dedicatedAccounts) {
+        try {
+          // 检查账号是否存在且可用
+          const account = await prisma.aiServiceAccount.findFirst({
+            where: {
+              id: accountId,
+              isEnabled: true,
+              status: 'active'
+            }
+          });
+
+          if (account) {
+            // 检查账号是否已经被其他拼车组专属绑定
+            const existingBinding = await prisma.groupAccountBinding.findFirst({
+              where: {
+                accountId: accountId,
+                bindingType: 'exclusive',
+                isActive: true
+              }
+            });
+
+            if (!existingBinding) {
+              // 创建新的账号绑定
+              await prisma.groupAccountBinding.create({
+                data: {
+                  groupId: groupId,
+                  accountId: accountId,
+                  bindingType: 'exclusive',
+                  isActive: true
+                }
+              });
+              console.log(`✅ 成功绑定账号 ${accountId} 到拼车组 ${groupId}`);
+            } else {
+              console.warn(`⚠️ 账号 ${accountId} 已被其他拼车组绑定`);
+            }
+          } else {
+            console.warn(`⚠️ 账号 ${accountId} 不存在或不可用`);
+          }
+        } catch (bindingError) {
+          console.error(`❌ 绑定账号 ${accountId} 失败:`, bindingError);
+        }
+      }
     }
 
     console.log(`✅ API 资源绑定: 为拼车组 ${groupId} 创建了 ${bindingMode} 模式的资源配置`);
 
-    return createApiResponse({
+    return createApiResponse(true, {
       id: resourceBinding.id,
       bindingMode: resourceBinding.bindingMode,
+      bindingConfig: resourceBinding.bindingConfig,
       dailyTokenLimit: resourceBinding.dailyTokenLimit,
       monthlyBudget: resourceBinding.monthlyBudget,
       priorityLevel: resourceBinding.priorityLevel,
-      isActive: resourceBinding.isActive,
-      config: {
-        dedicatedAccounts: resourceBinding.dedicatedAccounts || [],
-        sharedPoolAccess: resourceBinding.sharedPoolAccess,
-        hybridRatio: resourceBinding.hybridRatio,
-        autoFailover: resourceBinding.autoFailover,
-        costOptimization: resourceBinding.costOptimization
-      }
-    }, true, '资源绑定配置创建成功', 201);
+      warningThreshold: resourceBinding.warningThreshold,
+      alertThreshold: resourceBinding.alertThreshold
+    }, '资源绑定配置创建成功', 201);
 
   } catch (error) {
     console.error('创建资源绑定配置失败:', error);
@@ -287,40 +302,92 @@ export async function PUT(
       where: { groupId: groupId },
       data: {
         ...(bindingMode && { bindingMode }),
+        ...(config !== undefined && { bindingConfig: config }),
         ...(dailyTokenLimit !== undefined && { dailyTokenLimit }),
         ...(monthlyBudget !== undefined && { monthlyBudget }),
         ...(priorityLevel && { priorityLevel }),
-        ...(isActive !== undefined && { isActive }),
-        
-        // 更新配置选项
-        ...(config?.dedicatedAccounts && { dedicatedAccounts: config.dedicatedAccounts }),
-        ...(config?.sharedPoolAccess !== undefined && { sharedPoolAccess: config.sharedPoolAccess }),
-        ...(config?.hybridRatio !== undefined && { hybridRatio: config.hybridRatio }),
-        ...(config?.autoFailover !== undefined && { autoFailover: config.autoFailover }),
-        ...(config?.costOptimization !== undefined && { costOptimization: config.costOptimization }),
-        
-        updatedBy: user.id,
-        updatedAt: new Date()
+        ...(body.warningThreshold !== undefined && { warningThreshold: body.warningThreshold }),
+        ...(body.alertThreshold !== undefined && { alertThreshold: body.alertThreshold })
       }
     });
 
+    // 如果是专属模式，需要处理账号绑定关系
+    if (bindingMode === 'dedicated' && config?.dedicatedAccounts !== undefined) {
+      console.log(`🔒 更新拼车组 ${groupId} 的专用账号绑定:`, config.dedicatedAccounts);
+      
+      // 1. 删除现有的专属绑定
+      await prisma.groupAccountBinding.updateMany({
+        where: {
+          groupId: groupId,
+          bindingType: 'exclusive',
+          isActive: true
+        },
+        data: {
+          isActive: false
+        }
+      });
+      
+      // 2. 如果有新的账号配置，创建新的绑定
+      if (config.dedicatedAccounts.length > 0) {
+        for (const accountId of config.dedicatedAccounts) {
+          try {
+            // 检查账号是否存在且可用
+            const account = await prisma.aiServiceAccount.findFirst({
+              where: {
+                id: accountId,
+                isEnabled: true,
+                status: 'active'
+              }
+            });
+
+            if (account) {
+              // 检查账号是否已经被其他拼车组专属绑定
+              const existingBinding = await prisma.groupAccountBinding.findFirst({
+                where: {
+                  accountId: accountId,
+                  bindingType: 'exclusive',
+                  isActive: true
+                }
+              });
+
+              if (!existingBinding) {
+                // 创建新的账号绑定
+                await prisma.groupAccountBinding.create({
+                  data: {
+                    groupId: groupId,
+                    accountId: accountId,
+                    bindingType: 'exclusive',
+                    isActive: true
+                  }
+                });
+                console.log(`✅ 成功绑定账号 ${accountId} 到拼车组 ${groupId}`);
+              } else {
+                console.warn(`⚠️ 账号 ${accountId} 已被其他拼车组绑定`);
+              }
+            } else {
+              console.warn(`⚠️ 账号 ${accountId} 不存在或不可用`);
+            }
+        } catch (bindingError) {
+          console.error(`❌ 绑定账号 ${accountId} 失败:`, bindingError);
+          }
+        }
+      } else {
+        console.log(`🗑️ 清空拼车组 ${groupId} 的所有专用账号绑定`);
+      }
+    }
+
     console.log(`🔄 API 资源绑定: 更新拼车组 ${groupId} 的资源配置为 ${updatedBinding.bindingMode} 模式`);
 
-    return createApiResponse({
+    return createApiResponse(true, {
       id: updatedBinding.id,
       bindingMode: updatedBinding.bindingMode,
+      bindingConfig: updatedBinding.bindingConfig,
       dailyTokenLimit: updatedBinding.dailyTokenLimit,
       monthlyBudget: updatedBinding.monthlyBudget,
       priorityLevel: updatedBinding.priorityLevel,
-      isActive: updatedBinding.isActive,
-      config: {
-        dedicatedAccounts: updatedBinding.dedicatedAccounts || [],
-        sharedPoolAccess: updatedBinding.sharedPoolAccess,
-        hybridRatio: updatedBinding.hybridRatio,
-        autoFailover: updatedBinding.autoFailover,
-        costOptimization: updatedBinding.costOptimization
-      }
-    }, true, '资源绑定配置更新成功', 200);
+      warningThreshold: updatedBinding.warningThreshold,
+      alertThreshold: updatedBinding.alertThreshold
+    }, '资源绑定配置更新成功', 200);
 
   } catch (error) {
     console.error('更新资源绑定配置失败:', error);

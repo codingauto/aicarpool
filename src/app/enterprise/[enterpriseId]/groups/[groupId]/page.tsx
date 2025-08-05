@@ -35,6 +35,7 @@ import {
   Plus,
   Search
 } from 'lucide-react';
+import AccountSelector from '@/components/account/AccountSelector';
 
 interface Group {
   id: string;
@@ -251,30 +252,45 @@ export default function EnterpriseGroupDetailPage({ params }: PageProps) {
     setBindingAccount(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`/api/groups/${groupId}/bind-account`, {
-        method: 'POST',
+      
+      // 1. 检查是否存在资源绑定配置（基于当前group数据）
+      const hasResourceBinding = !!group?.resourceBinding;
+      
+      // 2. 创建或更新资源绑定配置
+      const resourceBindingResponse = await fetch(`/api/groups/${groupId}/resource-binding`, {
+        method: hasResourceBinding ? 'PUT' : 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          accountId: selectedAccountId
+          bindingMode: 'dedicated',
+          dailyTokenLimit: group?.resourceBinding?.dailyTokenLimit || 50000,
+          monthlyBudget: group?.resourceBinding?.monthlyBudget || 200,
+          priorityLevel: group?.resourceBinding?.priorityLevel || 'medium',
+          warningThreshold: group?.resourceBinding?.warningThreshold || 80,
+          alertThreshold: group?.resourceBinding?.alertThreshold || 95,
+          config: {
+            dedicatedAccounts: [selectedAccountId]
+          }
         })
       });
 
-      const data = await response.json();
-      if (data.success) {
-        await fetchData(enterpriseId, groupId);
-        await fetchAvailableAccounts(enterpriseId);
-        setAccountSelectionOpen(false);
-        setSelectedAccountId('');
-        alert('账号绑定成功！');
-      } else {
-        alert(data.error || '绑定账号失败');
+      const resourceData = await resourceBindingResponse.json();
+      if (!resourceData.success) {
+        throw new Error(resourceData.error || '资源绑定配置失败');
       }
+
+      // 2. 刷新数据
+      await fetchData(enterpriseId, groupId);
+      await fetchAvailableAccounts(enterpriseId);
+      setAccountSelectionOpen(false);
+      setSelectedAccountId('');
+      alert('账号绑定成功！');
+      
     } catch (error) {
       console.error('绑定账号失败:', error);
-      alert('绑定账号失败');
+      alert(error instanceof Error ? error.message : '绑定账号失败');
     } finally {
       setBindingAccount(false);
     }
@@ -284,22 +300,35 @@ export default function EnterpriseGroupDetailPage({ params }: PageProps) {
     setUnbindingAccount(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`/api/groups/${groupId}/bind-account`, {
-        method: 'DELETE',
+      
+      // 1. 通过将专用账号配置设为空数组来解绑账号
+      const resourceBindingResponse = await fetch(`/api/groups/${groupId}/resource-binding`, {
+        method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
-        }
+        },
+        body: JSON.stringify({
+          bindingMode: 'dedicated',
+          dailyTokenLimit: group?.resourceBinding?.dailyTokenLimit || 50000,
+          monthlyBudget: group?.resourceBinding?.monthlyBudget || 200,
+          priorityLevel: group?.resourceBinding?.priorityLevel || 'medium',
+          warningThreshold: group?.resourceBinding?.warningThreshold || 80,
+          alertThreshold: group?.resourceBinding?.alertThreshold || 95,
+          config: {
+            dedicatedAccounts: [] // 清空专用账号配置
+          }
+        })
       });
 
-      const data = await response.json();
-      if (data.success) {
+      const resourceData = await resourceBindingResponse.json();
+      if (resourceData.success) {
         await fetchData(enterpriseId, groupId);
         await fetchAvailableAccounts(enterpriseId);
         setUnbindConfirmOpen(false);
         alert('账号解绑成功！');
       } else {
-        alert(data.error || '解绑账号失败');
+        alert(resourceData.error || '解绑账号失败');
       }
     } catch (error) {
       console.error('解绑账号失败:', error);
@@ -434,11 +463,15 @@ export default function EnterpriseGroupDetailPage({ params }: PageProps) {
   };
 
   const getBoundAccount = () => {
-    if (!group) return null;
-    // 查找绑定到当前拼车组的AI账号 - 兼容新的API数据结构
-    return availableAccounts.find(account => 
-      account.isBound && account.boundToGroupId === group.id
-    );
+    if (!group || !group.resourceBinding) return null;
+    
+    // 从资源绑定配置中获取专用账号ID
+    const dedicatedAccounts = group.resourceBinding.bindingConfig?.dedicatedAccounts || [];
+    if (dedicatedAccounts.length === 0) return null;
+    
+    // 在可用账号列表中查找对应的账号信息
+    const boundAccountId = dedicatedAccounts[0]; // 专属模式通常只有一个账号
+    return availableAccounts.find(account => account.id === boundAccountId);
   };
 
   if (loading) {
@@ -1045,96 +1078,17 @@ export default function EnterpriseGroupDetailPage({ params }: PageProps) {
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
-              {availableAccounts.length > 0 ? (
-                <div className="space-y-3">
-                  {(() => {
-                    const filteredAccounts = availableAccounts
-                      .filter(account => !account.isBound || account.boundToGroupId === group?.id);
-                    
-                    const groupedAccounts = filteredAccounts.reduce((groups, account) => {
-                      const serviceType = account.serviceType.toLowerCase();
-                      if (!groups[serviceType]) {
-                        groups[serviceType] = [];
-                      }
-                      groups[serviceType].push(account);
-                      return groups;
-                    }, {} as Record<string, AiServiceAccount[]>);
-
-                    return Object.entries(groupedAccounts).map(([serviceType, accounts]) => (
-                      <div key={serviceType}>
-                        <h4 className="font-medium text-gray-900 mb-2 flex items-center gap-2">
-                          <span className="text-lg">{getServiceTypeIcon(serviceType)}</span>
-                          {serviceType.toUpperCase()} 账号
-                        </h4>
-                        <div className="space-y-2">
-                          {accounts.map((account) => (
-                            <div 
-                              key={account.id} 
-                              className={`p-3 border rounded-lg cursor-pointer transition-colors ${
-                                selectedAccountId === account.id 
-                                  ? 'border-blue-500 bg-blue-50' 
-                                  : account.isBound 
-                                    ? 'border-gray-200 bg-gray-50 cursor-not-allowed' 
-                                    : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                              }`}
-                              onClick={() => {
-                                if (!account.isBound) {
-                                  setSelectedAccountId(account.id);
-                                }
-                              }}
-                            >
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                  <div className={`w-4 h-4 rounded-full border-2 ${
-                                    selectedAccountId === account.id 
-                                      ? 'border-blue-500 bg-blue-500' 
-                                      : 'border-gray-300'
-                                  }`}>
-                                    {selectedAccountId === account.id && (
-                                      <CheckCircle className="w-4 h-4 text-white" />
-                                    )}
-                                  </div>
-                                  <div>
-                                    <p className="font-medium">{account.name}</p>
-                                    <p className="text-sm text-gray-600">
-                                      {account.description || '暂无描述'}
-                                    </p>
-                                    {account.currentModel && (
-                                      <p className="text-xs text-gray-500 mt-1">
-                                        模型: {account.currentModel}
-                                      </p>
-                                    )}
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  {getAccountStatusBadge(account.status, account.isEnabled)}
-                                  {account.isBound && (
-                                    <Badge variant="secondary" className="text-xs">
-                                      已绑定到: {account.boundToGroupName}
-                                    </Badge>
-                                  )}
-                                  {account.currentLoad !== undefined && (
-                                    <Badge variant="outline" className="text-xs">
-                                      负载: {account.currentLoad}%
-                                    </Badge>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ));
-                  })()}
-                </div>
-              ) : (
-                <Alert>
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertDescription>
-                    暂无可用的AI账号。请先在企业AI账号管理中添加账号。
-                  </AlertDescription>
-                </Alert>
-              )}
+              <AccountSelector
+                accounts={availableAccounts}
+                selectedAccountIds={selectedAccountId ? [selectedAccountId] : []}
+                onSelectionChange={(accountIds) => {
+                  setSelectedAccountId(accountIds[0] || '');
+                }}
+                mode="single"
+                bindingMode="dedicated"
+                enterpriseId={enterpriseId}
+                excludeGroupId={group?.id}
+              />
             </div>
             <div className="flex justify-end gap-2 mt-6">
               <Button 
