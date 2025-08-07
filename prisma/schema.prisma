@@ -134,16 +134,43 @@ model ApiKey {
   key         String    @unique
   name        String
   description String?
+  tags        Json?     // 标签数组
   groupId     String
   userId      String
-  aiServiceId String
-  quotaLimit  BigInt?
-  quotaUsed   BigInt    @default(0)
-  status      String    @default("active")
+  
+  // 限制配置
+  tokenLimit        Int?     // Token限制
+  rateLimitWindow   Int?     // 速率限制时间窗口(分钟)
+  rateLimitRequests Int?     // 速率限制请求数
+  concurrencyLimit  Int      @default(0)  // 并发限制
+  dailyCostLimit    Decimal  @db.Decimal(10, 2) @default(0)  // 每日费用限制
+  
+  // 过期设置
   expiresAt   DateTime?
   lastUsedAt  DateTime?
+  
+  // 权限配置
+  permissions      String    @default("all")  // all, claude, gemini
+  claudeAccountId  String?   // Claude账号ID
+  geminiAccountId  String?   // Gemini账号ID
+  
+  // 高级限制
+  enableModelRestriction Boolean @default(false)  // 是否启用模型限制
+  restrictedModels      Json?   // 限制的模型列表
+  enableClientRestriction Boolean @default(false)  // 是否启用客户端限制
+  allowedClients        Json?   // 允许的客户端列表
+  
+  // 使用统计
+  totalRequests BigInt  @default(0)
+  totalTokens   BigInt  @default(0)
+  totalCost     Decimal @db.Decimal(10, 6) @default(0)
+  
+  // 状态
+  status      String    @default("active")
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+  
+  // 关联关系
   group       Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
