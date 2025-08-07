@@ -18,8 +18,10 @@ const changePasswordSchema = z.object({
 async function getHandler(req: NextRequest, user: any) {
   try {
     const userId = user.id;
+    console.log('🔍 获取用户档案，用户ID:', userId);
 
-    const userData = await prisma.user.findUnique({
+    // 先尝试获取基本用户信息
+    const basicUserData = await prisma.user.findUnique({
       where: { id: userId },
       select: {
         id: true,
@@ -31,61 +33,96 @@ async function getHandler(req: NextRequest, user: any) {
         emailVerified: true,
         createdAt: true,
         updatedAt: true,
-        groups: {
-          where: { status: 'active' },
-          select: {
-            role: true,
-            joinedAt: true,
-            group: {
-              select: {
-                id: true,
-                name: true,
-                description: true,
-                status: true,
-                createdAt: true,
-              },
-            },
-          },
-        },
-        apiKeys: {
-          where: { status: 'active' },
-          select: {
-            id: true,
-            name: true,
-            aiServiceId: true,
-            quotaLimit: true,
-            quotaUsed: true,
-            status: true,
-            lastUsedAt: true,
-            createdAt: true,
-          },
-        },
       },
     });
 
-    if (!userData) {
+    if (!basicUserData) {
+      console.log('❌ 用户不存在，ID:', userId);
       return createErrorResponse('用户不存在', 404);
     }
 
-    // 格式化返回数据，处理 BigInt 类型
-    const formattedData = {
-      ...userData,
-      groups: userData.groups.map(gm => ({
-        ...gm.group,
-        memberRole: gm.role,
-        joinedAt: gm.joinedAt,
-      })),
-      apiKeys: userData.apiKeys.map(key => ({
-        ...key,
-        quotaLimit: key.quotaLimit ? key.quotaLimit.toString() : null,
-        quotaUsed: key.quotaUsed.toString(),
-      })),
-    };
+    console.log('✅ 基本用户信息获取成功:', basicUserData.email);
 
-    return createApiResponse(formattedData);
+    // 尝试获取关联数据
+    try {
+      const userData = await prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          avatar: true,
+          role: true,
+          status: true,
+          emailVerified: true,
+          createdAt: true,
+          updatedAt: true,
+          groups: {
+            where: { status: 'active' },
+            select: {
+              role: true,
+              joinedAt: true,
+              group: {
+                select: {
+                  id: true,
+                  name: true,
+                  description: true,
+                  status: true,
+                  createdAt: true,
+                },
+              },
+            },
+          },
+          apiKeys: {
+            where: { status: 'active' },
+            select: {
+              id: true,
+              name: true,
+              aiServiceId: true,
+              quotaLimit: true,
+              quotaUsed: true,
+              status: true,
+              lastUsedAt: true,
+              createdAt: true,
+            },
+          },
+        },
+      });
+
+      if (!userData) {
+        return createErrorResponse('用户不存在', 404);
+      }
+
+      // 格式化返回数据，处理 BigInt 类型
+      const formattedData = {
+        ...userData,
+        groups: userData.groups.map(gm => ({
+          ...gm.group,
+          memberRole: gm.role,
+          joinedAt: gm.joinedAt,
+        })),
+        apiKeys: userData.apiKeys.map(key => ({
+          ...key,
+          quotaLimit: key.quotaLimit ? key.quotaLimit.toString() : null,
+          quotaUsed: key.quotaUsed.toString(),
+        })),
+      };
+
+      console.log('✅ 完整用户信息获取成功');
+      return createApiResponse(formattedData);
+
+    } catch (relationError) {
+      console.log('⚠️ 关联数据查询失败，返回基本用户信息:', relationError);
+      // 如果关联查询失败，返回基本用户信息
+      return createApiResponse({
+        ...basicUserData,
+        groups: [],
+        apiKeys: []
+      });
+    }
 
   } catch (error) {
-    console.error('Get user profile error:', error);
+    console.error('❌ Get user profile error:', error);
     return createErrorResponse('获取用户档案失败', 500);
   }
 }
