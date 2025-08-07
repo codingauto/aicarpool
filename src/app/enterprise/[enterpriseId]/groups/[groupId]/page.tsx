@@ -24,22 +24,15 @@ import {
   Activity,
   Database,
   TrendingUp,
-  Shield,
   Save,
   Link,
   Unlink,
-  CheckCircle,
-  XCircle,
   AlertTriangle,
-  RefreshCw,
   Plus,
-  Search,
-  UserPlus,
   Key
 } from 'lucide-react';
 import AccountSelector from '@/components/account/AccountSelector';
 import { MemberManagement } from '@/components/groups/MemberManagement';
-import { InvitationManagement } from '@/components/groups/InvitationManagement';
 import { ApiKeyManagement } from '@/components/groups/ApiKeyManagement';
 
 interface Group {
@@ -75,6 +68,7 @@ interface GroupMember {
   role: string;
   joinedAt: string;
   user: {
+    id: string;
     name: string;
     email: string;
   };
@@ -138,7 +132,6 @@ export default function EnterpriseGroupDetailPage({ params }: PageProps) {
   const [currentUser, setCurrentUser] = useState<{ id: string; name: string; email: string } | null>(null);
   const [canManageMembers, setCanManageMembers] = useState(false);
   
-  // 邀请相关状态
   const [activeTab, setActiveTab] = useState('overview');
 
   // 编辑表单状态
@@ -506,10 +499,6 @@ export default function EnterpriseGroupDetailPage({ params }: PageProps) {
     }
   };
 
-  // 处理邀请成员点击 - 切换到邀请管理标签页
-  const handleInviteClick = () => {
-    setActiveTab('invitations');
-  };
 
   const getBoundAccount = () => {
     if (!group || !group.resourceBinding) return null;
@@ -618,10 +607,6 @@ export default function EnterpriseGroupDetailPage({ params }: PageProps) {
               <Users className="w-4 h-4" />
               成员管理
             </TabsTrigger>
-            <TabsTrigger value="invitations" className="flex items-center gap-2">
-              <UserPlus className="w-4 h-4" />
-              邀请管理
-            </TabsTrigger>
             <TabsTrigger value="usage" className="flex items-center gap-2">
               <TrendingUp className="w-4 h-4" />
               使用统计
@@ -629,10 +614,6 @@ export default function EnterpriseGroupDetailPage({ params }: PageProps) {
             <TabsTrigger value="api-keys" className="flex items-center gap-2">
               <Key className="w-4 h-4" />
               API密钥
-            </TabsTrigger>
-            <TabsTrigger value="permissions" className="flex items-center gap-2">
-              <Shield className="w-4 h-4" />
-              权限设置
             </TabsTrigger>
           </TabsList>
 
@@ -807,7 +788,7 @@ export default function EnterpriseGroupDetailPage({ params }: PageProps) {
                           <div className="text-center">
                             <div className="text-sm text-gray-600">最后使用</div>
                             <div className="text-sm font-medium">
-                              {getBoundAccount()!.lastUsedAt ? new Date(getBoundAccount()!.lastUsedAt).toLocaleDateString() : '--'}
+                              {getBoundAccount()!.lastUsedAt ? new Date(getBoundAccount()!.lastUsedAt!).toLocaleDateString() : '--'}
                             </div>
                           </div>
                         </div>
@@ -911,20 +892,16 @@ export default function EnterpriseGroupDetailPage({ params }: PageProps) {
               groupId={groupId}
               groupName={group?.name || ''}
               enterpriseId={enterpriseId}
-              members={group?.members || []}
+              members={group?.members?.map(m => ({
+                ...m,
+                status: 'active' // 添加缺少的status字段
+              })) || []}
               currentUserId={currentUser?.id}
               canManageMembers={canManageMembers}
-              onInviteClick={handleInviteClick}
+              onInviteClick={() => router.push(`/enterprise/${enterpriseId}/org-structure`)}
               onMembersChanged={() => {
                 fetchData(enterpriseId, groupId);
               }}
-            />
-          </TabsContent>
-
-          <TabsContent value="invitations">
-            <InvitationManagement
-              groupId={groupId}
-              canManageMembers={canManageMembers}
             />
           </TabsContent>
 
@@ -956,24 +933,6 @@ export default function EnterpriseGroupDetailPage({ params }: PageProps) {
             />
           </TabsContent>
 
-          <TabsContent value="permissions">
-            <Card>
-              <CardHeader>
-                <CardTitle>权限设置</CardTitle>
-                <CardDescription>
-                  配置拼车组的访问权限和安全设置
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Alert>
-                  <Shield className="h-4 w-4" />
-                  <AlertDescription>
-                    权限设置功能正在开发中，将提供细粒度的权限控制。
-                  </AlertDescription>
-                </Alert>
-              </CardContent>
-            </Card>
-          </TabsContent>
         </Tabs>
 
         {/* 编辑配置对话框 */}

@@ -92,6 +92,43 @@ export class PermissionManager {
   // 内置角色定义
   private readonly BUILT_IN_ROLES: Role[] = [
     {
+      id: 'system_admin',
+      name: 'system_admin',
+      displayName: '系统管理员',
+      description: '拥有系统所有权限的超级管理员',
+      permissions: [
+        'system.admin',
+        'enterprise.read', 'enterprise.update', 'enterprise.manage',
+        'department.create', 'department.read', 'department.update', 'department.delete', 'department.manage',
+        'group.create', 'group.read', 'group.update', 'group.delete', 'group.manage',
+        'user.create', 'user.read', 'user.update', 'user.delete', 'user.manage',
+        'account.create', 'account.read', 'account.update', 'account.delete', 'account.manage',
+        'binding.create', 'binding.read', 'binding.update', 'binding.delete',
+        'cost.read', 'monitor.read', 'monitor.manage',
+        'ai_service.use', 'ai_service.manage'
+      ],
+      isBuiltIn: true,
+      isActive: true
+    },
+    {
+      id: 'enterprise_owner',
+      name: 'enterprise_owner',
+      displayName: '企业所有者',
+      description: '企业的创建者和所有者，拥有企业所有权限',
+      permissions: [
+        'enterprise.read', 'enterprise.update', 'enterprise.manage',
+        'department.create', 'department.read', 'department.update', 'department.delete', 'department.manage',
+        'group.create', 'group.read', 'group.update', 'group.delete', 'group.manage',
+        'user.create', 'user.read', 'user.update', 'user.delete', 'user.manage',
+        'account.create', 'account.read', 'account.update', 'account.delete', 'account.manage',
+        'binding.create', 'binding.read', 'binding.update', 'binding.delete',
+        'cost.read', 'monitor.read', 'monitor.manage',
+        'ai_service.use', 'ai_service.manage'
+      ],
+      isBuiltIn: true,
+      isActive: true
+    },
+    {
       id: 'enterprise_admin',
       name: 'enterprise_admin',
       displayName: '企业管理员',
@@ -248,33 +285,34 @@ export class PermissionManager {
       }
 
       const userRoles = await prisma.userEnterpriseRole.findMany({
-        where: whereCondition,
-        include: {
-          role: {
-            include: {
-              permissions: true
-            }
-          }
-        }
+        where: whereCondition
       });
 
       const permissions: UserPermission[] = [];
 
       for (const userRole of userRoles) {
+        // 从内置角色列表中查找角色定义
+        const builtInRole = this.BUILT_IN_ROLES.find(r => r.id === userRole.role);
+        
+        if (!builtInRole) {
+          console.warn(`Role ${userRole.role} not found in built-in roles`);
+          continue;
+        }
+
         const role: Role = {
-          id: userRole.role.id,
-          name: userRole.role.name,
-          displayName: userRole.role.displayName,
-          description: userRole.role.description || '',
-          permissions: userRole.role.permissions.map(p => p.permission),
-          isBuiltIn: userRole.role.isBuiltIn,
-          isActive: userRole.role.isActive
+          id: builtInRole.id,
+          name: builtInRole.name,
+          displayName: builtInRole.displayName,
+          description: builtInRole.description,
+          permissions: builtInRole.permissions,
+          isBuiltIn: builtInRole.isBuiltIn,
+          isActive: builtInRole.isActive
         };
 
         permissions.push({
           userId: userRole.userId,
           enterpriseId: userRole.enterpriseId || undefined,
-          roleId: userRole.roleId,
+          roleId: userRole.role,
           role,
           scope: userRole.scope,
           resourceId: userRole.resourceId || undefined,

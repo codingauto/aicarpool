@@ -156,10 +156,12 @@ export function ApiKeyManagement({ groupId, canManageApiKeys, members = [], curr
         fetchApiKeys();
         
         // 显示完整的API密钥和CLI配置
-        if (data.data.apiKey) {
+        if (data.data && data.data.apiKey && data.data.apiKey.key) {
           const fullKey = data.data.apiKey.key;
           setNewlyCreatedKey(fullKey);
           setShowCliConfigDialog(true);
+        } else {
+          console.warn('API密钥创建成功但未返回密钥信息');
         }
       } else {
         throw new Error(data.message || '创建API密钥失败');
@@ -413,7 +415,7 @@ export function ApiKeyManagement({ groupId, canManageApiKeys, members = [], curr
                       </div>
                       
                       <div className="grid grid-cols-2 gap-4">
-                        <div>
+                        <div className="space-y-2">
                           <Label htmlFor="name">密钥名称</Label>
                           <Input
                             id="name"
@@ -423,7 +425,7 @@ export function ApiKeyManagement({ groupId, canManageApiKeys, members = [], curr
                           />
                         </div>
                         
-                        <div>
+                        <div className="space-y-2">
                           <Label htmlFor="targetUser">绑定成员</Label>
                           <Select 
                             value={createForm.targetUserId} 
@@ -456,7 +458,7 @@ export function ApiKeyManagement({ groupId, canManageApiKeys, members = [], curr
                         </div>
                       </div>
                       
-                      <div>
+                      <div className="space-y-2">
                         <Label htmlFor="description">描述（可选）</Label>
                         <Textarea
                           id="description"
@@ -476,7 +478,7 @@ export function ApiKeyManagement({ groupId, canManageApiKeys, members = [], curr
                       </div>
                       
                       <div className="grid grid-cols-2 gap-4">
-                        <div>
+                        <div className="space-y-2">
                           <Label htmlFor="dailyLimit">每日费用限制 ($)</Label>
                           <Input
                             id="dailyLimit"
@@ -491,7 +493,7 @@ export function ApiKeyManagement({ groupId, canManageApiKeys, members = [], curr
                           />
                         </div>
                         
-                        <div>
+                        <div className="space-y-2">
                           <Label htmlFor="windowMinutes">时间窗口（分钟）</Label>
                           <Select 
                             value={createForm.rateLimit.windowMinutes.toString()} 
@@ -517,7 +519,7 @@ export function ApiKeyManagement({ groupId, canManageApiKeys, members = [], curr
                       </div>
                       
                       <div className="grid grid-cols-2 gap-4">
-                        <div>
+                        <div className="space-y-2">
                           <Label htmlFor="maxRequests">窗口内最大请求数</Label>
                           <Input
                             id="maxRequests"
@@ -534,7 +536,7 @@ export function ApiKeyManagement({ groupId, canManageApiKeys, members = [], curr
                           />
                         </div>
                         
-                        <div>
+                        <div className="space-y-2">
                           <Label htmlFor="maxTokens">窗口内最大Token数</Label>
                           <Input
                             id="maxTokens"
@@ -561,7 +563,7 @@ export function ApiKeyManagement({ groupId, canManageApiKeys, members = [], curr
                       </div>
                       
                       <div className="grid grid-cols-2 gap-4">
-                        <div>
+                        <div className="space-y-2">
                           <Label htmlFor="servicePermissions">服务权限</Label>
                           <Select 
                             value={createForm.servicePermissions[0]} 
@@ -582,7 +584,7 @@ export function ApiKeyManagement({ groupId, canManageApiKeys, members = [], curr
                           </Select>
                         </div>
                         
-                        <div>
+                        <div className="space-y-2">
                           <Label htmlFor="expiresInDays">有效期</Label>
                           <Select 
                             value={createForm.expiresInDays.toString()} 
