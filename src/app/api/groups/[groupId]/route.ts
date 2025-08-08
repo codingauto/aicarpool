@@ -55,6 +55,18 @@ export async function GET(
               planType: true
             }
           },
+          members: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  avatar: true
+                }
+              }
+            }
+          },
           _count: {
             select: {
               members: true
@@ -116,6 +128,7 @@ export async function GET(
       updatedAt: group.updatedAt,
       enterpriseId: group.enterpriseId,
       enterprise: group.enterprise,
+      members: group.members, // 添加成员列表
       stats: {
         memberCount: group._count?.members || 0,
         totalCost: Math.random() * 100 // 模拟成本数据

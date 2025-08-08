@@ -2,9 +2,11 @@
  * 初始化管理员权限数据脚本
  * 
  * 为admin@aicarpool.com用户创建完整的权限数据
+ * 确保管理员拥有系统所有权限
  */
 
 import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
@@ -19,19 +21,32 @@ async function main() {
 
     if (!adminUser) {
       console.log('📝 创建管理员用户...');
+      // 默认密码: admin123
+      const hashedPassword = await bcrypt.hash('admin123', 10);
+      
       adminUser = await prisma.user.create({
         data: {
           email: 'admin@aicarpool.com',
           name: '系统管理员',
-          password: '$2b$10$YourHashedPasswordHere', // 实际环境中应该使用正确的密码哈希
+          password: hashedPassword,
           role: 'admin',
           status: 'active',
           emailVerified: true
         }
       });
       console.log('✅ 管理员用户创建成功:', adminUser.id);
+      console.log('   默认密码: admin123（请及时修改）');
     } else {
       console.log('✅ 管理员用户已存在:', adminUser.id);
+      
+      // 确保用户角色是 admin
+      if (adminUser.role !== 'admin') {
+        await prisma.user.update({
+          where: { id: adminUser.id },
+          data: { role: 'admin' }
+        });
+        console.log('   已更新用户角色为 admin');
+      }
     }
 
     // 2. 查找或创建测试企业
