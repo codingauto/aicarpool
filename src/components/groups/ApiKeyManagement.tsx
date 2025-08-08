@@ -99,7 +99,11 @@ export function ApiKeyManagement({ groupId, canManageApiKeys, members = [], curr
 
       if (response.ok) {
         const data = await response.json();
-        setApiKeys(data.data || []);
+        // 确保设置的是数组 - API返回格式是 { data: { apiKeys: [...] } }
+        const keys = data?.data?.apiKeys || data?.apiKeys || 
+                     (Array.isArray(data?.data) ? data.data : 
+                      Array.isArray(data) ? data : []);
+        setApiKeys(keys);
       }
     } catch (error) {
       console.error('获取API密钥列表失败:', error);
@@ -317,10 +321,13 @@ export function ApiKeyManagement({ groupId, canManageApiKeys, members = [], curr
     );
   }
 
-  const activeKeys = apiKeys.filter(key => key.isActive);
-  const expiredKeys = apiKeys.filter(key => key.expiresAt && new Date(key.expiresAt) < new Date());
-  const totalRequests = apiKeys.reduce((sum, key) => sum + key.usageStats.totalRequests, 0);
-  const totalTokens = apiKeys.reduce((sum, key) => sum + key.usageStats.totalTokens, 0);
+  // 确保 apiKeys 是数组
+  const safeApiKeys = Array.isArray(apiKeys) ? apiKeys : [];
+  
+  const activeKeys = safeApiKeys.filter(key => key.isActive);
+  const expiredKeys = safeApiKeys.filter(key => key.expiresAt && new Date(key.expiresAt) < new Date());
+  const totalRequests = safeApiKeys.reduce((sum, key) => sum + (key.usageStats?.totalRequests || 0), 0);
+  const totalTokens = safeApiKeys.reduce((sum, key) => sum + (key.usageStats?.totalTokens || 0), 0);
 
   return (
     <div className="space-y-6">
@@ -331,7 +338,7 @@ export function ApiKeyManagement({ groupId, canManageApiKeys, members = [], curr
             <CardTitle className="text-sm font-medium text-gray-600">总密钥数</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{apiKeys.length}</div>
+            <div className="text-2xl font-bold">{safeApiKeys.length}</div>
             <div className="text-sm text-gray-500">已创建密钥</div>
           </CardContent>
         </Card>
@@ -369,7 +376,7 @@ export function ApiKeyManagement({ groupId, canManageApiKeys, members = [], curr
               <div className="text-2xl font-bold text-purple-600">{totalTokens.toLocaleString()}</div>
               <div className="text-sm text-gray-500">累计Token消耗</div>
               {/* 配额预警 */}
-              {apiKeys.some(key => {
+              {safeApiKeys.some(key => {
                 const usage = key.quotaLimit ? (Number(key.quotaUsed) / Number(key.quotaLimit)) * 100 : 0;
                 return usage >= 80;
               }) && (
@@ -634,7 +641,7 @@ export function ApiKeyManagement({ groupId, canManageApiKeys, members = [], curr
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {apiKeys.map((apiKey) => {
+            {safeApiKeys.map((apiKey) => {
               const isExpired = apiKey.expiresAt && new Date(apiKey.expiresAt) < new Date();
               const isVisible = visibleKeys.has(apiKey.id);
               
@@ -758,7 +765,7 @@ export function ApiKeyManagement({ groupId, canManageApiKeys, members = [], curr
               );
             })}
             
-            {apiKeys.length === 0 && (
+            {safeApiKeys.length === 0 && (
               <div className="text-center py-8 text-gray-500">
                 <Key className="w-12 h-12 mx-auto mb-4 text-gray-400" />
                 <p>暂无API密钥</p>
@@ -770,7 +777,7 @@ export function ApiKeyManagement({ groupId, canManageApiKeys, members = [], curr
       </Card>
 
       {/* 安全提醒 */}
-      {apiKeys.length > 0 && (
+      {safeApiKeys.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
