@@ -11,7 +11,6 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { 
   ChevronLeft, 
@@ -139,7 +138,7 @@ export default function EnterpriseGroupDetailPage({ params }: PageProps) {
     name: '',
     description: '',
     maxMembers: 5,
-    bindingMode: 'dedicated' as 'dedicated', // 只支持专属模式
+    bindingMode: 'dedicated' as const, // 只支持专属模式
     dailyTokenLimit: 10000,
     monthlyBudget: 100,
     priorityLevel: 'medium' as 'high' | 'medium' | 'low',
@@ -624,10 +623,6 @@ export default function EnterpriseGroupDetailPage({ params }: PageProps) {
               <Users className="w-4 h-4" />
               成员管理
             </TabsTrigger>
-            <TabsTrigger value="usage" className="flex items-center gap-2">
-              <TrendingUp className="w-4 h-4" />
-              使用统计
-            </TabsTrigger>
             <TabsTrigger value="api-keys" className="flex items-center gap-2">
               <Key className="w-4 h-4" />
               API密钥
@@ -692,20 +687,26 @@ export default function EnterpriseGroupDetailPage({ params }: PageProps) {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <DollarSign className="w-5 h-5" />
-                    使用统计
+                    使用概况
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <div className="flex justify-between">
                       <span>总请求:</span>
-                      <span className="font-medium">
+                      <span className="font-medium text-blue-600">
                         {group.usageStats?.length || 0}
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span>总成本:</span>
-                      <span className="font-medium">
+                      <span>本月Token:</span>
+                      <span className="font-medium text-green-600">
+                        {(group.usageStats?.reduce((sum, stat) => sum + stat.totalTokens, 0) || 0).toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>本月成本:</span>
+                      <span className="font-medium text-purple-600">
                         ${group.usageStats?.reduce((sum, stat) => sum + stat.cost, 0).toFixed(2) || '0.00'}
                       </span>
                     </div>
@@ -714,6 +715,17 @@ export default function EnterpriseGroupDetailPage({ params }: PageProps) {
                       <span className="font-medium">
                         {new Date(group.createdAt).toLocaleDateString()}
                       </span>
+                    </div>
+                    <div className="pt-2 border-t">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="w-full"
+                        onClick={() => router.push(`/enterprise/${enterpriseId}/analytics?groupId=${groupId}`)}
+                      >
+                        <TrendingUp className="w-4 h-4 mr-2" />
+                        查看详细分析
+                      </Button>
                     </div>
                   </div>
                 </CardContent>
@@ -927,25 +939,6 @@ export default function EnterpriseGroupDetailPage({ params }: PageProps) {
                 // TODO: 可以传递用户信息给API密钥管理组件
               }}
             />
-          </TabsContent>
-
-          <TabsContent value="usage">
-            <Card>
-              <CardHeader>
-                <CardTitle>使用统计</CardTitle>
-                <CardDescription>
-                  查看拼车组的AI服务使用情况
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Alert>
-                  <TrendingUp className="h-4 w-4" />
-                  <AlertDescription>
-                    使用统计功能正在开发中，将显示详细的使用报表和趋势分析。
-                  </AlertDescription>
-                </Alert>
-              </CardContent>
-            </Card>
           </TabsContent>
 
           <TabsContent value="api-keys">
