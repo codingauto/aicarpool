@@ -812,7 +812,7 @@ export function ApiKeyManagement({ groupId, canManageApiKeys, members = [], curr
       {/* CLI配置指导对话框 */}
       <Dialog open={showCliConfigDialog} onOpenChange={setShowCliConfigDialog}>
         <DialogContent className="max-w-4xl w-[95vw] max-h-[90vh] flex flex-col">
-          <DialogHeader>
+          <DialogHeader className="flex-shrink-0 pb-4 border-b">
             <DialogTitle className="flex items-center gap-2">
               <Key className="w-5 h-5" />
               API密钥创建成功！
@@ -822,7 +822,9 @@ export function ApiKeyManagement({ groupId, canManageApiKeys, members = [], curr
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-6">
+          {/* 可滚动的内容区域 */}
+          <div className="flex-1 overflow-y-auto px-1">
+            <div className="space-y-6 py-4">
             {/* API密钥显示 */}
             <div className="space-y-2">
               <Label className="text-sm font-medium">您的API密钥</Label>
@@ -854,12 +856,12 @@ export function ApiKeyManagement({ groupId, canManageApiKeys, members = [], curr
               {/* Claude Code CLI */}
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Claude Code CLI</Label>
-                <div className="bg-gray-900 text-green-400 p-3 rounded font-mono text-sm">
-                  <div># 设置环境变量</div>
-                  <div>export ANTHROPIC_BASE_URL="{getCurrentDomain()}/api/v1"</div>
-                  <div>export ANTHROPIC_AUTH_TOKEN="{newlyCreatedKey}"</div>
-                  <div className="mt-2"># 验证配置</div>
-                  <div>claude --version</div>
+                <div className="bg-gray-900 text-green-400 p-3 rounded font-mono text-sm overflow-x-auto">
+                  <div className="whitespace-pre-wrap break-all"># 设置环境变量</div>
+                  <div className="whitespace-pre-wrap break-all">export ANTHROPIC_BASE_URL="{getCurrentDomain()}/api/v1"</div>
+                  <div className="whitespace-pre-wrap break-all">export ANTHROPIC_AUTH_TOKEN="{newlyCreatedKey}"</div>
+                  <div className="mt-2 whitespace-pre-wrap break-all"># 验证配置</div>
+                  <div className="whitespace-pre-wrap break-all">claude --version</div>
                 </div>
                 <Button
                   variant="outline"
@@ -878,12 +880,12 @@ export function ApiKeyManagement({ groupId, canManageApiKeys, members = [], curr
               {/* Gemini CLI */}
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Gemini CLI</Label>
-                <div className="bg-gray-900 text-green-400 p-3 rounded font-mono text-sm">
-                  <div># 设置环境变量</div>
-                  <div>export GEMINI_API_URL="{getCurrentDomain()}/api/ai-proxy"</div>
-                  <div>export GEMINI_API_KEY="{newlyCreatedKey}"</div>
-                  <div className="mt-2"># 验证配置</div>
-                  <div>gemini-cli --help</div>
+                <div className="bg-gray-900 text-green-400 p-3 rounded font-mono text-sm overflow-x-auto">
+                  <div className="whitespace-pre-wrap break-all"># 设置环境变量</div>
+                  <div className="whitespace-pre-wrap break-all">export GEMINI_API_URL="{getCurrentDomain()}/api/ai-proxy"</div>
+                  <div className="whitespace-pre-wrap break-all">export GEMINI_API_KEY="{newlyCreatedKey}"</div>
+                  <div className="mt-2 whitespace-pre-wrap break-all"># 验证配置</div>
+                  <div className="whitespace-pre-wrap break-all">gemini-cli --help</div>
                 </div>
                 <Button
                   variant="outline"
@@ -902,12 +904,12 @@ export function ApiKeyManagement({ groupId, canManageApiKeys, members = [], curr
               {/* ampcode CLI */}
               <div className="space-y-2">
                 <Label className="text-sm font-medium">ampcode CLI</Label>
-                <div className="bg-gray-900 text-green-400 p-3 rounded font-mono text-sm">
-                  <div># 设置环境变量</div>
-                  <div>export AMPCODE_BASE_URL="{getCurrentDomain()}/api/ai-proxy"</div>
-                  <div>export AMPCODE_API_KEY="{newlyCreatedKey}"</div>
-                  <div className="mt-2"># 验证配置</div>
-                  <div>ampcode --version</div>
+                <div className="bg-gray-900 text-green-400 p-3 rounded font-mono text-sm overflow-x-auto">
+                  <div className="whitespace-pre-wrap break-all"># 设置环境变量</div>
+                  <div className="whitespace-pre-wrap break-all">export AMPCODE_BASE_URL="{getCurrentDomain()}/api/ai-proxy"</div>
+                  <div className="whitespace-pre-wrap break-all">export AMPCODE_API_KEY="{newlyCreatedKey}"</div>
+                  <div className="mt-2 whitespace-pre-wrap break-all"># 验证配置</div>
+                  <div className="whitespace-pre-wrap break-all">ampcode --version</div>
                 </div>
                 <Button
                   variant="outline"
@@ -939,17 +941,21 @@ export function ApiKeyManagement({ groupId, canManageApiKeys, members = [], curr
                 </div>
               </div>
             </div>
+            </div>
           </div>
 
-          <div className="flex justify-end gap-2 pt-4">
-            <Button 
-              onClick={() => {
-                setShowCliConfigDialog(false);
-                setNewlyCreatedKey('');
-              }}
-            >
-              我已保存，关闭
-            </Button>
+          {/* 固定在底部的按钮区域 */}
+          <div className="flex-shrink-0 border-t pt-4">
+            <div className="flex justify-end gap-2">
+              <Button 
+                onClick={() => {
+                  setShowCliConfigDialog(false);
+                  setNewlyCreatedKey('');
+                }}
+              >
+                我已保存，关闭
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
