@@ -202,6 +202,23 @@ export default function EnterpriseGroupDetailPage({ params }: PageProps) {
       const groupData = await groupResponse.json();
       if (groupData.success) {
         const groupInfo = groupData.data;
+        
+        // 获取成员详细信息（包含API密钥统计）
+        const membersResponse = await fetch(`/api/groups/${grpId}/members`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (membersResponse.ok) {
+          const membersData = await membersResponse.json();
+          if (membersData.success) {
+            // 用包含API密钥统计的成员数据替换原有成员数据
+            groupInfo.members = membersData.data.members;
+          }
+        }
+        
         setGroup(groupInfo);
         
         // 初始化编辑表单
@@ -892,10 +909,7 @@ export default function EnterpriseGroupDetailPage({ params }: PageProps) {
               groupId={groupId}
               groupName={group?.name || ''}
               enterpriseId={enterpriseId}
-              members={group?.members?.map(m => ({
-                ...m,
-                status: 'active' // 添加缺少的status字段
-              })) || []}
+              members={group?.members || []}
               currentUserId={currentUser?.id}
               canManageMembers={canManageMembers}
               onInviteClick={() => router.push(`/enterprise/${enterpriseId}/org-structure`)}

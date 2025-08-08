@@ -10,8 +10,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Key, Plus, Copy, RotateCcw, Trash2, Eye, EyeOff, AlertTriangle, User, Clock, DollarSign, Settings, TestTube, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Key, Plus, Copy, RotateCcw, Trash2, Eye, EyeOff, AlertTriangle, User, Clock, DollarSign, Settings, TestTube, CheckCircle, XCircle, AlertCircle, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { GroupManagerGuard } from '@/components/auth/PermissionGuard';
 
@@ -78,18 +79,32 @@ export function ApiKeyManagement({ groupId, canManageApiKeys, members = [], curr
   // 创建API密钥表单状态
   const [createForm, setCreateForm] = useState({
     name: '',
+    tags: [] as string[],
     description: '',
     targetUserId: currentUserId || '', // 默认为当前用户
-    expiresInDays: 30,
-    dailyCostLimit: 5,
+    expiresInDays: 0, // 0表示永不过期
+    dailyCostLimit: 50,
+    concurrencyLimit: 0, // 0表示无限制
     rateLimit: {
+      type: 'unlimited' as 'unlimited' | 'requests' | 'tokens',
       windowMinutes: 60,
-      maxRequests: 100,
-      maxTokens: 50000
+      maxRequests: 1000,
+      maxTokens: 100000
     },
-    servicePermissions: ['all'] as string[],
-    resourceBinding: 'shared' as 'shared' | 'dedicated'
+    servicePermissions: 'all' as 'all' | 'claude' | 'gemini',
+    claudeAccountId: '',
+    geminiAccountId: '',
+    enableModelRestriction: false,
+    enableClientRestriction: false
   });
+  
+  // 新增状态管理
+  const [tagInput, setTagInput] = useState('');
+  const [showRateLimitSettings, setShowRateLimitSettings] = useState(false);
+  const [showConcurrencySettings, setShowConcurrencySettings] = useState(false);
+  const [showAccountBindingSettings, setShowAccountBindingSettings] = useState(false);
+  const [customDailyLimit, setCustomDailyLimit] = useState(false);
+  const [customExpiry, setCustomExpiry] = useState(false);
 
   const fetchApiKeys = async () => {
     try {
@@ -122,22 +137,45 @@ export function ApiKeyManagement({ groupId, canManageApiKeys, members = [], curr
     setCreating(true);
     try {
       const token = localStorage.getItem('token');
+      
+      // 构建请求数据
+      const requestData: any = {
+        name: createForm.name,
+        description: createForm.description,
+        targetUserId: createForm.targetUserId || currentUserId,
+        expiresInDays: createForm.expiresInDays,
+        dailyCostLimit: createForm.dailyCostLimit,
+        concurrencyLimit: createForm.concurrencyLimit,
+        tags: createForm.tags,
+        servicePermissions: createForm.servicePermissions === 'all' ? ['all'] : [createForm.servicePermissions],
+        enableModelRestriction: createForm.enableModelRestriction,
+        enableClientRestriction: createForm.enableClientRestriction
+      };
+      
+      // 处理速率限制
+      if (createForm.rateLimit.type !== 'unlimited') {
+        requestData.rateLimit = {
+          windowMinutes: createForm.rateLimit.windowMinutes,
+          maxRequests: createForm.rateLimit.type === 'requests' ? createForm.rateLimit.maxRequests : null,
+          maxTokens: createForm.rateLimit.type === 'tokens' ? createForm.rateLimit.maxTokens : null
+        };
+      }
+      
+      // 处理专属账号绑定
+      if (createForm.claudeAccountId) {
+        requestData.claudeAccountId = createForm.claudeAccountId;
+      }
+      if (createForm.geminiAccountId) {
+        requestData.geminiAccountId = createForm.geminiAccountId;
+      }
+      
       const response = await fetch(`/api/groups/${groupId}/api-keys`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          name: createForm.name,
-          description: createForm.description,
-          targetUserId: createForm.targetUserId,
-          expiresInDays: createForm.expiresInDays,
-          dailyCostLimit: createForm.dailyCostLimit,
-          rateLimit: createForm.rateLimit,
-          servicePermissions: createForm.servicePermissions,
-          resourceBinding: createForm.resourceBinding
-        })
+        body: JSON.stringify(requestData)
       });
 
       const data = await response.json();
@@ -146,18 +184,30 @@ export function ApiKeyManagement({ groupId, canManageApiKeys, members = [], curr
         setShowCreateDialog(false);
         setCreateForm({
           name: '',
+          tags: [],
           description: '',
           targetUserId: currentUserId || '',
-          expiresInDays: 30,
-          dailyCostLimit: 5,
+          expiresInDays: 0,
+          dailyCostLimit: 50,
+          concurrencyLimit: 0,
           rateLimit: {
+            type: 'unlimited',
             windowMinutes: 60,
-            maxRequests: 100,
-            maxTokens: 50000
+            maxRequests: 1000,
+            maxTokens: 100000
           },
-          servicePermissions: ['all'],
-          resourceBinding: 'shared'
+          servicePermissions: 'all',
+          claudeAccountId: '',
+          geminiAccountId: '',
+          enableModelRestriction: false,
+          enableClientRestriction: false
         });
+        setTagInput('');
+        setShowRateLimitSettings(false);
+        setShowConcurrencySettings(false);
+        setShowAccountBindingSettings(false);
+        setCustomDailyLimit(false);
+        setCustomExpiry(false);
         fetchApiKeys();
         
         // 显示完整的API密钥和CLI配置
@@ -186,6 +236,31 @@ export function ApiKeyManagement({ groupId, canManageApiKeys, members = [], curr
       newVisible.add(keyId);
     }
     setVisibleKeys(newVisible);
+  };
+  
+  // 标签管理函数
+  const handleAddTag = () => {
+    if (tagInput.trim() && !createForm.tags.includes(tagInput.trim())) {
+      setCreateForm(prev => ({
+        ...prev,
+        tags: [...prev.tags, tagInput.trim()]
+      }));
+      setTagInput('');
+    }
+  };
+  
+  const handleRemoveTag = (tagToRemove: string) => {
+    setCreateForm(prev => ({
+      ...prev,
+      tags: prev.tags.filter(tag => tag !== tagToRemove)
+    }));
+  };
+  
+  const handleTagInputKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleAddTag();
+    }
   };
 
   const handleDeleteApiKey = async (keyId: string, keyName: string) => {
@@ -300,12 +375,6 @@ export function ApiKeyManagement({ groupId, canManageApiKeys, members = [], curr
     return Math.min((used / limit) * 100, 100);
   };
 
-  const getQuotaUsageColor = (percentage: number) => {
-    if (percentage >= 90) return 'bg-red-500';
-    if (percentage >= 75) return 'bg-yellow-500';
-    return 'bg-green-500';
-  };
-
   useEffect(() => {
     fetchApiKeys();
   }, [groupId]);
@@ -407,220 +476,416 @@ export function ApiKeyManagement({ groupId, canManageApiKeys, members = [], curr
                     创建密钥
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-4xl w-[95vw] max-h-[90vh] flex flex-col">
-                  <DialogHeader className="flex-shrink-0 pb-4 border-b">
-                    <DialogTitle>创建新的API密钥</DialogTitle>
-                    <DialogDescription>
-                      为拼车组成员创建API访问密钥，用于CLI工具和程序化访问AI服务
-                    </DialogDescription>
+                <DialogContent className="max-w-3xl w-[90vw] max-h-[85vh] flex flex-col p-0">
+                  <DialogHeader className="flex-shrink-0 px-6 pt-6 pb-4">
+                    <DialogTitle className="flex items-center gap-2 text-lg">
+                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                        <Key className="w-5 h-5 text-blue-600" />
+                      </div>
+                      创建新的 API Key
+                    </DialogTitle>
                   </DialogHeader>
                   
                   {/* 可滚动的表单内容区域 */}
-                  <div className="flex-1 overflow-y-auto px-1">
-                    <Tabs defaultValue="basic" className="w-full py-4">
-                      <TabsList className="grid w-full grid-cols-3">
-                        <TabsTrigger value="basic">基础信息</TabsTrigger>
-                        <TabsTrigger value="limits">配额限制</TabsTrigger>
-                        <TabsTrigger value="permissions">权限设置</TabsTrigger>
-                      </TabsList>
-                      
-                      {/* 基础信息标签页 */}
-                      <TabsContent value="basic" className="space-y-4 mt-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="name">密钥名称</Label>
-                          <Input
-                            id="name"
-                            value={createForm.name}
-                            onChange={(e) => setCreateForm(prev => ({ ...prev, name: e.target.value }))}
-                            placeholder="如：生产环境CLI"
-                          />
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <Label htmlFor="targetUser">绑定成员</Label>
-                          <Select 
-                            value={createForm.targetUserId} 
-                            onValueChange={(value) => setCreateForm(prev => ({ ...prev, targetUserId: value }))}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="选择成员" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {canManageApiKeys ? (
-                                members.map((member) => (
-                                  <SelectItem key={member.userId} value={member.userId}>
-                                    <div className="flex items-center gap-2">
-                                      <User className="w-4 h-4" />
-                                      {member.user.name}
-                                      {member.userId === currentUserId && ' (我)'}
-                                    </div>
-                                  </SelectItem>
-                                ))
-                              ) : (
-                                <SelectItem value={currentUserId || ''}>
-                                  <div className="flex items-center gap-2">
-                                    <User className="w-4 h-4" />
-                                    我自己
-                                  </div>
-                                </SelectItem>
-                              )}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="description">描述（可选）</Label>
-                        <Textarea
-                          id="description"
-                          value={createForm.description}
-                          onChange={(e) => setCreateForm(prev => ({ ...prev, description: e.target.value }))}
-                          placeholder="描述此API密钥的用途..."
-                          rows={2}
+                  <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
+                    {/* 名称 */}
+                    <div className="space-y-2">
+                      <Label htmlFor="name" className="flex items-center gap-1">
+                        名称 <span className="text-red-500">*</span>
+                      </Label>
+                      <Input
+                        id="name"
+                        value={createForm.name}
+                        onChange={(e) => setCreateForm(prev => ({ ...prev, name: e.target.value }))}
+                        placeholder="为您的 API Key 取一个名称"
+                      />
+                    </div>
+                    
+                    {/* 标签 */}
+                    <div className="space-y-2">
+                      <Label>标签</Label>
+                      <div className="text-sm text-gray-500">创建标签：</div>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          value={tagInput}
+                          onChange={(e) => setTagInput(e.target.value)}
+                          onKeyPress={handleTagInputKeyPress}
+                          placeholder="输入新标签名称"
+                          className="flex-1"
                         />
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="default"
+                          className="bg-green-500 hover:bg-green-600"
+                          onClick={handleAddTag}
+                        >
+                          <Plus className="w-4 h-4" />
+                        </Button>
                       </div>
-                      </TabsContent>
-                      
-                      {/* 配额限制标签页 */}
-                      <TabsContent value="limits" className="space-y-4 mt-4">
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="dailyLimit">每日费用限制 ($)</Label>
-                          <Input
-                            id="dailyLimit"
-                            type="number"
-                            min="1"
-                            max="100"
-                            value={createForm.dailyCostLimit}
-                            onChange={(e) => setCreateForm(prev => ({ 
-                              ...prev, 
-                              dailyCostLimit: parseInt(e.target.value) || 5 
-                            }))}
-                          />
+                      {createForm.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {createForm.tags.map((tag) => (
+                            <Badge key={tag} variant="secondary" className="px-3 py-1">
+                              {tag}
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveTag(tag)}
+                                className="ml-2 hover:text-red-500"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </Badge>
+                          ))}
                         </div>
-                        
-                        <div className="space-y-2">
-                          <Label htmlFor="windowMinutes">时间窗口（分钟）</Label>
-                          <Select 
-                            value={createForm.rateLimit.windowMinutes.toString()} 
-                            onValueChange={(value) => setCreateForm(prev => ({ 
-                              ...prev, 
-                              rateLimit: { 
-                                ...prev.rateLimit, 
-                                windowMinutes: parseInt(value) 
-                              } 
+                      )}
+                      <p className="text-xs text-gray-500">用于标记不同团队或用途，方便筛选管理</p>
+                    </div>
+                    
+                    {/* 速率限制设置（可选） */}
+                    <div className="space-y-3">
+                      <div 
+                        className="flex items-center justify-between cursor-pointer"
+                        onClick={() => setShowRateLimitSettings(!showRateLimitSettings)}
+                      >
+                        <Label className="cursor-pointer">速率限制设置（可选）</Label>
+                        {showRateLimitSettings ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      </div>
+                      
+                      {showRateLimitSettings && (
+                        <div className="space-y-3 pl-4 border-l-2 border-gray-200">
+                          <div className="text-sm text-gray-600">时间窗口（分钟）</div>
+                          <RadioGroup
+                            value={createForm.rateLimit.type}
+                            onValueChange={(value) => setCreateForm(prev => ({
+                              ...prev,
+                              rateLimit: { ...prev.rateLimit, type: value as any }
                             }))}
                           >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="1">1分钟</SelectItem>
-                              <SelectItem value="5">5分钟</SelectItem>
-                              <SelectItem value="10">10分钟</SelectItem>
-                              <SelectItem value="60">60分钟</SelectItem>
-                            </SelectContent>
-                          </Select>
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="unlimited" id="unlimited" />
+                              <Label htmlFor="unlimited">无限制</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="requests" id="requests" />
+                              <Label htmlFor="requests">
+                                窗口内最大请求 
+                                <Input
+                                  type="number"
+                                  value={createForm.rateLimit.maxRequests}
+                                  onChange={(e) => setCreateForm(prev => ({
+                                    ...prev,
+                                    rateLimit: { ...prev.rateLimit, maxRequests: parseInt(e.target.value) || 1000 }
+                                  }))}
+                                  className="ml-2 w-24 inline-block"
+                                  disabled={createForm.rateLimit.type !== 'requests'}
+                                />
+                              </Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="tokens" id="tokens" />
+                              <Label htmlFor="tokens">
+                                窗口内最大Token
+                                <Input
+                                  type="number"
+                                  value={createForm.rateLimit.maxTokens}
+                                  onChange={(e) => setCreateForm(prev => ({
+                                    ...prev,
+                                    rateLimit: { ...prev.rateLimit, maxTokens: parseInt(e.target.value) || 100000 }
+                                  }))}
+                                  className="ml-2 w-32 inline-block"
+                                  disabled={createForm.rateLimit.type !== 'tokens'}
+                                />
+                              </Label>
+                            </div>
+                          </RadioGroup>
+                          
+                          <div className="bg-gray-50 p-3 rounded text-sm text-gray-600">
+                            <div className="font-semibold mb-1">使用示例：</div>
+                            {createForm.rateLimit.type === 'unlimited' && (
+                              <div>示例1: 时间窗口=60，请求次数=1000 → 每60分钟最多1000次请求</div>
+                            )}
+                            {createForm.rateLimit.type === 'requests' && (
+                              <div>示例2: 时间窗口=1，Token=10000 → 每分钟最多10,000个Token</div>
+                            )}
+                            {createForm.rateLimit.type === 'tokens' && (
+                              <div>示例3: 窗口=30，请求=50，Token=100000 → 每30分钟最多50次请求且不超10万Token</div>
+                            )}
+                          </div>
                         </div>
+                      )}
+                    </div>
+                    
+                    {/* 每日费用限制 */}
+                    <div className="space-y-2">
+                      <Label>每日费用限制（美元）</Label>
+                      <div className="flex gap-2 flex-wrap">
+                        <Button
+                          type="button"
+                          variant={createForm.dailyCostLimit === 50 ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => { setCreateForm(prev => ({ ...prev, dailyCostLimit: 50 })); setCustomDailyLimit(false); }}
+                        >
+                          $50
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={createForm.dailyCostLimit === 100 ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => { setCreateForm(prev => ({ ...prev, dailyCostLimit: 100 })); setCustomDailyLimit(false); }}
+                        >
+                          $100
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={createForm.dailyCostLimit === 200 ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => { setCreateForm(prev => ({ ...prev, dailyCostLimit: 200 })); setCustomDailyLimit(false); }}
+                        >
+                          $200
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={customDailyLimit ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setCustomDailyLimit(true)}
+                        >
+                          自定义
+                        </Button>
                       </div>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="maxRequests">窗口内最大请求数</Label>
+                      {customDailyLimit && (
+                        <Input
+                          type="number"
+                          min="0"
+                          value={createForm.dailyCostLimit}
+                          onChange={(e) => setCreateForm(prev => ({ ...prev, dailyCostLimit: parseInt(e.target.value) || 0 }))}
+                          placeholder="输入自定义金额"
+                        />
+                      )}
+                      <p className="text-xs text-gray-500">设置此 API Key 每日的费用限制，超过限制将拒绝请求，0 或留空表示无限制</p>
+                    </div>
+                    
+                    {/* 并发限制（可选） */}
+                    <div className="space-y-2">
+                      <div 
+                        className="flex items-center justify-between cursor-pointer"
+                        onClick={() => setShowConcurrencySettings(!showConcurrencySettings)}
+                      >
+                        <Label className="cursor-pointer">并发限制（可选）</Label>
+                        {showConcurrencySettings ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      </div>
+                      {showConcurrencySettings && (
+                        <div className="pl-4 border-l-2 border-gray-200">
                           <Input
-                            id="maxRequests"
                             type="number"
-                            min="1"
-                            value={createForm.rateLimit.maxRequests}
-                            onChange={(e) => setCreateForm(prev => ({ 
+                            min="0"
+                            value={createForm.concurrencyLimit}
+                            onChange={(e) => setCreateForm(prev => ({ ...prev, concurrencyLimit: parseInt(e.target.value) || 0 }))}
+                            placeholder="0 表示无限制"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">设置此 API Key 可同时处理的最大请求数，0 或留空表示无限制</p>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* 备注（可选） */}
+                    <div className="space-y-2">
+                      <Label htmlFor="description">备注（可选）</Label>
+                      <Textarea
+                        id="description"
+                        value={createForm.description}
+                        onChange={(e) => setCreateForm(prev => ({ ...prev, description: e.target.value }))}
+                        placeholder="描述此 API Key 的用途..."
+                        rows={3}
+                      />
+                    </div>
+                    
+                    {/* 有效期限 */}
+                    <div className="space-y-2">
+                      <Label>有效期限</Label>
+                      <Select 
+                        value={createForm.expiresInDays.toString()} 
+                        onValueChange={(value) => {
+                          const days = parseInt(value);
+                          setCreateForm(prev => ({ ...prev, expiresInDays: days }));
+                          setCustomExpiry(days === -1);
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="0">永不过期</SelectItem>
+                          <SelectItem value="7">7天</SelectItem>
+                          <SelectItem value="30">30天</SelectItem>
+                          <SelectItem value="90">90天</SelectItem>
+                          <SelectItem value="-1">自定义</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {customExpiry && (
+                        <Input
+                          type="number"
+                          min="1"
+                          placeholder="输入天数"
+                          onChange={(e) => setCreateForm(prev => ({ ...prev, expiresInDays: parseInt(e.target.value) || 30 }))}
+                        />
+                      )}
+                    </div>
+                    
+                    {/* 服务权限 */}
+                    <div className="space-y-2">
+                      <Label>服务权限</Label>
+                      <RadioGroup
+                        value={createForm.servicePermissions}
+                        onValueChange={(value) => setCreateForm(prev => ({ ...prev, servicePermissions: value as any }))}
+                      >
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="all" id="all-services" />
+                          <Label htmlFor="all-services">全部服务</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="claude" id="claude-only" />
+                          <Label htmlFor="claude-only">仅 Claude</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="gemini" id="gemini-only" />
+                          <Label htmlFor="gemini-only">仅 Gemini</Label>
+                        </div>
+                      </RadioGroup>
+                      <p className="text-xs text-gray-500">控制此 API Key 可以访问哪些服务</p>
+                    </div>
+                    
+                    {/* 专属账号绑定（可选） */}
+                    <div className="space-y-3">
+                      <div 
+                        className="flex items-center justify-between cursor-pointer"
+                        onClick={() => setShowAccountBindingSettings(!showAccountBindingSettings)}
+                      >
+                        <Label className="cursor-pointer">专属账号绑定（可选）</Label>
+                        {showAccountBindingSettings ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      </div>
+                      {showAccountBindingSettings && (
+                        <div className="space-y-3 pl-4 border-l-2 border-gray-200">
+                          <div className="space-y-2">
+                            <Label>Claude 专属账号</Label>
+                            <Select 
+                              value={createForm.claudeAccountId || "shared"}
+                              onValueChange={(value) => setCreateForm(prev => ({ 
+                                ...prev, 
+                                claudeAccountId: value === "shared" ? "" : value 
+                              }))}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="shared">使用共享账号池</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <Label>Gemini 专属账号</Label>
+                            <Select 
+                              value={createForm.geminiAccountId || "shared"}
+                              onValueChange={(value) => setCreateForm(prev => ({ 
+                                ...prev, 
+                                geminiAccountId: value === "shared" ? "" : value 
+                              }))}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="shared">使用共享账号池</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          
+                          <p className="text-xs text-gray-500">
+                            选择专属账号后，此API Key将只使用该账号，不选择则使用共享账号池
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* 高级选项 */}
+                    <div className="space-y-2">
+                      <Label>高级选项</Label>
+                      <div className="space-y-3">
+                        <div className="flex items-center space-x-2">
+                          <Checkbox 
+                            id="model-restriction"
+                            checked={createForm.enableModelRestriction}
+                            onCheckedChange={(checked) => setCreateForm(prev => ({ 
                               ...prev, 
-                              rateLimit: { 
-                                ...prev.rateLimit, 
-                                maxRequests: parseInt(e.target.value) || 100 
-                              } 
+                              enableModelRestriction: checked as boolean 
                             }))}
                           />
+                          <Label htmlFor="model-restriction" className="cursor-pointer">
+                            启用模型限制
+                          </Label>
                         </div>
-                        
-                        <div className="space-y-2">
-                          <Label htmlFor="maxTokens">窗口内最大Token数</Label>
-                          <Input
-                            id="maxTokens"
-                            type="number"
-                            min="1000"
-                            value={createForm.rateLimit.maxTokens}
-                            onChange={(e) => setCreateForm(prev => ({ 
+                        <div className="flex items-center space-x-2">
+                          <Checkbox 
+                            id="client-restriction"
+                            checked={createForm.enableClientRestriction}
+                            onCheckedChange={(checked) => setCreateForm(prev => ({ 
                               ...prev, 
-                              rateLimit: { 
-                                ...prev.rateLimit, 
-                                maxTokens: parseInt(e.target.value) || 50000 
-                              } 
+                              enableClientRestriction: checked as boolean 
                             }))}
                           />
+                          <Label htmlFor="client-restriction" className="cursor-pointer">
+                            启用客户端限制
+                          </Label>
                         </div>
                       </div>
-                      </TabsContent>
-                      
-                      {/* 权限设置标签页 */}
-                      <TabsContent value="permissions" className="space-y-4 mt-4">
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="servicePermissions">服务权限</Label>
-                          <Select 
-                            value={createForm.servicePermissions[0]} 
-                            onValueChange={(value) => setCreateForm(prev => ({ 
-                              ...prev, 
-                              servicePermissions: [value] 
-                            }))}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="all">全部服务</SelectItem>
-                              <SelectItem value="claude">仅 Claude</SelectItem>
-                              <SelectItem value="gemini">仅 Gemini</SelectItem>
-                              <SelectItem value="custom">自定义</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <Label htmlFor="expiresInDays">有效期</Label>
-                          <Select 
-                            value={createForm.expiresInDays.toString()} 
-                            onValueChange={(value) => setCreateForm(prev => ({ 
-                              ...prev, 
-                              expiresInDays: parseInt(value) 
-                            }))}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="7">7天</SelectItem>
-                              <SelectItem value="30">30天</SelectItem>
-                              <SelectItem value="90">90天</SelectItem>
-                              <SelectItem value="365">1年</SelectItem>
-                              <SelectItem value="0">永不过期</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                      </TabsContent>
-                    </Tabs>
+                    </div>
                   </div>
                   
                   {/* 固定在底部的按钮区域 */}
-                  <div className="flex-shrink-0 border-t pt-4">
-                    <div className="flex gap-2 justify-end">
-                      <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
+                  <div className="flex-shrink-0 border-t px-6 py-4">
+                    <div className="flex gap-3 justify-end">
+                      <Button 
+                        variant="outline" 
+                        onClick={() => {
+                          setShowCreateDialog(false);
+                          // 重置表单
+                          setCreateForm({
+                            name: '',
+                            tags: [],
+                            description: '',
+                            targetUserId: currentUserId || '',
+                            expiresInDays: 0,
+                            dailyCostLimit: 50,
+                            concurrencyLimit: 0,
+                            rateLimit: {
+                              type: 'unlimited',
+                              windowMinutes: 60,
+                              maxRequests: 1000,
+                              maxTokens: 100000
+                            },
+                            servicePermissions: 'all',
+                            claudeAccountId: '',
+                            geminiAccountId: '',
+                            enableModelRestriction: false,
+                            enableClientRestriction: false
+                          });
+                          setTagInput('');
+                          setShowRateLimitSettings(false);
+                          setShowConcurrencySettings(false);
+                          setShowAccountBindingSettings(false);
+                          setCustomDailyLimit(false);
+                          setCustomExpiry(false);
+                        }}
+                      >
                         取消
                       </Button>
-                      <Button onClick={handleCreateApiKey} disabled={creating}>
+                      <Button 
+                        onClick={handleCreateApiKey} 
+                        disabled={creating || !createForm.name.trim()}
+                        className="bg-blue-500 hover:bg-blue-600"
+                      >
                         {creating ? (
                           <>
                             <RotateCcw className="w-4 h-4 mr-2 animate-spin" />
@@ -628,8 +893,8 @@ export function ApiKeyManagement({ groupId, canManageApiKeys, members = [], curr
                           </>
                         ) : (
                           <>
-                            <Key className="w-4 h-4 mr-2" />
-                            创建密钥
+                            <Plus className="w-4 h-4 mr-2" />
+                            创建
                           </>
                         )}
                       </Button>
