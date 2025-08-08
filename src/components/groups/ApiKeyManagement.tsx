@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Key, Plus, Copy, RotateCcw, Trash2, Eye, EyeOff, AlertTriangle, User, Clock, DollarSign, Settings, TestTube, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { GroupManagerGuard } from '@/components/auth/PermissionGuard';
@@ -406,22 +407,26 @@ export function ApiKeyManagement({ groupId, canManageApiKeys, members = [], curr
                     创建密钥
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-                  <DialogHeader>
+                <DialogContent className="max-w-4xl w-[95vw] max-h-[90vh] flex flex-col">
+                  <DialogHeader className="flex-shrink-0 pb-4 border-b">
                     <DialogTitle>创建新的API密钥</DialogTitle>
                     <DialogDescription>
                       为拼车组成员创建API访问密钥，用于CLI工具和程序化访问AI服务
                     </DialogDescription>
                   </DialogHeader>
-                  <div className="space-y-6">
-                    {/* 基础信息 */}
-                    <div className="space-y-4">
-                      <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                        <Settings className="w-4 h-4" />
-                        基础信息
-                      </div>
+                  
+                  {/* 可滚动的表单内容区域 */}
+                  <div className="flex-1 overflow-y-auto px-1">
+                    <Tabs defaultValue="basic" className="w-full py-4">
+                      <TabsList className="grid w-full grid-cols-3">
+                        <TabsTrigger value="basic">基础信息</TabsTrigger>
+                        <TabsTrigger value="limits">配额限制</TabsTrigger>
+                        <TabsTrigger value="permissions">权限设置</TabsTrigger>
+                      </TabsList>
                       
-                      <div className="grid grid-cols-2 gap-4">
+                      {/* 基础信息标签页 */}
+                      <TabsContent value="basic" className="space-y-4 mt-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="name">密钥名称</Label>
                           <Input
@@ -475,16 +480,12 @@ export function ApiKeyManagement({ groupId, canManageApiKeys, members = [], curr
                           rows={2}
                         />
                       </div>
-                    </div>
-
-                    {/* 配额限制 */}
-                    <div className="space-y-4">
-                      <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                        <DollarSign className="w-4 h-4" />
-                        配额限制
-                      </div>
+                      </TabsContent>
                       
-                      <div className="grid grid-cols-2 gap-4">
+                      {/* 配额限制标签页 */}
+                      <TabsContent value="limits" className="space-y-4 mt-4">
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="dailyLimit">每日费用限制 ($)</Label>
                           <Input
@@ -525,7 +526,7 @@ export function ApiKeyManagement({ groupId, canManageApiKeys, members = [], curr
                         </div>
                       </div>
                       
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="maxRequests">窗口内最大请求数</Label>
                           <Input
@@ -560,16 +561,12 @@ export function ApiKeyManagement({ groupId, canManageApiKeys, members = [], curr
                           />
                         </div>
                       </div>
-                    </div>
-
-                    {/* 服务权限和过期设置 */}
-                    <div className="space-y-4">
-                      <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                        <Clock className="w-4 h-4" />
-                        服务权限与过期设置
-                      </div>
+                      </TabsContent>
                       
-                      <div className="grid grid-cols-2 gap-4">
+                      {/* 权限设置标签页 */}
+                      <TabsContent value="permissions" className="space-y-4 mt-4">
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="servicePermissions">服务权限</Label>
                           <Select 
@@ -613,8 +610,12 @@ export function ApiKeyManagement({ groupId, canManageApiKeys, members = [], curr
                           </Select>
                         </div>
                       </div>
-                    </div>
-                    
+                      </TabsContent>
+                    </Tabs>
+                  </div>
+                  
+                  {/* 固定在底部的按钮区域 */}
+                  <div className="flex-shrink-0 border-t pt-4">
                     <div className="flex gap-2 justify-end">
                       <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
                         取消
@@ -810,7 +811,7 @@ export function ApiKeyManagement({ groupId, canManageApiKeys, members = [], curr
 
       {/* CLI配置指导对话框 */}
       <Dialog open={showCliConfigDialog} onOpenChange={setShowCliConfigDialog}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl w-[95vw] max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Key className="w-5 h-5" />
