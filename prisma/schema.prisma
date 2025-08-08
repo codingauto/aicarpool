@@ -138,6 +138,11 @@ model ApiKey {
   groupId     String
   userId      String
   
+  // 额外元数据与配额字段（对齐代码使用）
+  metadata     Json?
+  quotaLimit   BigInt?
+  quotaUsed    BigInt    @default(0)
+  
   // 限制配置
   tokenLimit        Int?     // Token限制
   rateLimitWindow   Int?     // 速率限制时间窗口(分钟)
@@ -220,6 +225,11 @@ model UsageStat {
   groupId        String
   aiServiceId    String
   requestType    String
+  // 对齐业务代码的可选追踪字段
+  apiKeyId       String?
+  modelName      String?
+  latency        Int?
+  errorType      String?
   cost           Decimal           @db.Decimal(10, 6)
   requestTime    DateTime
   responseTime   Int?
@@ -240,6 +250,7 @@ model UsageStat {
   @@index([groupId, requestTime])
   @@index([accountId, requestTime])
   @@index([aiServiceId, requestTime])
+  @@index([apiKeyId, requestTime])
   @@index([enterpriseId, requestTime])
   @@index([departmentId, requestTime])
   @@map("usage_stats")

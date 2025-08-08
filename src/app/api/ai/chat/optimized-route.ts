@@ -24,12 +24,12 @@ export async function POST(request: NextRequest) {
     // 1. 认证验证（保持原逻辑）
     const token = request.headers.get('authorization')?.replace('Bearer ', '');
     if (!token) {
-      return createApiResponse(null, false, '缺少认证令牌', 401);
+      return createApiResponse(false, null, '缺少认证令牌', 401);
     }
 
     const user = await verifyToken(token);
     if (!user) {
-      return createApiResponse(null, false, '认证令牌无效', 401);
+      return createApiResponse(false, null, '认证令牌无效', 401);
     }
     
     userId = user.id;
@@ -40,11 +40,11 @@ export async function POST(request: NextRequest) {
 
     // 3. 参数验证
     if (!groupId) {
-      return createApiResponse(null, false, '缺少拼车组ID', 400);
+      return createApiResponse(false, null, '缺少拼车组ID', 400);
     }
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
-      return createApiResponse(null, false, '缺少或无效的消息列表', 400);
+      return createApiResponse(false, null, '缺少或无效的消息列表', 400);
     }
 
     // 验证消息格式
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     );
 
     if (!isValidMessages) {
-      return createApiResponse(null, false, '消息格式无效', 400);
+      return createApiResponse(false, null, '消息格式无效', 400);
     }
 
     // 4. 检查是否使用优化版本
@@ -165,15 +165,15 @@ export async function POST(request: NextRequest) {
       const errorMessage = error.message;
       
       if (errorMessage.includes('配额') || errorMessage.includes('限制')) {
-        return createApiResponse(null, false, errorMessage, 429);
+        return createApiResponse(false, null, errorMessage, 429);
       }
       
       if (errorMessage.includes('账号') || errorMessage.includes('不可用')) {
-        return createApiResponse(null, false, errorMessage, 503);
+        return createApiResponse(false, null, errorMessage, 503);
       }
       
       if (errorMessage.includes('权限') || errorMessage.includes('绑定')) {
-        return createApiResponse(null, false, errorMessage, 403);
+        return createApiResponse(false, null, errorMessage, 403);
       }
     }
     
@@ -261,7 +261,7 @@ export async function POST_WITH_API_KEY(request: NextRequest) {
     // 1. API Key验证（优化版）
     const apiKeyHeader = request.headers.get('x-api-key');
     if (!apiKeyHeader) {
-      return createApiResponse(null, false, '缺少API Key', 401);
+      return createApiResponse(false, null, '缺少API Key', 401);
     }
 
     // 检查是否使用优化版验证
@@ -305,7 +305,7 @@ export async function POST_WITH_API_KEY(request: NextRequest) {
         validationResult.error
       );
       
-      return createApiResponse(null, false, validationResult.error || 'API Key验证失败', 401);
+      return createApiResponse(false, null, validationResult.error || 'API Key验证失败', 401);
     }
 
     // 2. 解析请求体
@@ -383,12 +383,12 @@ export async function GET(request: NextRequest) {
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '');
     if (!token) {
-      return createApiResponse(null, false, '缺少认证令牌', 401);
+      return createApiResponse(false, null, '缺少认证令牌', 401);
     }
 
     const user = await verifyToken(token);
     if (!user) {
-      return createApiResponse(null, false, '认证令牌无效', 401);
+      return createApiResponse(false, null, '认证令牌无效', 401);
     }
 
     // 获取用户的优化功能开关状态
@@ -423,6 +423,6 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('Get optimization status error:', error);
-    return createApiResponse(null, false, '获取优化状态失败', 500);
+    return createApiResponse(false, null, '获取优化状态失败', 500);
   }
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { withAuth, createApiResponse, createErrorResponse } from '@/lib/middleware';
+import { verifyToken } from '@/lib/auth';
 
 const createCarpoolGroupSchema = z.object({
   name: z.string().min(1, '拼车组名称不能为空').max(50, '拼车组名称不能超过50个字符'),

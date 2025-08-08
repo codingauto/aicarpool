@@ -17,12 +17,12 @@ export async function GET(request: NextRequest) {
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '');
     if (!token) {
-      return createApiResponse(null, false, '缺少认证令牌', 401);
+      return createApiResponse(false, null, '缺少认证令牌', 401);
     }
 
     const user = await verifyToken(token);
     if (!user) {
-      return createApiResponse(null, false, '认证令牌无效', 401);
+      return createApiResponse(false, null, '认证令牌无效', 401);
     }
 
     // 获取用户加入的拼车组
@@ -132,7 +132,7 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('获取用户权限失败:', error);
-    return createApiResponse(null, false, '获取用户权限失败', 500);
+    return createApiResponse(false, null, '获取用户权限失败', 500);
   }
 }
 
@@ -143,12 +143,12 @@ export async function POST(request: NextRequest) {
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '');
     if (!token) {
-      return createApiResponse(null, false, '缺少认证令牌', 401);
+      return createApiResponse(false, null, '缺少认证令牌', 401);
     }
 
     const user = await verifyToken(token);
     if (!user) {
-      return createApiResponse(null, false, '认证令牌无效', 401);
+      return createApiResponse(false, null, '认证令牌无效', 401);
     }
 
     const body = await request.json();
@@ -226,6 +226,6 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('权限验证失败:', error);
-    return createApiResponse(null, false, '权限验证失败', 500);
+    return createApiResponse(false, null, '权限验证失败', 500);
   }
 }

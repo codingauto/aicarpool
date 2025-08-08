@@ -26,12 +26,12 @@ export async function GET(
     // 1. 认证验证
     const token = request.headers.get('authorization')?.replace('Bearer ', '');
     if (!token) {
-      return createApiResponse(null, false, '缺少认证令牌', 401);
+      return createApiResponse(false, null, '缺少认证令牌', 401);
     }
 
     const user = await verifyToken(token);
     if (!user) {
-      return createApiResponse(null, false, '认证令牌无效', 401);
+      return createApiResponse(false, null, '认证令牌无效', 401);
     }
 
     const resolvedParams = await params;
@@ -39,7 +39,7 @@ export async function GET(
 
     // 2. 参数验证
     if (!enterpriseId || !accountId) {
-      return createApiResponse(null, false, '缺少必要参数', 400);
+      return createApiResponse(false, null, '缺少必要参数', 400);
     }
 
     // 3. 获取AI账号详细信息
@@ -87,7 +87,7 @@ export async function GET(
     });
 
     if (!account) {
-      return createApiResponse(null, false, 'AI账号不存在', 404);
+      return createApiResponse(false, null, 'AI账号不存在', 404);
     }
 
     // 4. 计算统计数据
@@ -243,7 +243,7 @@ export async function GET(
 
   } catch (error) {
     console.error('获取AI账号详情失败:', error);
-    return createApiResponse(null, false, '获取账号详情失败', 500);
+    return createApiResponse(false, null, '获取账号详情失败', 500);
   }
 }
 
@@ -258,12 +258,12 @@ export async function PUT(
     // 1. 认证验证
     const token = request.headers.get('authorization')?.replace('Bearer ', '');
     if (!token) {
-      return createApiResponse(null, false, '缺少认证令牌', 401);
+      return createApiResponse(false, null, '缺少认证令牌', 401);
     }
 
     const user = await verifyToken(token);
     if (!user) {
-      return createApiResponse(null, false, '认证令牌无效', 401);
+      return createApiResponse(false, null, '认证令牌无效', 401);
     }
 
     const resolvedParams = await params;
@@ -293,7 +293,7 @@ export async function PUT(
     });
 
     if (!existingAccount) {
-      return createApiResponse(null, false, 'AI账号不存在', 404);
+      return createApiResponse(false, null, 'AI账号不存在', 404);
     }
 
     // 4. 检查名称冲突
@@ -307,7 +307,7 @@ export async function PUT(
       });
 
       if (duplicateName) {
-        return createApiResponse(null, false, '账号名称已存在', 409);
+        return createApiResponse(false, null, '账号名称已存在', 409);
       }
     }
 
@@ -357,7 +357,7 @@ export async function PUT(
 
   } catch (error) {
     console.error('更新AI账号失败:', error);
-    return createApiResponse(null, false, '更新账号失败', 500);
+    return createApiResponse(false, null, '更新账号失败', 500);
   }
 }
 
@@ -372,12 +372,12 @@ export async function DELETE(
     // 1. 认证验证
     const token = request.headers.get('authorization')?.replace('Bearer ', '');
     if (!token) {
-      return createApiResponse(null, false, '缺少认证令牌', 401);
+      return createApiResponse(false, null, '缺少认证令牌', 401);
     }
 
     const user = await verifyToken(token);
     if (!user) {
-      return createApiResponse(null, false, '认证令牌无效', 401);
+      return createApiResponse(false, null, '认证令牌无效', 401);
     }
 
     const resolvedParams = await params;
@@ -399,13 +399,13 @@ export async function DELETE(
     });
 
     if (!account) {
-      return createApiResponse(null, false, 'AI账号不存在', 404);
+      return createApiResponse(false, null, 'AI账号不存在', 404);
     }
 
     // 3. 检查是否有绑定的拼车组
     if (account.groupBindings.length > 0) {
       const boundGroupNames = account.groupBindings.map(binding => binding.group.name).join(', ');
-      return createApiResponse(null, false, `账号正在被拼车组使用: ${boundGroupNames}`, 409);
+      return createApiResponse(false, null, `账号正在被拼车组使用: ${boundGroupNames}`, 409);
     }
 
     // 4. 删除账号（级联删除相关数据）
@@ -421,7 +421,7 @@ export async function DELETE(
 
   } catch (error) {
     console.error('删除AI账号失败:', error);
-    return createApiResponse(null, false, '删除账号失败', 500);
+    return createApiResponse(false, null, '删除账号失败', 500);
   }
 }
 
@@ -436,12 +436,12 @@ export async function POST(
     // 1. 认证验证
     const token = request.headers.get('authorization')?.replace('Bearer ', '');
     if (!token) {
-      return createApiResponse(null, false, '缺少认证令牌', 401);
+      return createApiResponse(false, null, '缺少认证令牌', 401);
     }
 
     const user = await verifyToken(token);
     if (!user) {
-      return createApiResponse(null, false, '认证令牌无效', 401);
+      return createApiResponse(false, null, '认证令牌无效', 401);
     }
 
     const resolvedParams = await params;
@@ -456,7 +456,7 @@ export async function POST(
     });
 
     if (!account) {
-      return createApiResponse(null, false, 'AI账号不存在', 404);
+      return createApiResponse(false, null, 'AI账号不存在', 404);
     }
 
     // 3. 执行健康检查
@@ -530,6 +530,6 @@ export async function POST(
 
   } catch (error) {
     console.error('执行健康检查失败:', error);
-    return createApiResponse(null, false, '健康检查失败', 500);
+    return createApiResponse(false, null, '健康检查失败', 500);
   }
 }
