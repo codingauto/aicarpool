@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Users, UserPlus, BarChart3, AlertTriangle } from 'lucide-react';
+import { Users, UserPlus, BarChart3, AlertTriangle, Key, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { GroupManagerGuard } from '@/components/auth/PermissionGuard';
 import { OrganizationMemberSelector } from './OrganizationMemberSelector';
@@ -26,6 +26,16 @@ interface Member {
       scope: string;
     }>;
   };
+  // 新增：API密钥统计信息
+  apiKeyStats?: {
+    total: number;
+    active: number;
+    lastKey?: {
+      id: string;
+      name: string;
+      lastUsedAt?: string;
+    } | null;
+  };
 }
 
 interface MemberManagementProps {
@@ -37,6 +47,8 @@ interface MemberManagementProps {
   canManageMembers: boolean;
   onInviteClick: () => void;
   onMembersChanged?: () => void;
+  onManageApiKeys?: (userId: string, userName: string) => void;
+  onCreateApiKey?: (userId: string, userName: string) => void;
 }
 
 export function MemberManagement({ 
@@ -47,7 +59,9 @@ export function MemberManagement({
   currentUserId, 
   canManageMembers,
   onInviteClick,
-  onMembersChanged
+  onMembersChanged,
+  onManageApiKeys,
+  onCreateApiKey
 }: MemberManagementProps) {
   const [loadingMember, setLoadingMember] = useState<string | null>(null);
   const [orgSelectorOpen, setOrgSelectorOpen] = useState(false);
@@ -265,6 +279,24 @@ export function MemberManagement({
                           企业角色: {member.user.enterpriseRoles[0].displayName}
                         </div>
                       )}
+                      
+                      {/* API密钥信息 */}
+                      {member.apiKeyStats && (
+                        <div className="flex items-center gap-2 mt-2">
+                          <Key className="w-4 h-4 text-gray-400" />
+                          <span className="text-sm text-gray-600">
+                            API密钥: {member.apiKeyStats.active}个活跃/{member.apiKeyStats.total}个总计
+                          </span>
+                          {member.apiKeyStats.lastKey && (
+                            <span className="text-xs text-gray-400">
+                              最近使用: {member.apiKeyStats.lastKey.name}
+                              {member.apiKeyStats.lastKey.lastUsedAt && (
+                                <span> ({new Date(member.apiKeyStats.lastKey.lastUsedAt).toLocaleDateString('zh-CN')})</span>
+                              )}
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                   
@@ -280,6 +312,31 @@ export function MemberManagement({
                       {member.status === 'active' ? '活跃' :
                        member.status === 'pending' ? '待激活' : '停用'}
                     </Badge>
+                    
+                    {/* API密钥操作 */}
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onManageApiKeys?.(member.user.id, member.user.name)}
+                        className="text-blue-600 hover:text-blue-700"
+                      >
+                        <Key className="w-4 h-4 mr-1" />
+                        管理密钥
+                      </Button>
+                      
+                      {canManageMembers && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onCreateApiKey?.(member.user.id, member.user.name)}
+                          className="text-green-600 hover:text-green-700"
+                        >
+                          <Plus className="w-4 h-4 mr-1" />
+                          创建密钥
+                        </Button>
+                      )}
+                    </div>
                     
                     {/* 管理操作 */}
                     {canManageMember && (

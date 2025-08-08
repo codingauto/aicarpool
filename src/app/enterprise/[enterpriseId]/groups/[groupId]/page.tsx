@@ -902,6 +902,16 @@ export default function EnterpriseGroupDetailPage({ params }: PageProps) {
               onMembersChanged={() => {
                 fetchData(enterpriseId, groupId);
               }}
+              onManageApiKeys={(userId, userName) => {
+                // 跳转到API密钥管理标签页
+                setActiveTab('api-keys');
+                // TODO: 可以传递筛选参数给API密钥管理组件
+              }}
+              onCreateApiKey={(userId, userName) => {
+                // 跳转到API密钥管理标签页并触发创建
+                setActiveTab('api-keys');
+                // TODO: 可以传递用户信息给API密钥管理组件
+              }}
             />
           </TabsContent>
 
