@@ -33,7 +33,7 @@ services:
       - REDIS_URL=redis://redis:6379
       
       # ⚡ Deployment Mode
-      - QUICK_MODE=${QUICK_MODE:-true}
+      - QUICK_MODE=${QUICK_MODE:-false}
       
       # 📧 Email Configuration (Optional)
       - SMTP_HOST=${SMTP_HOST:-}
@@ -89,8 +89,7 @@ services:
       --collation-server=utf8mb4_unicode_ci
       --innodb-buffer-pool-size=256M
       --max-connections=200
-      --query-cache-type=1
-      --query-cache-size=64M
+      
     networks:
       - aicarpool-network
     healthcheck:

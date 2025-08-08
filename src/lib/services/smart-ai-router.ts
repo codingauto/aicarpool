@@ -8,7 +8,7 @@
  * 4. 使用量统计和成本计算
  */
 
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import { AuthType, ServiceType } from '@prisma/client';
 
 // 临时接口定义，之后会迁移到新架构
@@ -68,7 +68,8 @@ type AiServiceAccount = {
 };
 import { LoadBalancer, LoadBalanceAccount, LoadBalanceStrategy } from '@/lib/services/load-balancer';
 
-const prisma = new PrismaClient();
+// Use shared Prisma client singleton
+// prisma imported from '@/lib/prisma'
 
 // 请求接口定义
 export interface AiRequest {
