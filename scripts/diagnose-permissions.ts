@@ -293,4 +293,5 @@ if (require.main === module) {
   main();
 }
 
-export { diagnoseUserPermissions, DiagnosisResult };
+export { diagnoseUserPermissions };
+export type { DiagnosisResult };

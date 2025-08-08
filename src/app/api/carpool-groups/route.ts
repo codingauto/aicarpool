@@ -99,7 +99,7 @@ async function createCarpoolGroupHandler(request: NextRequest, user: any) {
 // GET /api/carpool-groups - 获取用户的拼车组列表
 export async function GET(request: NextRequest) {
   try {
-    const user = await verifyToken(request);
+    const user = await verifyToken(request.headers.get('authorization') || '');
     if (!user) {
       return NextResponse.json(
         createErrorResponse('未授权访问', 401),
