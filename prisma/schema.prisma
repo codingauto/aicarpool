@@ -327,63 +327,131 @@ model UserQuotaUsage {
 }
 
 model AiServiceAccount {
-  id                     String                @id @default(cuid())
-  enterpriseId           String
-  name                   String
-  description            String?
-  serviceType            ServiceType
-  accountType            String                @default("shared")
-  authType               AuthType
-  encryptedCredentials   String                @db.Text
-  oauthAccessToken       String?               @db.Text
-  oauthRefreshToken      String?               @db.Text
-  oauthExpiresAt         DateTime?
-  oauthScopes            String?
-  apiEndpoint            String?
-  proxyType              String?
-  proxyHost              String?
-  proxyPort              Int?
-  proxyUsername          String?
-  proxyPassword          String?
-  supportedModels        Json
-  currentModel           String?
-  dailyLimit             Int                   @default(10000)
-  costPerToken           Decimal               @default(0.00001000) @db.Decimal(10, 8)
-  isEnabled              Boolean               @default(true)
-  status                 String                @default("active")
-  currentLoad            Int                   @default(0)
-  totalRequests          BigInt                @default(0)
-  totalTokens            BigInt                @default(0)
-  totalCost              Decimal               @default(0.0000) @db.Decimal(12, 4)
-  lastUsedAt             DateTime?
-  errorMessage           String?
-  createdAt              DateTime              @default(now())
-  updatedAt              DateTime              @updatedAt
+  /// 账户唯一标识
+  id                    String    @id @default(cuid())
+  /// 所属企业ID
+  enterpriseId          String
   
-  // v2.4 简化字段
-  ownerType              String                @default("enterprise") // enterprise, carpool_group
-  maxConcurrentGroups    Int                   @default(1) // 拼车模式为1，企业模式可多个
+  // === 基本信息 ===
+  /// 账户名称
+  name                  String
+  /// 账户描述
+  description           String?
+  /// 账户类型：shared=共享账户, dedicated=专属账户
+  accountType           String    @default("shared")
+  /// 账户优先级 (1-100，数值越高优先级越高)
+  priority              Int       @default(50)
   
-  // 多平台扩展字段
-  platformConfig         Json?                 // 平台特定配置 (projectId, accessKeyId等)
-  region                 String?               // 服务区域 (如阿里云的region)
-  endpointUrl            String?               // 自定义API端点
-  modelVersion           String?               // 模型版本 (如GPT-4, Claude-3等)
-  rateLimitConfig        Json?                 // 速率限制配置
-  headerConfig           Json?                 // 自定义请求头
-  timeout                Int?                  @default(30000) // 请求超时时间(ms)
+  // === 平台信息 ===
+  /// AI平台类型：claude=Claude AI, gemini=Google Gemini, claude_console=Claude Console
+  platform              String
+  /// 认证类型：oauth=OAuth认证, manual=手动Token, api_key=API密钥
+  authType              String
   
+  // === OAuth认证信息 ===
+  /// OAuth访问令牌（加密存储）
+  oauthAccessToken      String?   @db.Text
+  /// OAuth刷新令牌（加密存储）
+  oauthRefreshToken     String?   @db.Text
+  /// OAuth令牌过期时间
+  oauthExpiresAt        DateTime?
+  /// OAuth授权范围
+  oauthScopes           String?
+  
+  // === 手动Token信息 ===
+  /// 手动输入的访问令牌（加密存储）
+  manualAccessToken     String?   @db.Text
+  /// 手动输入的刷新令牌（加密存储）
+  manualRefreshToken    String?   @db.Text
+  
+  // === Claude Console特定配置 ===
+  /// Claude Console API URL
+  claudeConsoleApiUrl           String?
+  /// Claude Console API Key（加密存储）
+  claudeConsoleApiKey           String?   @db.Text
+  /// Claude Console用户代理字符串
+  claudeConsoleUserAgent        String?
+  /// Claude Console速率限制时长（秒）
+  claudeConsoleRateLimitDuration Int?     @default(60)
+  /// Claude Console支持的模型列表
+  claudeConsoleSupportedModels  Json?
+  
+  // === Gemini特定配置 ===
+  /// Google Cloud项目ID
+  geminiProjectId       String?
+  /// Gemini服务区域
+  geminiLocation        String?   @default("us-central1")
+  
+  // === 代理配置 ===
+  /// 是否启用代理
+  proxyEnabled          Boolean   @default(false)
+  /// 代理类型：socks5, http, https
+  proxyType             String?
+  /// 代理主机地址
+  proxyHost             String?
+  /// 代理端口号
+  proxyPort             Int?
+  /// 代理是否需要认证
+  proxyAuthEnabled      Boolean   @default(false)
+  /// 代理用户名
+  proxyUsername         String?
+  /// 代理密码（加密存储）
+  proxyPassword         String?   @db.Text
+  
+  // === 状态管理 ===
+  /// 账户是否启用
+  isEnabled             Boolean   @default(true)
+  /// 账户状态：active=活跃, inactive=非活跃, error=错误, validating=验证中
+  status                String    @default("active")
+  /// 验证状态：pending=待验证, valid=有效, invalid=无效, expired=已过期
+  validationStatus      String    @default("pending")
+  /// 验证状态说明信息
+  validationMessage     String?   @db.Text
+  /// 最后的错误信息
+  errorMessage          String?   @db.Text
+  
+  // === 使用统计 ===
+  /// 总请求数
+  totalRequests         BigInt    @default(0)
+  /// 总Token数
+  totalTokens           BigInt    @default(0)
+  /// 总费用
+  totalCost             Decimal   @default(0) @db.Decimal(12, 4)
+  /// 当前负载
+  currentLoad           Int       @default(0)
+  /// 最后使用时间
+  lastUsedAt            DateTime?
+  
+  // === 限制配置 ===
+  /// 日请求限制
+  dailyLimit            Int       @default(10000)
+  /// 每Token费用
+  costPerToken          Decimal   @default(0.00001) @db.Decimal(10, 8)
+  /// 请求超时时间（毫秒）
+  timeoutMs             Int       @default(30000)
+  
+  // === 审计字段 ===
+  /// 创建者用户ID
+  createdBy             String
+  /// 创建时间
+  createdAt             DateTime  @default(now())
+  /// 更新时间
+  updatedAt             DateTime  @updatedAt
+  
+  // === 关联关系 ===
   healthChecks         AccountHealthCheck[]
   enterprise           Enterprise            @relation(fields: [enterpriseId], references: [id], onDelete: Cascade)
   groupBindings        GroupAccountBinding[]
   groupAiServices      GroupAiService[]
   usageStats           UsageStat[]
 
-  @@index([enterpriseId])
-  @@index([serviceType])
-  @@index([status])
-  @@index([accountType])
-  @@index([ownerType])
+  // === 索引优化 ===
+  @@index([enterpriseId, platform], map: "idx_enterprise_platform")
+  @@index([status, isEnabled], map: "idx_status_enabled")
+  @@index([validationStatus], map: "idx_validation_status")
+  @@index([lastUsedAt], map: "idx_last_used")
+  @@index([priority], map: "idx_priority")
+  @@index([enterpriseId, platform, status], map: "idx_enterprise_platform_status")
   @@map("ai_service_accounts")
 }
 
@@ -797,6 +865,22 @@ enum AuthType {
   bearer_token
   app_key
   project_key
+}
+
+// OAuth会话模型 - 存储临时的OAuth认证会话
+model OAuthSession {
+  id            String    @id @default(cuid())
+  platform      String    // claude, gemini等
+  codeVerifier  String    @db.Text
+  state         String
+  codeChallenge String
+  proxy         String?   @db.Text // JSON格式的代理配置
+  enterpriseId  String
+  userId        String
+  expiresAt     DateTime
+  createdAt     DateTime  @default(now())
+  
+  @@map("oauth_sessions")
 }
 
 enum ServiceType {
