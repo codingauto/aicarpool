@@ -1,0 +1,1354 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AiCarpool 核心业务流程图 - React Flow</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/reactflow@11/dist/style.css">
+    <script src="https://unpkg.com/reactflow@11/dist/umd/index.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        html {
+            height: 100%;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            overflow: hidden;
+            height: 100%;
+            margin: 0;
+        }
+        
+        #root {
+            height: 100vh;
+            width: 100vw;
+            background: #1a1a2e;
+        }
+        
+        .app-container {
+            height: 100%;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* 顶部工具栏 */
+        .toolbar {
+            background: rgba(30, 30, 46, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+        }
+        
+        .toolbar-title {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .toolbar-title h1 {
+            color: #fff;
+            font-size: 20px;
+            font-weight: 600;
+            margin: 0;
+        }
+        
+        .toolbar-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .toolbar-button {
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .toolbar-button:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-1px);
+        }
+        
+        .toolbar-button.active {
+            background: #667eea;
+            border-color: transparent;
+        }
+        
+        /* 主内容区域 */
+        .main-content {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .flow-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            background: #1a1a2e;
+        }
+        
+        /* 确保React Flow在背景层上方且占满容器 */
+        .flow-container > .react-flow {
+            position: absolute !important;
+            top: 0;
+            left: 0;
+            width: 100% !important;
+            height: 100% !important;
+            z-index: 1;
+        }
+        
+        /* React Flow 背景设置 */
+        .react-flow__node {
+            background: transparent !important;
+        }
+        
+        .react-flow__node > div {
+            background: transparent !important;
+        }
+        
+        .react-flow__node-default {
+            background: transparent !important;
+        }
+        
+        .react-flow__node-group {
+            background: transparent !important;
+        }
+        
+        .react-flow__node-flow {
+            background: transparent !important;
+        }
+        
+        /* 确保所有自定义节点类型也透明 */
+        [class*="react-flow__node-"] {
+            background: transparent !important;
+        }
+        
+        .react-flow__background {
+            opacity: 0.5;
+        }
+        
+        .react-flow__background-pattern {
+            stroke: rgba(255, 255, 255, 0.03) !important;
+        }
+        
+        .react-flow__pane {
+            cursor: grab;
+        }
+        
+        /* 侧边栏 */
+        .sidebar {
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 320px;
+            background: rgba(30, 30, 46, 0.95);
+            backdrop-filter: blur(10px);
+            border-left: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            overflow-y: auto;
+            transition: transform 0.3s ease-in-out;
+            z-index: 10;
+            box-shadow: -4px 0 12px rgba(0, 0, 0, 0.3);
+        }
+        
+        .sidebar.hidden {
+            transform: translateX(100%);
+        }
+        
+        .sidebar-section {
+            margin-bottom: 25px;
+        }
+        
+        .sidebar-title {
+            color: #fff;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .sidebar-content {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 12px;
+            line-height: 1.5;
+        }
+        
+        /* 流程节点样式 */
+        .flow-node {
+            backdrop-filter: blur(10px);
+            border: 2px solid;
+            border-radius: 12px;
+            padding: 15px;
+            min-width: 180px;
+            max-width: 220px;
+            transition: all 0.3s;
+            cursor: pointer;
+            position: relative;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .flow-node::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border-radius: 12px;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.05), transparent);
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+        
+        .flow-node:hover {
+            transform: scale(1.03) translateY(-2px);
+            box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4);
+        }
+        
+        .flow-node:hover::after {
+            opacity: 1;
+        }
+        
+        .flow-node.selected {
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.5);
+        }
+        
+        /* 节点类型 */
+        .node-start {
+            border-color: #4FC3F7;
+            background: rgba(79, 195, 247, 0.08);
+            box-shadow: inset 0 0 20px rgba(79, 195, 247, 0.1);
+        }
+        
+        .node-choice {
+            border-color: #FFC107;
+            background: rgba(255, 193, 7, 0.08);
+            border-radius: 24px;
+            box-shadow: inset 0 0 20px rgba(255, 193, 7, 0.1);
+        }
+        
+        .node-enterprise {
+            border-color: #BA68C8;
+            background: rgba(186, 104, 200, 0.08);
+            box-shadow: inset 0 0 20px rgba(186, 104, 200, 0.1);
+        }
+        
+        .node-carpool {
+            border-color: #81C784;
+            background: rgba(129, 199, 132, 0.08);
+            box-shadow: inset 0 0 20px rgba(129, 199, 132, 0.1);
+        }
+        
+        .node-structure {
+            border-color: #64B5F6;
+            background: rgba(100, 181, 246, 0.08);
+            box-shadow: inset 0 0 20px rgba(100, 181, 246, 0.1);
+        }
+        
+        .node-invite {
+            border-color: #4DB6AC;
+            background: rgba(77, 182, 172, 0.08);
+            box-shadow: inset 0 0 20px rgba(77, 182, 172, 0.1);
+        }
+        
+        .node-config {
+            border-color: #FFB74D;
+            background: rgba(255, 183, 77, 0.08);
+            box-shadow: inset 0 0 20px rgba(255, 183, 77, 0.1);
+        }
+        
+        .node-api {
+            border-color: #FF5252;
+            background: rgba(255, 82, 82, 0.08);
+            box-shadow: inset 0 0 20px rgba(255, 82, 82, 0.1);
+        }
+        
+        .node-service {
+            border-color: #9C27B0;
+            background: rgba(156, 39, 176, 0.08);
+            box-shadow: inset 0 0 20px rgba(156, 39, 176, 0.1);
+        }
+        
+        .node-header {
+            font-size: 14px;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .node-icon {
+            font-size: 18px;
+        }
+        
+        .node-body {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 11px;
+            line-height: 1.4;
+        }
+        
+        .node-details {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.5);
+        }
+        
+        /* 组合节点 */
+        .group-node {
+            background: rgba(255, 255, 255, 0.02);
+            border: 2px solid rgba(255, 255, 255, 0.15);
+            border-radius: 16px;
+            padding: 20px;
+            min-width: 300px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            position: relative;
+        }
+        
+        .group-node::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, 
+                        transparent, 
+                        rgba(255, 255, 255, 0.1), 
+                        transparent);
+            border-radius: 16px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .group-node:hover::before {
+            opacity: 1;
+        }
+        
+        .group-title {
+            color: #fff;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .group-title::before {
+            content: '📋';
+            font-size: 16px;
+        }
+        
+        .group-items {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .group-item {
+            background: rgba(255, 255, 255, 0.03);
+            padding: 10px 14px;
+            border-radius: 8px;
+            color: rgba(255, 255, 255, 0.85);
+            font-size: 12px;
+            transition: all 0.2s;
+            border-left: 3px solid transparent;
+            margin-left: 4px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .group-item::before {
+            content: '▸';
+            position: absolute;
+            left: 8px;
+            color: rgba(255, 255, 255, 0.4);
+            transition: all 0.2s;
+        }
+        
+        .group-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+            transform: translateX(3px);
+            border-left-color: #667eea;
+            color: #fff;
+        }
+        
+        .group-item:hover::before {
+            color: #667eea;
+            transform: translateX(2px);
+        }
+        
+        /* 搜索框 */
+        .search-box {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
+            background: rgba(30, 30, 46, 0.9);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 8px 12px;
+            width: 260px;
+            transition: all 0.3s;
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(-10px);
+        }
+        
+        .search-box.visible {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateY(0);
+        }
+        
+        .search-input {
+            width: 100%;
+            background: none;
+            border: none;
+            color: #fff;
+            font-size: 13px;
+            outline: none;
+        }
+        
+        .search-input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+        
+        /* 统计面板 */
+        .stats-panel {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(30, 30, 46, 0.9);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 15px;
+            min-width: 240px;
+            z-index: 10;
+            transition: all 0.3s;
+        }
+        
+        .stats-panel.minimized {
+            padding: 8px;
+            min-width: auto;
+        }
+        
+        .stats-panel.minimized .stats-content {
+            display: none;
+        }
+        
+        .stats-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        
+        .stats-title {
+            color: #fff;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        
+        .stats-toggle {
+            background: none;
+            border: none;
+            color: rgba(255, 255, 255, 0.7);
+            cursor: pointer;
+            padding: 2px;
+            font-size: 14px;
+        }
+        
+        .stats-content {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+        
+        .stat-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 8px;
+            border-radius: 6px;
+        }
+        
+        .stat-value {
+            color: #fff;
+            font-size: 18px;
+            font-weight: 600;
+        }
+        
+        .stat-label {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 10px;
+            text-transform: uppercase;
+            margin-top: 2px;
+        }
+        
+        /* 侧边栏切换按钮 */
+        .sidebar-toggle {
+            position: absolute;
+            right: 20px;
+            top: 20px;
+            z-index: 10;
+            background: rgba(30, 30, 46, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 18px;
+        }
+        
+        .sidebar-toggle:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            transform: scale(1.05);
+        }
+        
+        .sidebar-toggle.sidebar-open {
+            right: 340px;
+        }
+        
+        /* 控制按钮样式 */
+        .react-flow__controls {
+            background: rgba(30, 30, 46, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            box-shadow: none;
+            bottom: 20px;
+            left: 20px;
+        }
+        
+        .react-flow__controls-button {
+            background: transparent;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.7);
+        }
+        
+        .react-flow__controls-button:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+        
+        /* 迷你地图样式 */
+        .react-flow__minimap {
+            background: rgba(30, 30, 46, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            bottom: 20px;
+            right: 280px;
+        }
+        
+        /* 动画边 */
+        .animated-edge {
+            stroke-dasharray: 5;
+            animation: dash 1s linear infinite;
+        }
+        
+        @keyframes dash {
+            to {
+                stroke-dashoffset: -10;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const { useState, useCallback, useEffect, useMemo } = React;
+        const { 
+            ReactFlow, 
+            MiniMap, 
+            Controls, 
+            Background, 
+            useNodesState, 
+            useEdgesState, 
+            addEdge,
+            Handle,
+            Position,
+            MarkerType,
+            useReactFlow,
+            ReactFlowProvider,
+            getBezierPath
+        } = window.ReactFlow;
+        
+        // 业务流程节点组件
+        const FlowNode = ({ data, selected }) => {
+            return (
+                <div className={`flow-node node-${data.type} ${selected ? 'selected' : ''}`}>
+                    <Handle type="target" position={Position.Top} />
+                    
+                    <div className="node-header">
+                        <span className="node-icon">{data.icon}</span>
+                        <span>{data.label}</span>
+                    </div>
+                    
+                    {data.description && (
+                        <div className="node-body">{data.description}</div>
+                    )}
+                    
+                    {data.details && (
+                        <div className="node-details">
+                            {data.details.map((detail, i) => (
+                                <div key={i}>• {detail}</div>
+                            ))}
+                        </div>
+                    )}
+                    
+                    <Handle type="source" position={Position.Bottom} />
+                </div>
+            );
+        };
+        
+        // 组合节点组件
+        const GroupNode = ({ data }) => {
+            return (
+                <div className="group-node">
+                    <div className="group-title">{data.label}</div>
+                    <div className="group-items">
+                        {data.items.map((item, i) => (
+                            <div key={i} className="group-item">{item}</div>
+                        ))}
+                    </div>
+                    <Handle type="target" position={Position.Top} />
+                    <Handle type="source" position={Position.Bottom} />
+                </div>
+            );
+        };
+        
+        // 动画边组件
+        const AnimatedEdge = ({
+            id,
+            sourceX,
+            sourceY,
+            targetX,
+            targetY,
+            sourcePosition,
+            targetPosition,
+            data,
+            markerEnd,
+        }) => {
+            const [edgePath] = getBezierPath({
+                sourceX,
+                sourceY,
+                sourcePosition,
+                targetX,
+                targetY,
+                targetPosition,
+            });
+            
+            return (
+                <path
+                    id={id}
+                    className="animated-edge"
+                    d={edgePath}
+                    markerEnd={markerEnd}
+                    style={{
+                        stroke: data?.color || '#667eea',
+                        strokeWidth: 2,
+                        fill: 'none'
+                    }}
+                />
+            );
+        };
+        
+        const nodeTypes = {
+            flow: FlowNode,
+            group: GroupNode,
+        };
+        
+        const edgeTypes = {
+            animated: AnimatedEdge,
+        };
+        
+        // 创建业务流程节点
+        const createBusinessFlowNodes = () => [
+            // 起始节点
+            { 
+                id: 'start', 
+                type: 'flow', 
+                position: { x: 500, y: 50 }, 
+                data: { 
+                    label: '用户注册/登录', 
+                    type: 'start',
+                    icon: '🚀',
+                    description: '系统入口'
+                }
+            },
+            
+            // 选择模式
+            { 
+                id: 'choice', 
+                type: 'flow', 
+                position: { x: 500, y: 150 }, 
+                data: { 
+                    label: '选择模式', 
+                    type: 'choice',
+                    icon: '🔀',
+                    description: '选择组织类型'
+                }
+            },
+            
+            // 企业路径
+            { 
+                id: 'enterprise', 
+                type: 'flow', 
+                position: { x: 300, y: 280 }, 
+                data: { 
+                    label: '创建企业', 
+                    type: 'enterprise',
+                    icon: '🏢',
+                    description: '企业用户路径'
+                }
+            },
+            { 
+                id: 'e_struct', 
+                type: 'flow', 
+                position: { x: 300, y: 380 }, 
+                data: { 
+                    label: '企业组织架构', 
+                    type: 'structure',
+                    icon: '🏗️',
+                    details: ['设置企业信息', '配置部门结构']
+                }
+            },
+            { 
+                id: 'e_dept', 
+                type: 'flow', 
+                position: { x: 300, y: 480 }, 
+                data: { 
+                    label: '创建部门', 
+                    type: 'structure',
+                    icon: '📁',
+                    description: '部门管理'
+                }
+            },
+            { 
+                id: 'e_group', 
+                type: 'flow', 
+                position: { x: 300, y: 580 }, 
+                data: { 
+                    label: '创建拼车组', 
+                    type: 'carpool',
+                    icon: '🚗',
+                    description: '部门下的拼车组'
+                }
+            },
+            
+            // 拼车组路径
+            { 
+                id: 'carpool', 
+                type: 'flow', 
+                position: { x: 700, y: 280 }, 
+                data: { 
+                    label: '创建拼车组', 
+                    type: 'carpool',
+                    icon: '🚗',
+                    description: '个人/小团队'
+                }
+            },
+            { 
+                id: 'c_struct', 
+                type: 'flow', 
+                position: { x: 700, y: 380 }, 
+                data: { 
+                    label: '拼车组结构', 
+                    type: 'structure',
+                    icon: '👥',
+                    description: '组织配置'
+                }
+            },
+            { 
+                id: 'c_roles', 
+                type: 'flow', 
+                position: { x: 700, y: 480 }, 
+                data: { 
+                    label: '设置角色', 
+                    type: 'structure',
+                    icon: '👮',
+                    details: ['组长', '成员']
+                }
+            },
+            
+            // 共同流程
+            { 
+                id: 'invite', 
+                type: 'flow', 
+                position: { x: 500, y: 680 }, 
+                data: { 
+                    label: '邀请成员', 
+                    type: 'invite',
+                    icon: '📧',
+                    description: '发送邀请链接'
+                }
+            },
+            { 
+                id: 'members', 
+                type: 'flow', 
+                position: { x: 500, y: 780 }, 
+                data: { 
+                    label: '成员加入', 
+                    type: 'invite',
+                    icon: '✅',
+                    description: '接受邀请并加入'
+                }
+            },
+            
+            // AI资源配置
+            { 
+                id: 'ai_resource', 
+                type: 'flow', 
+                position: { x: 500, y: 880 }, 
+                data: { 
+                    label: '配置AI资源', 
+                    type: 'config',
+                    icon: '🤖',
+                    description: '选择并配置AI服务'
+                }
+            },
+            
+            // AI服务选项
+            { 
+                id: 'claude', 
+                type: 'flow', 
+                position: { x: 200, y: 1000 }, 
+                data: { 
+                    label: 'Claude配置', 
+                    type: 'service',
+                    icon: '🔵',
+                    details: ['OAuth认证', 'Console API']
+                }
+            },
+            { 
+                id: 'gemini', 
+                type: 'flow', 
+                position: { x: 350, y: 1000 }, 
+                data: { 
+                    label: 'Gemini配置', 
+                    type: 'service',
+                    icon: '🟢',
+                    description: 'Google AI'
+                }
+            },
+            { 
+                id: 'kimi', 
+                type: 'flow', 
+                position: { x: 500, y: 1000 }, 
+                data: { 
+                    label: 'Kimi k2', 
+                    type: 'service',
+                    icon: '🟣',
+                    description: '中转服务'
+                }
+            },
+            { 
+                id: 'qwen', 
+                type: 'flow', 
+                position: { x: 650, y: 1000 }, 
+                data: { 
+                    label: '通义千问3', 
+                    type: 'service',
+                    icon: '🟠',
+                    description: '阿里云AI'
+                }
+            },
+            { 
+                id: 'glm', 
+                type: 'flow', 
+                position: { x: 800, y: 1000 }, 
+                data: { 
+                    label: '智谱GLM 4.5', 
+                    type: 'service',
+                    icon: '🔴',
+                    description: '智谱AI'
+                }
+            },
+            
+            // API密钥管理
+            { 
+                id: 'apikey', 
+                type: 'flow', 
+                position: { x: 500, y: 1120 }, 
+                data: { 
+                    label: '生成API密钥', 
+                    type: 'api',
+                    icon: '🔑',
+                    description: 'aicp_xxx格式'
+                }
+            },
+            { 
+                id: 'cli_use', 
+                type: 'flow', 
+                position: { x: 500, y: 1220 }, 
+                data: { 
+                    label: 'CLI工具使用', 
+                    type: 'start',
+                    icon: '💻',
+                    details: [
+                        'Claude Code CLI',
+                        'Gemini CLI',
+                        'Cursor Agent',
+                        'AmpCode CLI',
+                        'Auggie CLI'
+                    ]
+                }
+            },
+            
+            // 组合节点 - AI账号绑定模式
+            {
+                id: 'binding_mode',
+                type: 'group',
+                position: { x: 950, y: 850 },
+                data: {
+                    label: '📊 资源绑定模式',
+                    items: [
+                        '专属绑定 - 拼车组模式',
+                        '账号池 - 企业模式',
+                        '混合模式 - 优先专属'
+                    ]
+                }
+            },
+            
+            // 组合节点 - 支持的CLI工具
+            {
+                id: 'cli_tools',
+                type: 'group',
+                position: { x: 950, y: 1180 },
+                data: {
+                    label: '🛠️ 支持的CLI工具',
+                    items: [
+                        'Claude Code CLI',
+                        'Gemini CLI',
+                        'Cursor Agent',
+                        'AmpCode CLI',
+                        'Auggie CLI',
+                        'Web浏览器',
+                        'Mobile App'
+                    ]
+                }
+            }
+        ];
+        
+        // 创建业务流程边
+        const createBusinessFlowEdges = () => [
+            // 主流程
+            { id: 'e1', source: 'start', target: 'choice', type: 'animated', data: { color: '#4FC3F7' } },
+            
+            // 企业路径
+            { id: 'e2', source: 'choice', target: 'enterprise', label: '企业用户', type: 'animated', data: { color: '#BA68C8' } },
+            { id: 'e3', source: 'enterprise', target: 'e_struct' },
+            { id: 'e4', source: 'e_struct', target: 'e_dept' },
+            { id: 'e5', source: 'e_dept', target: 'e_group' },
+            { id: 'e6', source: 'e_group', target: 'invite' },
+            
+            // 拼车组路径
+            { id: 'e7', source: 'choice', target: 'carpool', label: '个人/小团队', type: 'animated', data: { color: '#81C784' } },
+            { id: 'e8', source: 'carpool', target: 'c_struct' },
+            { id: 'e9', source: 'c_struct', target: 'c_roles' },
+            { id: 'e10', source: 'c_roles', target: 'invite' },
+            
+            // 共同流程
+            { id: 'e11', source: 'invite', target: 'members', type: 'animated', data: { color: '#4DB6AC' } },
+            { id: 'e12', source: 'members', target: 'ai_resource', type: 'animated', data: { color: '#FFB74D' } },
+            
+            // AI服务配置
+            { id: 'e13', source: 'ai_resource', target: 'claude' },
+            { id: 'e14', source: 'ai_resource', target: 'gemini' },
+            { id: 'e15', source: 'ai_resource', target: 'kimi' },
+            { id: 'e16', source: 'ai_resource', target: 'qwen' },
+            { id: 'e17', source: 'ai_resource', target: 'glm' },
+            
+            // API密钥生成
+            { id: 'e18', source: 'claude', target: 'apikey' },
+            { id: 'e19', source: 'gemini', target: 'apikey' },
+            { id: 'e20', source: 'kimi', target: 'apikey' },
+            { id: 'e21', source: 'qwen', target: 'apikey' },
+            { id: 'e22', source: 'glm', target: 'apikey' },
+            
+            // CLI使用
+            { id: 'e23', source: 'apikey', target: 'cli_use', type: 'animated', data: { color: '#FF5252' } },
+            
+            // 连接到组合节点
+            { id: 'e24', source: 'ai_resource', target: 'binding_mode', style: { strokeDasharray: '5 5' } },
+            { id: 'e25', source: 'cli_use', target: 'cli_tools', style: { strokeDasharray: '5 5' } }
+        ];
+        
+        // 主应用组件
+        function BusinessFlowApp() {
+            const [nodes, setNodes, onNodesChange] = useNodesState(createBusinessFlowNodes());
+            const [edges, setEdges, onEdgesChange] = useEdgesState(createBusinessFlowEdges());
+            const [showSidebar, setShowSidebar] = useState(true);
+            const [showSearch, setShowSearch] = useState(false);
+            const [searchTerm, setSearchTerm] = useState('');
+            const [selectedNode, setSelectedNode] = useState(null);
+            const [statsMinimized, setStatsMinimized] = useState(false);
+            const [viewMode, setViewMode] = useState('full');
+            const reactFlowInstance = useReactFlow();
+            
+            // 连接节点
+            const onConnect = useCallback(
+                (params) => {
+                    const newEdge = {
+                        ...params,
+                        type: 'animated',
+                        data: { color: '#667eea' }
+                    };
+                    setEdges((eds) => addEdge(newEdge, eds));
+                },
+                [setEdges]
+            );
+            
+            // 节点点击
+            const onNodeClick = useCallback((event, node) => {
+                setSelectedNode(node);
+            }, []);
+            
+            // 搜索功能
+            const handleSearch = useCallback((term) => {
+                setSearchTerm(term);
+                if (term) {
+                    const matchedNodes = nodes.filter(node => 
+                        node.data.label.toLowerCase().includes(term.toLowerCase())
+                    );
+                    if (matchedNodes.length > 0) {
+                        const node = matchedNodes[0];
+                        reactFlowInstance.setCenter(node.position.x, node.position.y, {
+                            zoom: 1.5,
+                            duration: 800
+                        });
+                        setSelectedNode(node);
+                    }
+                }
+            }, [nodes, reactFlowInstance]);
+            
+            // 键盘快捷键
+            useEffect(() => {
+                const handleKeyDown = (e) => {
+                    if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+                        e.preventDefault();
+                        setShowSearch(true);
+                        setTimeout(() => {
+                            const searchInput = document.querySelector('.search-input');
+                            if (searchInput) searchInput.focus();
+                        }, 100);
+                    }
+                    if (e.key === 'Escape') {
+                        setShowSearch(false);
+                        setSearchTerm('');
+                    }
+                };
+                
+                window.addEventListener('keydown', handleKeyDown);
+                return () => window.removeEventListener('keydown', handleKeyDown);
+            }, []);
+            
+            // 切换视图模式
+            const switchViewMode = useCallback((mode) => {
+                setViewMode(mode);
+                let filteredNodes = [];
+                let filteredEdges = [];
+                
+                switch(mode) {
+                    case 'full':
+                        filteredNodes = createBusinessFlowNodes();
+                        filteredEdges = createBusinessFlowEdges();
+                        break;
+                        
+                    case 'organization':
+                        // 只显示组织创建相关
+                        filteredNodes = createBusinessFlowNodes().filter(n => 
+                            ['start', 'choice', 'enterprise', 'carpool', 'e_struct', 'e_dept', 
+                             'e_group', 'c_struct', 'c_roles'].includes(n.id)
+                        );
+                        break;
+                        
+                    case 'ai-config':
+                        // 只显示AI配置相关
+                        filteredNodes = createBusinessFlowNodes().filter(n => 
+                            ['ai_resource', 'claude', 'gemini', 'kimi', 'qwen', 'glm', 
+                             'apikey', 'cli_use', 'binding_mode', 'cli_tools'].includes(n.id)
+                        );
+                        break;
+                        
+                    case 'api-flow':
+                        // API密钥流程
+                        filteredNodes = createBusinessFlowNodes().filter(n => 
+                            ['ai_resource', 'apikey', 'cli_use', 'cli_tools'].includes(n.id)
+                        );
+                        break;
+                }
+                
+                if (mode !== 'full') {
+                    const nodeIds = filteredNodes.map(n => n.id);
+                    filteredEdges = createBusinessFlowEdges().filter(e => 
+                        nodeIds.includes(e.source) && nodeIds.includes(e.target)
+                    );
+                }
+                
+                setNodes(filteredNodes);
+                setEdges(filteredEdges);
+                setTimeout(() => reactFlowInstance.fitView({ padding: 0.2 }), 100);
+            }, [setNodes, setEdges, reactFlowInstance]);
+            
+            // 统计信息
+            const stats = useMemo(() => {
+                const nodeTypes = {};
+                nodes.forEach(node => {
+                    const type = node.data.type;
+                    nodeTypes[type] = (nodeTypes[type] || 0) + 1;
+                });
+                
+                return {
+                    totalNodes: nodes.length,
+                    totalEdges: edges.length,
+                    flowSteps: nodes.filter(n => n.type === 'flow').length,
+                    groupNodes: nodes.filter(n => n.type === 'group').length
+                };
+            }, [nodes, edges]);
+            
+            return (
+                <div className="app-container">
+                    {/* 顶部工具栏 */}
+                    <div className="toolbar">
+                        <div className="toolbar-title">
+                            <h1>📊 AiCarpool 核心业务流程</h1>
+                        </div>
+                        <div className="toolbar-actions">
+                            <button 
+                                className={`toolbar-button ${viewMode === 'full' ? 'active' : ''}`}
+                                onClick={() => switchViewMode('full')}
+                            >
+                                完整流程
+                            </button>
+                            <button 
+                                className={`toolbar-button ${viewMode === 'organization' ? 'active' : ''}`}
+                                onClick={() => switchViewMode('organization')}
+                            >
+                                组织创建
+                            </button>
+                            <button 
+                                className={`toolbar-button ${viewMode === 'ai-config' ? 'active' : ''}`}
+                                onClick={() => switchViewMode('ai-config')}
+                            >
+                                AI配置
+                            </button>
+                            <button 
+                                className={`toolbar-button ${viewMode === 'api-flow' ? 'active' : ''}`}
+                                onClick={() => switchViewMode('api-flow')}
+                            >
+                                API流程
+                            </button>
+                            <button 
+                                className="toolbar-button"
+                                onClick={() => setShowSearch(true)}
+                                title="搜索节点 (Ctrl+F)"
+                            >
+                                🔍 搜索
+                            </button>
+                        </div>
+                    </div>
+                    
+                    {/* 主内容区 */}
+                    <div className="main-content">
+                        <div className="flow-container">
+                            {/* 侧边栏切换按钮 */}
+                            <button 
+                                className={`sidebar-toggle ${!showSidebar ? '' : 'sidebar-open'}`}
+                                onClick={() => setShowSidebar(!showSidebar)}
+                            >
+                                {showSidebar ? '▶' : '◀'}
+                            </button>
+                            
+                            {/* 搜索框 */}
+                            <div className={`search-box ${showSearch ? 'visible' : ''}`}>
+                                <input
+                                    type="text"
+                                    className="search-input"
+                                    placeholder="搜索节点... (Esc 关闭)"
+                                    value={searchTerm}
+                                    onChange={(e) => handleSearch(e.target.value)}
+                                    autoFocus
+                                />
+                            </div>
+                            
+                            {/* React Flow 画布 */}
+                            <ReactFlow
+                                style={{ width: '100%', height: '100%' }}
+                                nodes={nodes}
+                                edges={edges}
+                                onNodesChange={onNodesChange}
+                                onEdgesChange={onEdgesChange}
+                                onConnect={onConnect}
+                                onNodeClick={onNodeClick}
+                                nodeTypes={nodeTypes}
+                                edgeTypes={edgeTypes}
+                                fitView
+                                attributionPosition="bottom-right"
+                            >
+                                <MiniMap 
+                                    nodeColor={(node) => {
+                                        const colors = {
+                                            start: '#4FC3F7',
+                                            choice: '#FFC107',
+                                            enterprise: '#BA68C8',
+                                            carpool: '#81C784',
+                                            structure: '#64B5F6',
+                                            invite: '#4DB6AC',
+                                            config: '#FFB74D',
+                                            api: '#FF5252',
+                                            service: '#9C27B0'
+                                        };
+                                        return colors[node.data?.type] || '#999';
+                                    }}
+                                />
+                                <Controls />
+                                <Background variant="dots" gap={20} size={1} color="rgba(255,255,255,0.03)" />
+                            </ReactFlow>
+                            
+                            {/* 统计面板 */}
+                            <div className={`stats-panel ${statsMinimized ? 'minimized' : ''}`}>
+                                <div className="stats-header">
+                                    <span className="stats-title">
+                                        {statsMinimized ? '📊' : '📊 流程统计'}
+                                    </span>
+                                    <button 
+                                        className="stats-toggle"
+                                        onClick={() => setStatsMinimized(!statsMinimized)}
+                                    >
+                                        {statsMinimized ? '▲' : '▼'}
+                                    </button>
+                                </div>
+                                <div className="stats-content">
+                                    <div className="stat-item">
+                                        <div className="stat-value">{stats.totalNodes}</div>
+                                        <div className="stat-label">节点总数</div>
+                                    </div>
+                                    <div className="stat-item">
+                                        <div className="stat-value">{stats.totalEdges}</div>
+                                        <div className="stat-label">连接数</div>
+                                    </div>
+                                    <div className="stat-item">
+                                        <div className="stat-value">{stats.flowSteps}</div>
+                                        <div className="stat-label">流程步骤</div>
+                                    </div>
+                                    <div className="stat-item">
+                                        <div className="stat-value">{stats.groupNodes}</div>
+                                        <div className="stat-label">组合节点</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {/* 侧边栏 */}
+                        <div className={`sidebar ${!showSidebar ? 'hidden' : ''}`}>
+                            {selectedNode && (
+                                <div className="sidebar-section">
+                                    <div className="sidebar-title">节点信息</div>
+                                    <div className="sidebar-content">
+                                        <p><strong>名称:</strong> {selectedNode.data.label}</p>
+                                        <p><strong>类型:</strong> {selectedNode.data.type}</p>
+                                        {selectedNode.data.description && (
+                                            <p><strong>描述:</strong> {selectedNode.data.description}</p>
+                                        )}
+                                        {selectedNode.data.details && (
+                                            <div>
+                                                <p><strong>详情:</strong></p>
+                                                {selectedNode.data.details.map((d, i) => (
+                                                    <p key={i}>• {d}</p>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                            
+                            <div className="sidebar-section">
+                                <div className="sidebar-title">流程说明</div>
+                                <div className="sidebar-content">
+                                    <p>1. 用户注册登录后选择组织模式</p>
+                                    <p>2. 企业用户创建企业和部门结构</p>
+                                    <p>3. 个人用户直接创建拼车组</p>
+                                    <p>4. 邀请成员加入组织</p>
+                                    <p>5. 配置AI服务资源</p>
+                                    <p>6. 生成API密钥供CLI使用</p>
+                                </div>
+                            </div>
+                            
+                            <div className="sidebar-section">
+                                <div className="sidebar-title">支持的AI服务</div>
+                                <div className="sidebar-content">
+                                    <p>• Claude (OAuth/Console)</p>
+                                    <p>• Gemini API</p>
+                                    <p>• Kimi k2 中转</p>
+                                    <p>• 通义千问3</p>
+                                    <p>• 智谱GLM 4.5</p>
+                                </div>
+                            </div>
+                            
+                            <div className="sidebar-section">
+                                <div className="sidebar-title">快捷操作</div>
+                                <button 
+                                    className="toolbar-button"
+                                    onClick={() => reactFlowInstance.fitView({ padding: 0.2 })}
+                                    style={{ width: '100%', marginTop: '10px' }}
+                                >
+                                    适应视图
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+        
+        // 包装组件
+        function App() {
+            return (
+                <ReactFlowProvider>
+                    <BusinessFlowApp />
+                </ReactFlowProvider>
+            );
+        }
+        
+        // 渲染应用
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

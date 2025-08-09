@@ -1,0 +1,1565 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AiCarpool 高级架构图 - React Flow Pro</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/reactflow@11/dist/style.css">
+    <script src="https://unpkg.com/reactflow@11/dist/umd/index.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: #0f0f23;
+            overflow: hidden;
+        }
+        
+        #root {
+            height: 100vh;
+            width: 100vw;
+        }
+        
+        .app-container {
+            height: 100%;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            background: linear-gradient(135deg, #1e1e2e 0%, #2d2d44 100%);
+        }
+        
+        /* 顶部工具栏 */
+        .toolbar {
+            background: rgba(30, 30, 46, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+        }
+        
+        .toolbar-title {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .toolbar-title h1 {
+            color: #fff;
+            font-size: 20px;
+            font-weight: 600;
+            margin: 0;
+        }
+        
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            background: rgba(76, 175, 80, 0.2);
+            border: 1px solid #4CAF50;
+            border-radius: 20px;
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: #4CAF50;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .status-text {
+            color: #4CAF50;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .toolbar-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .toolbar-button {
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .toolbar-button:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-1px);
+        }
+        
+        .toolbar-button.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-color: transparent;
+        }
+        
+        /* 主内容区域 */
+        .main-content {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .flow-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+        
+        /* React Flow 背景设置 - 强制所有节点背景透明 */
+        .react-flow__node {
+            background: transparent !important;
+        }
+        
+        .react-flow__node > div {
+            background: transparent !important;
+        }
+        
+        .react-flow__node-default {
+            background: transparent !important;
+        }
+        
+        .react-flow__node-group {
+            background: transparent !important;
+        }
+        
+        .react-flow__node-status {
+            background: transparent !important;
+        }
+        
+        /* 确保所有自定义节点类型也透明 */
+        [class*="react-flow__node-"] {
+            background: transparent !important;
+        }
+        
+        /* 侧边栏 */
+        .sidebar {
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 320px;
+            background: rgba(30, 30, 46, 0.95);
+            backdrop-filter: blur(10px);
+            border-left: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            overflow-y: auto;
+            transition: transform 0.3s ease-in-out;
+            z-index: 500;
+            box-shadow: -4px 0 12px rgba(0, 0, 0, 0.3);
+        }
+        
+        .sidebar.hidden {
+            transform: translateX(100%);
+        }
+        
+        .sidebar-section {
+            margin-bottom: 25px;
+        }
+        
+        .sidebar-title {
+            color: #fff;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        /* 自定义节点样式 */
+        .custom-node {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid;
+            border-radius: 12px;
+            padding: 12px;
+            min-width: 180px;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        
+        .custom-node:hover {
+            transform: scale(1.02);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        
+        .custom-node.selected {
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.5);
+        }
+        
+        /* 客户端节点 */
+        .node-client {
+            border-color: #4FC3F7;
+            background: linear-gradient(135deg, rgba(79, 195, 247, 0.1) 0%, rgba(79, 195, 247, 0.05) 100%);
+        }
+        
+        .node-client .node-header {
+            color: #4FC3F7;
+        }
+        
+        /* 网关节点 */
+        .node-gateway {
+            border-color: #81C784;
+            background: linear-gradient(135deg, rgba(129, 199, 132, 0.1) 0%, rgba(129, 199, 132, 0.05) 100%);
+        }
+        
+        .node-gateway .node-header {
+            color: #81C784;
+        }
+        
+        /* 应用节点 */
+        .node-application {
+            border-color: #BA68C8;
+            background: linear-gradient(135deg, rgba(186, 104, 200, 0.1) 0%, rgba(186, 104, 200, 0.05) 100%);
+        }
+        
+        .node-application .node-header {
+            color: #BA68C8;
+        }
+        
+        /* 服务节点 */
+        .node-service {
+            border-color: #64B5F6;
+            background: linear-gradient(135deg, rgba(100, 181, 246, 0.1) 0%, rgba(100, 181, 246, 0.05) 100%);
+        }
+        
+        .node-service .node-header {
+            color: #64B5F6;
+        }
+        
+        /* 数据节点 */
+        .node-data {
+            border-color: #FFB74D;
+            background: linear-gradient(135deg, rgba(255, 183, 77, 0.1) 0%, rgba(255, 183, 77, 0.05) 100%);
+        }
+        
+        .node-data .node-header {
+            color: #FFB74D;
+        }
+        
+        /* 外部服务节点 */
+        .node-external {
+            border-color: #4DB6AC;
+            background: linear-gradient(135deg, rgba(77, 182, 172, 0.1) 0%, rgba(77, 182, 172, 0.05) 100%);
+        }
+        
+        .node-external .node-header {
+            color: #4DB6AC;
+        }
+        
+        /* 缓存节点 */
+        .node-cache {
+            border-color: #FF5252;
+            background: linear-gradient(135deg, rgba(255, 82, 82, 0.1) 0%, rgba(255, 82, 82, 0.05) 100%);
+        }
+        
+        .node-cache .node-header {
+            color: #FF5252;
+        }
+        
+        /* 监控节点 */
+        .node-monitor {
+            border-color: #FFC107;
+            background: linear-gradient(135deg, rgba(255, 193, 7, 0.1) 0%, rgba(255, 193, 7, 0.05) 100%);
+        }
+        
+        .node-monitor .node-header {
+            color: #FFC107;
+        }
+        
+        .node-header {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .node-status {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        
+        .node-status.healthy {
+            background: #4CAF50;
+        }
+        
+        .node-status.warning {
+            background: #FFC107;
+        }
+        
+        .node-status.error {
+            background: #FF5252;
+        }
+        
+        .node-body {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 11px;
+            line-height: 1.4;
+        }
+        
+        .node-metrics {
+            display: flex;
+            gap: 10px;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .metric {
+            flex: 1;
+            text-align: center;
+        }
+        
+        .metric-value {
+            color: #fff;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        
+        .metric-label {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 9px;
+            text-transform: uppercase;
+            margin-top: 2px;
+        }
+        
+        /* 组合节点样式 */
+        .group-node {
+            background: transparent;
+            border: 2px dashed rgba(255, 255, 255, 0.2);
+            border-radius: 16px;
+            padding: 16px;
+            min-width: 280px;
+            max-width: 400px;
+        }
+        
+        .group-title {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+        }
+        
+        .group-title-icon {
+            margin-right: 8px;
+            transition: transform 0.3s;
+        }
+        
+        .group-title-icon.expanded {
+            transform: rotate(90deg);
+        }
+        
+        .group-content {
+            margin-top: 8px;
+        }
+        
+        .group-item {
+            margin: 6px 0;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 12px;
+            padding-left: 16px;
+        }
+        
+        /* 自定义边样式 */
+        .custom-edge-path {
+            stroke-width: 2;
+            fill: none;
+        }
+        
+        .custom-edge-path.animated {
+            stroke-dasharray: 5;
+            animation: dash 1s linear infinite;
+        }
+        
+        @keyframes dash {
+            to {
+                stroke-dashoffset: -10;
+            }
+        }
+        
+        .edge-label {
+            background: rgba(30, 30, 46, 0.9);
+            color: #fff;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 500;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        /* 搜索框 */
+        .search-box {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 600;
+            display: flex;
+            align-items: center;
+            background: rgba(30, 30, 46, 0.85);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 6px 10px;
+            width: 250px;
+            transition: all 0.3s;
+        }
+        
+        .search-box.hidden {
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(-10px);
+        }
+        
+        .search-box:focus-within {
+            background: rgba(30, 30, 46, 0.95);
+            width: 280px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        
+        .search-input {
+            flex: 1;
+            background: none;
+            border: none;
+            color: #fff;
+            font-size: 13px;
+            outline: none;
+        }
+        
+        .search-input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+        
+        .search-icon {
+            color: rgba(255, 255, 255, 0.5);
+            margin-right: 8px;
+            font-size: 14px;
+        }
+        
+        .search-close {
+            background: none;
+            border: none;
+            color: rgba(255, 255, 255, 0.5);
+            cursor: pointer;
+            padding: 2px;
+            margin-left: 8px;
+            font-size: 16px;
+            line-height: 1;
+            transition: color 0.2s;
+        }
+        
+        .search-close:hover {
+            color: rgba(255, 255, 255, 0.9);
+        }
+        
+        /* 右键菜单 */
+        .context-menu {
+            position: absolute;
+            background: rgba(30, 30, 46, 0.98);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 8px 0;
+            min-width: 180px;
+            z-index: 1000;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+        }
+        
+        .context-menu-item {
+            padding: 10px 16px;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .context-menu-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+        
+        .context-menu-divider {
+            height: 1px;
+            background: rgba(255, 255, 255, 0.1);
+            margin: 4px 0;
+        }
+        
+        /* 统计面板 */
+        .stats-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(30, 30, 46, 0.85);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 12px;
+            min-width: 220px;
+            z-index: 450;
+            transition: all 0.3s;
+        }
+        
+        .stats-panel.minimized {
+            padding: 8px;
+            min-width: auto;
+        }
+        
+        .stats-panel.minimized .stats-grid {
+            display: none;
+        }
+        
+        .stats-panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .stats-panel-title {
+            color: #fff;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .stats-panel-toggle {
+            background: none;
+            border: none;
+            color: rgba(255, 255, 255, 0.7);
+            cursor: pointer;
+            padding: 2px;
+            font-size: 14px;
+        }
+        
+        .stats-panel-toggle:hover {
+            color: #fff;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+        
+        .stat-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 6px;
+            padding: 8px;
+        }
+        
+        .stat-value {
+            color: #fff;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        
+        .stat-label {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 10px;
+            text-transform: uppercase;
+            margin-top: 2px;
+        }
+        
+        .stat-change {
+            color: #4CAF50;
+            font-size: 11px;
+            margin-top: 4px;
+        }
+        
+        .stat-change.negative {
+            color: #FF5252;
+        }
+        
+        /* 迷你地图样式 */
+        .react-flow__minimap {
+            background: rgba(30, 30, 46, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            z-index: 450;
+        }
+        
+        /* 控制按钮样式 */
+        .react-flow__controls {
+            background: rgba(30, 30, 46, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            box-shadow: none;
+            z-index: 450;
+        }
+        
+        .react-flow__controls-button {
+            background: transparent;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.7);
+        }
+        
+        .react-flow__controls-button:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+        
+        /* 侧边栏切换按钮 */
+        .sidebar-toggle {
+            position: absolute;
+            right: 20px;
+            top: 20px;
+            z-index: 600;
+            background: rgba(30, 30, 46, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 18px;
+        }
+        
+        .sidebar-toggle:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            transform: scale(1.05);
+        }
+        
+        .sidebar-toggle.sidebar-open {
+            right: 340px;
+        }
+        
+        /* 加载动画 */
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(15, 15, 35, 0.95);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+        
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const { useState, useCallback, useEffect, useMemo, useRef } = React;
+        const { 
+            ReactFlow, 
+            MiniMap, 
+            Controls, 
+            Background, 
+            useNodesState, 
+            useEdgesState, 
+            addEdge,
+            Handle,
+            Position,
+            MarkerType,
+            useReactFlow,
+            ReactFlowProvider,
+            Panel,
+            getBezierPath,
+            getEdgeCenter,
+            getStraightPath,
+            getSmoothStepPath
+        } = window.ReactFlow;
+        
+        // 自定义状态节点
+        const StatusNode = ({ data, selected }) => {
+            const [metrics, setMetrics] = useState({
+                cpu: Math.floor(Math.random() * 100),
+                memory: Math.floor(Math.random() * 100),
+                requests: Math.floor(Math.random() * 1000)
+            });
+            
+            useEffect(() => {
+                const interval = setInterval(() => {
+                    setMetrics({
+                        cpu: Math.floor(Math.random() * 100),
+                        memory: Math.floor(Math.random() * 100),
+                        requests: Math.floor(Math.random() * 1000)
+                    });
+                }, 3000);
+                return () => clearInterval(interval);
+            }, []);
+            
+            const getStatusClass = () => {
+                if (metrics.cpu > 80 || metrics.memory > 80) return 'error';
+                if (metrics.cpu > 60 || metrics.memory > 60) return 'warning';
+                return 'healthy';
+            };
+            
+            return (
+                <div className={`custom-node node-${data.type} ${selected ? 'selected' : ''}`}>
+                    <Handle type="target" position={Position.Top} />
+                    
+                    <div className="node-header">
+                        <span>{data.label}</span>
+                        <div className={`node-status ${getStatusClass()}`}></div>
+                    </div>
+                    
+                    {data.description && (
+                        <div className="node-body">{data.description}</div>
+                    )}
+                    
+                    <div className="node-metrics">
+                        <div className="metric">
+                            <div className="metric-value">{metrics.cpu}%</div>
+                            <div className="metric-label">CPU</div>
+                        </div>
+                        <div className="metric">
+                            <div className="metric-value">{metrics.memory}%</div>
+                            <div className="metric-label">内存</div>
+                        </div>
+                        <div className="metric">
+                            <div className="metric-value">{metrics.requests}</div>
+                            <div className="metric-label">请求/秒</div>
+                        </div>
+                    </div>
+                    
+                    <Handle type="source" position={Position.Bottom} />
+                    <Handle type="source" position={Position.Right} id="right" />
+                    <Handle type="target" position={Position.Left} id="left" />
+                </div>
+            );
+        };
+        
+        // 组合节点（可展开）
+        const GroupNode = ({ data, selected }) => {
+            const [expanded, setExpanded] = useState(true);
+            
+            return (
+                <div className="group-node">
+                    <div className="group-title" onClick={() => setExpanded(!expanded)}>
+                        <span className={`group-title-icon ${expanded ? 'expanded' : ''}`}>▶</span>
+                        {data.label}
+                    </div>
+                    {expanded && data.children && (
+                        <div className="group-content">
+                            {data.children.map((child, index) => (
+                                <div key={index} className="group-item">
+                                    • {child}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                    <Handle type="target" position={Position.Top} />
+                    <Handle type="source" position={Position.Bottom} />
+                </div>
+            );
+        };
+        
+        // 自定义动画边
+        const AnimatedEdge = ({
+            id,
+            sourceX,
+            sourceY,
+            targetX,
+            targetY,
+            sourcePosition,
+            targetPosition,
+            data,
+            markerEnd,
+        }) => {
+            const [edgePath, labelX, labelY] = getBezierPath({
+                sourceX,
+                sourceY,
+                sourcePosition,
+                targetX,
+                targetY,
+                targetPosition,
+            });
+            
+            return (
+                <>
+                    <path
+                        id={id}
+                        className="custom-edge-path animated"
+                        d={edgePath}
+                        markerEnd={markerEnd}
+                        style={{
+                            stroke: data?.color || '#667eea',
+                        }}
+                    />
+                    {data?.label && (
+                        <foreignObject
+                            width={80}
+                            height={30}
+                            x={labelX - 40}
+                            y={labelY - 15}
+                        >
+                            <div className="edge-label">
+                                {data.label}
+                            </div>
+                        </foreignObject>
+                    )}
+                </>
+            );
+        };
+        
+        const nodeTypes = {
+            status: StatusNode,
+            group: GroupNode,
+        };
+        
+        const edgeTypes = {
+            animated: AnimatedEdge,
+        };
+        
+        // 完整的节点数据
+        const createNodes = () => [
+            // 客户端层标题（改为简单的标签节点）
+            { id: 'client-group', type: 'group', position: { x: 500, y: -120 }, 
+                data: { label: '🖥️ 客户端接入层', children: ['Claude Code CLI', 'Gemini CLI', 'Cursor Agent', 'AmpCode CLI', 'Auggie CLI', 'Web浏览器', 'Mobile App'] }
+            },
+            { id: 'cli1', type: 'status', position: { x: 50, y: 150 }, 
+                data: { label: 'Claude Code CLI', type: 'client', description: 'AI编程助手' }
+            },
+            { id: 'cli2', type: 'status', position: { x: 200, y: 150 }, 
+                data: { label: 'Gemini CLI', type: 'client', description: 'Google AI' }
+            },
+            { id: 'cursor', type: 'status', position: { x: 350, y: 150 }, 
+                data: { label: 'Cursor Agent', type: 'client', description: 'AI代码编辑器' }
+            },
+            { id: 'ampcode', type: 'status', position: { x: 500, y: 150 }, 
+                data: { label: 'AmpCode CLI', type: 'client', description: '增强编程' }
+            },
+            { id: 'auggie', type: 'status', position: { x: 650, y: 150 }, 
+                data: { label: 'Auggie CLI', type: 'client', description: 'AI助手' }
+            },
+            { id: 'web', type: 'status', position: { x: 800, y: 150 }, 
+                data: { label: 'Web浏览器', type: 'client', description: '管理控制台' }
+            },
+            { id: 'mobile', type: 'status', position: { x: 950, y: 150 }, 
+                data: { label: 'Mobile App', type: 'client', description: '移动端应用' }
+            },
+            
+            // 接入层
+            { id: 'nginx', type: 'status', position: { x: 300, y: 300 }, 
+                data: { label: 'Nginx', type: 'gateway', description: '反向代理' }
+            },
+            { id: 'lb', type: 'status', position: { x: 500, y: 300 }, 
+                data: { label: '负载均衡器', type: 'gateway', description: 'HAProxy' }
+            },
+            { id: 'gateway', type: 'status', position: { x: 700, y: 300 }, 
+                data: { label: 'API Gateway', type: 'gateway', description: 'Kong Gateway' }
+            },
+            
+            // 应用层 - 核心服务
+            { id: 'auth', type: 'status', position: { x: 100, y: 450 }, 
+                data: { label: '认证服务', type: 'application', description: 'JWT/OAuth2.0' }
+            },
+            { id: 'perm', type: 'status', position: { x: 300, y: 450 }, 
+                data: { label: '权限管理', type: 'application', description: 'RBAC系统' }
+            },
+            { id: 'router', type: 'status', position: { x: 500, y: 450 }, 
+                data: { label: 'SmartAiRouter', type: 'application', description: '智能路由核心' }
+            },
+            { id: 'apikey', type: 'status', position: { x: 700, y: 450 }, 
+                data: { label: 'API Key服务', type: 'application', description: '密钥管理' }
+            },
+            { id: 'budget', type: 'status', position: { x: 900, y: 450 }, 
+                data: { label: '预算控制', type: 'application', description: '配额管理' }
+            },
+            
+            // 业务服务层
+            { id: 'group-mgmt', type: 'status', position: { x: 100, y: 600 }, 
+                data: { label: '拼车组管理', type: 'service', description: '组织管理核心' }
+            },
+            { id: 'enterprise', type: 'status', position: { x: 300, y: 600 }, 
+                data: { label: '企业服务', type: 'service', description: '企业级功能' }
+            },
+            { id: 'user-mgmt', type: 'status', position: { x: 500, y: 600 }, 
+                data: { label: '用户管理', type: 'service', description: '用户中心' }
+            },
+            { id: 'ai-pool', type: 'status', position: { x: 700, y: 600 }, 
+                data: { label: 'AI资源池', type: 'service', description: '账号池管理' }
+            },
+            { id: 'billing', type: 'status', position: { x: 900, y: 600 }, 
+                data: { label: '计费服务', type: 'service', description: '费用结算' }
+            },
+            
+            // 缓存层
+            { id: 'redis-session', type: 'status', position: { x: 150, y: 750 }, 
+                data: { label: 'Redis Session', type: 'cache', description: '会话缓存' }
+            },
+            { id: 'redis-data', type: 'status', position: { x: 350, y: 750 }, 
+                data: { label: 'Redis Data', type: 'cache', description: '数据缓存' }
+            },
+            { id: 'redis-queue', type: 'status', position: { x: 550, y: 750 }, 
+                data: { label: 'Redis Queue', type: 'cache', description: '消息队列' }
+            },
+            
+            // 数据层
+            { id: 'mysql-master', type: 'status', position: { x: 300, y: 900 }, 
+                data: { label: 'MySQL主库', type: 'data', description: '主数据库' }
+            },
+            { id: 'mysql-slave', type: 'status', position: { x: 600, y: 900 }, 
+                data: { label: 'MySQL从库', type: 'data', description: '读写分离' }
+            },
+            
+            // 监控系统
+            { id: 'prometheus', type: 'status', position: { x: 750, y: 750 }, 
+                data: { label: 'Prometheus', type: 'monitor', description: '指标采集' }
+            },
+            { id: 'grafana', type: 'status', position: { x: 950, y: 750 }, 
+                data: { label: 'Grafana', type: 'monitor', description: '监控面板' }
+            },
+            { id: 'alert-manager', type: 'status', position: { x: 1150, y: 750 }, 
+                data: { label: 'AlertManager', type: 'monitor', description: '告警管理' }
+            },
+            
+            // 外部AI服务 - 原生API
+            { id: 'claude-api', type: 'status', position: { x: 100, y: 1050 }, 
+                data: { label: 'Claude API', type: 'external', description: 'Anthropic原生' }
+            },
+            { id: 'gemini-api', type: 'status', position: { x: 300, y: 1050 }, 
+                data: { label: 'Gemini API', type: 'external', description: 'Google AI' }
+            },
+            
+            // 中转服务（Claude Console支持）
+            { id: 'kimi-api', type: 'status', position: { x: 500, y: 1050 }, 
+                data: { label: 'Kimi k2', type: 'external', description: '中转服务' }
+            },
+            { id: 'qwen-api', type: 'status', position: { x: 700, y: 1050 }, 
+                data: { label: '通义千问3', type: 'external', description: '阿里云AI' }
+            },
+            { id: 'glm-api', type: 'status', position: { x: 900, y: 1050 }, 
+                data: { label: '智谱GLM 4.5', type: 'external', description: '智谱AI' }
+            },
+        ];
+        
+        // 完整的边数据
+        const createEdges = () => [
+            // 组节点到客户端节点
+            { id: 'eg1', source: 'client-group', target: 'cli1', style: { strokeDasharray: '5 5' } },
+            { id: 'eg2', source: 'client-group', target: 'cli2', style: { strokeDasharray: '5 5' } },
+            { id: 'eg3', source: 'client-group', target: 'cursor', style: { strokeDasharray: '5 5' } },
+            { id: 'eg4', source: 'client-group', target: 'ampcode', style: { strokeDasharray: '5 5' } },
+            { id: 'eg5', source: 'client-group', target: 'auggie', style: { strokeDasharray: '5 5' } },
+            { id: 'eg6', source: 'client-group', target: 'web', style: { strokeDasharray: '5 5' } },
+            { id: 'eg7', source: 'client-group', target: 'mobile', style: { strokeDasharray: '5 5' } },
+            
+            // 客户端到网关
+            { id: 'e1', source: 'cli1', target: 'nginx', type: 'animated', data: { label: 'HTTPS', color: '#4FC3F7' } },
+            { id: 'e2', source: 'cli2', target: 'nginx', type: 'animated', data: { label: 'HTTPS', color: '#4FC3F7' } },
+            { id: 'e3', source: 'cursor', target: 'nginx', type: 'animated', data: { label: 'HTTPS', color: '#4FC3F7' } },
+            { id: 'e4', source: 'ampcode', target: 'nginx', type: 'animated', data: { label: 'HTTPS', color: '#4FC3F7' } },
+            { id: 'e5', source: 'auggie', target: 'nginx', type: 'animated', data: { label: 'HTTPS', color: '#4FC3F7' } },
+            { id: 'e6', source: 'web', target: 'lb', type: 'animated', data: { label: 'WebSocket', color: '#4FC3F7' } },
+            { id: 'e7', source: 'mobile', target: 'lb', type: 'animated', data: { label: 'REST', color: '#4FC3F7' } },
+            
+            // 网关层连接
+            { id: 'e8', source: 'nginx', target: 'lb', data: { label: 'TCP' } },
+            { id: 'e9', source: 'lb', target: 'gateway', data: { label: 'HTTP/2' } },
+            
+            // 网关到应用层
+            { id: 'e10', source: 'gateway', target: 'auth', type: 'animated', data: { label: '认证', color: '#BA68C8' } },
+            { id: 'e11', source: 'gateway', target: 'router', data: { label: '路由' } },
+            { id: 'e12', source: 'auth', target: 'perm', data: { label: '授权' } },
+            { id: 'e13', source: 'perm', target: 'apikey', data: { label: '验证' } },
+            { id: 'e14', source: 'router', target: 'budget', data: { label: '配额检查' } },
+            
+            // 应用层到服务层
+            { id: 'e15', source: 'router', target: 'ai-pool', type: 'animated', data: { label: '分配', color: '#64B5F6' } },
+            { id: 'e16', source: 'apikey', target: 'group-mgmt', data: { label: '管理' } },
+            { id: 'e17', source: 'apikey', target: 'enterprise', data: { label: '企业' } },
+            { id: 'e18', source: 'perm', target: 'user-mgmt', data: { label: '用户' } },
+            { id: 'e19', source: 'budget', target: 'billing', data: { label: '计费' } },
+            
+            // 服务层到缓存
+            { id: 'e20', source: 'auth', target: 'redis-session', type: 'animated', data: { label: 'Session', color: '#FF5252' } },
+            { id: 'e21', source: 'router', target: 'redis-data', type: 'animated', data: { label: 'Cache', color: '#FF5252' } },
+            { id: 'e22', source: 'ai-pool', target: 'redis-queue', type: 'animated', data: { label: 'Queue', color: '#FF5252' } },
+            
+            // 服务层到数据层
+            { id: 'e23', source: 'group-mgmt', target: 'mysql-master', data: { label: '写入' } },
+            { id: 'e24', source: 'enterprise', target: 'mysql-master', data: { label: '写入' } },
+            { id: 'e25', source: 'user-mgmt', target: 'mysql-slave', data: { label: '读取' } },
+            { id: 'e26', source: 'billing', target: 'mysql-master', data: { label: '账单' } },
+            
+            // 数据库主从
+            { id: 'e27', source: 'mysql-master', target: 'mysql-slave', type: 'animated', data: { label: '同步', color: '#FFB74D' } },
+            
+            // 监控连接
+            { id: 'e28', source: 'router', target: 'prometheus', data: { label: '指标' } },
+            { id: 'e29', source: 'prometheus', target: 'grafana', data: { label: '展示' } },
+            { id: 'e30', source: 'prometheus', target: 'alert-manager', data: { label: '告警' } },
+            
+            // AI服务连接
+            { id: 'e31', source: 'ai-pool', target: 'claude-api', type: 'animated', data: { label: 'OAuth/API', color: '#4DB6AC' } },
+            { id: 'e32', source: 'ai-pool', target: 'gemini-api', type: 'animated', data: { label: 'API', color: '#4DB6AC' } },
+            { id: 'e33', source: 'ai-pool', target: 'kimi-api', type: 'animated', data: { label: 'API', color: '#4DB6AC' } },
+            { id: 'e34', source: 'ai-pool', target: 'qwen-api', type: 'animated', data: { label: 'API', color: '#4DB6AC' } },
+            { id: 'e35', source: 'ai-pool', target: 'glm-api', type: 'animated', data: { label: 'API', color: '#4DB6AC' } },
+        ];
+        
+        // 主应用组件
+        function AdvancedArchitectureFlow() {
+            const [nodes, setNodes, onNodesChange] = useNodesState(createNodes());
+            const [edges, setEdges, onEdgesChange] = useEdgesState(createEdges());
+            const [showSidebar, setShowSidebar] = useState(true);
+            const [viewMode, setViewMode] = useState('architecture');
+            const [searchTerm, setSearchTerm] = useState('');
+            const [showSearch, setShowSearch] = useState(false);
+            const [selectedNode, setSelectedNode] = useState(null);
+            const [contextMenu, setContextMenu] = useState(null);
+            const [loading, setLoading] = useState(false);
+            const [statsMinimized, setStatsMinimized] = useState(false);
+            const reactFlowInstance = useReactFlow();
+            
+            // 连接节点
+            const onConnect = useCallback(
+                (params) => {
+                    const newEdge = {
+                        ...params,
+                        type: 'animated',
+                        data: { label: 'New Connection', color: '#667eea' }
+                    };
+                    setEdges((eds) => addEdge(newEdge, eds));
+                },
+                [setEdges]
+            );
+            
+            // 节点点击
+            const onNodeClick = useCallback((event, node) => {
+                setSelectedNode(node);
+                setContextMenu(null);
+            }, []);
+            
+            // 右键菜单
+            const onNodeContextMenu = useCallback((event, node) => {
+                event.preventDefault();
+                setContextMenu({
+                    x: event.clientX,
+                    y: event.clientY,
+                    node
+                });
+            }, []);
+            
+            // 搜索节点
+            const handleSearch = useCallback((term) => {
+                setSearchTerm(term);
+                if (term) {
+                    const matchedNodes = nodes.filter(node => 
+                        node.data.label.toLowerCase().includes(term.toLowerCase())
+                    );
+                    if (matchedNodes.length > 0) {
+                        const node = matchedNodes[0];
+                        reactFlowInstance.setCenter(node.position.x, node.position.y, {
+                            zoom: 1.5,
+                            duration: 800
+                        });
+                        setSelectedNode(node);
+                    }
+                }
+            }, [nodes, reactFlowInstance]);
+            
+            // 关闭搜索框
+            const closeSearch = useCallback(() => {
+                setShowSearch(false);
+                setSearchTerm('');
+            }, []);
+            
+            // 键盘快捷键
+            useEffect(() => {
+                const handleKeyDown = (e) => {
+                    // Ctrl+F 或 Cmd+F 打开搜索
+                    if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+                        e.preventDefault();
+                        setShowSearch(true);
+                        setTimeout(() => {
+                            const searchInput = document.querySelector('.search-input');
+                            if (searchInput) searchInput.focus();
+                        }, 100);
+                    }
+                    // Esc 关闭搜索
+                    if (e.key === 'Escape') {
+                        closeSearch();
+                        setContextMenu(null);
+                    }
+                };
+                
+                window.addEventListener('keydown', handleKeyDown);
+                return () => window.removeEventListener('keydown', handleKeyDown);
+            }, [closeSearch]);
+            
+            // 切换布局
+            const changeLayout = useCallback((layoutType) => {
+                setLoading(true);
+                setTimeout(() => {
+                    let newNodes = [...nodes];
+                    
+                    switch(layoutType) {
+                        case 'hierarchical':
+                            // 层次化布局
+                            const layers = {
+                                client: 100,
+                                gateway: 250,
+                                application: 400,
+                                service: 550,
+                                cache: 700,
+                                data: 850,
+                                monitor: 700,
+                                external: 1000
+                            };
+                            
+                            const nodesByType = {};
+                            newNodes.forEach(node => {
+                                const type = node.data.type;
+                                if (!nodesByType[type]) nodesByType[type] = [];
+                                nodesByType[type].push(node);
+                            });
+                            
+                            Object.keys(nodesByType).forEach(type => {
+                                const nodesOfType = nodesByType[type];
+                                const spacing = 1200 / (nodesOfType.length + 1);
+                                nodesOfType.forEach((node, index) => {
+                                    node.position = {
+                                        x: spacing * (index + 1),
+                                        y: layers[type] || 500
+                                    };
+                                });
+                            });
+                            break;
+                            
+                        case 'circular':
+                            // 环形布局
+                            const centerX = 600;
+                            const centerY = 500;
+                            const radius = 400;
+                            newNodes.forEach((node, index) => {
+                                const angle = (2 * Math.PI * index) / newNodes.length;
+                                node.position = {
+                                    x: centerX + radius * Math.cos(angle),
+                                    y: centerY + radius * Math.sin(angle)
+                                };
+                            });
+                            break;
+                            
+                        case 'grid':
+                            // 网格布局
+                            const cols = Math.ceil(Math.sqrt(newNodes.length));
+                            newNodes.forEach((node, index) => {
+                                const row = Math.floor(index / cols);
+                                const col = index % cols;
+                                node.position = {
+                                    x: 200 + col * 250,
+                                    y: 100 + row * 200
+                                };
+                            });
+                            break;
+                    }
+                    
+                    setNodes(newNodes);
+                    setTimeout(() => reactFlowInstance.fitView({ padding: 0.2 }), 100);
+                    setLoading(false);
+                }, 500);
+            }, [nodes, setNodes, reactFlowInstance]);
+            
+            // 切换视图模式
+            const switchViewMode = useCallback((mode) => {
+                setViewMode(mode);
+                setLoading(true);
+                
+                setTimeout(() => {
+                    let filteredNodes = [];
+                    let filteredEdges = [];
+                    
+                    switch(mode) {
+                        case 'architecture':
+                            filteredNodes = createNodes();
+                            filteredEdges = createEdges();
+                            break;
+                            
+                        case 'dataflow':
+                            // 只显示数据流相关节点
+                            filteredNodes = createNodes().filter(n => 
+                                ['router', 'ai-pool', 'redis-data', 'mysql-master', 'mysql-slave'].includes(n.id) ||
+                                n.data.type === 'external'
+                            );
+                            filteredEdges = createEdges().filter(e => 
+                                filteredNodes.some(n => n.id === e.source) &&
+                                filteredNodes.some(n => n.id === e.target)
+                            );
+                            break;
+                            
+                        case 'security':
+                            // 只显示安全相关节点
+                            filteredNodes = createNodes().filter(n => 
+                                ['auth', 'perm', 'apikey', 'gateway', 'nginx'].includes(n.id)
+                            );
+                            filteredEdges = createEdges().filter(e => 
+                                filteredNodes.some(n => n.id === e.source) &&
+                                filteredNodes.some(n => n.id === e.target)
+                            );
+                            break;
+                            
+                        case 'monitoring':
+                            // 监控视图
+                            filteredNodes = createNodes().filter(n => 
+                                n.data.type === 'monitor' || n.data.type === 'data' || n.id === 'gateway'
+                            );
+                            filteredEdges = createEdges().filter(e => 
+                                filteredNodes.some(n => n.id === e.source) &&
+                                filteredNodes.some(n => n.id === e.target)
+                            );
+                            break;
+                    }
+                    
+                    setNodes(filteredNodes);
+                    setEdges(filteredEdges);
+                    setTimeout(() => reactFlowInstance.fitView({ padding: 0.2 }), 100);
+                    setLoading(false);
+                }, 500);
+            }, [setNodes, setEdges, reactFlowInstance]);
+            
+            // 实时统计
+            const stats = useMemo(() => {
+                const nodesByType = {};
+                nodes.forEach(node => {
+                    const type = node.data.type;
+                    nodesByType[type] = (nodesByType[type] || 0) + 1;
+                });
+                
+                return {
+                    totalNodes: nodes.length,
+                    totalEdges: edges.length,
+                    nodeTypes: Object.keys(nodesByType).length,
+                    activeConnections: edges.filter(e => e.type === 'animated').length
+                };
+            }, [nodes, edges]);
+            
+            return (
+                <div className="app-container">
+                    {/* 顶部工具栏 */}
+                    <div className="toolbar">
+                        <div className="toolbar-title">
+                            <h1>🚀 AiCarpool 高级架构图</h1>
+                            <div className="status-indicator">
+                                <div className="status-dot"></div>
+                                <span className="status-text">系统运行正常</span>
+                            </div>
+                        </div>
+                        <div className="toolbar-actions">
+                            <button 
+                                className={`toolbar-button ${viewMode === 'architecture' ? 'active' : ''}`}
+                                onClick={() => switchViewMode('architecture')}
+                            >
+                                📊 完整架构
+                            </button>
+                            <button 
+                                className={`toolbar-button ${viewMode === 'dataflow' ? 'active' : ''}`}
+                                onClick={() => switchViewMode('dataflow')}
+                            >
+                                🔄 数据流
+                            </button>
+                            <button 
+                                className={`toolbar-button ${viewMode === 'security' ? 'active' : ''}`}
+                                onClick={() => switchViewMode('security')}
+                            >
+                                🔒 安全视图
+                            </button>
+                            <button 
+                                className={`toolbar-button ${viewMode === 'monitoring' ? 'active' : ''}`}
+                                onClick={() => switchViewMode('monitoring')}
+                            >
+                                📈 监控视图
+                            </button>
+                            <button 
+                                className="toolbar-button"
+                                onClick={() => setShowSearch(true)}
+                                title="搜索节点 (Ctrl+F)"
+                            >
+                                🔍 搜索
+                            </button>
+                        </div>
+                    </div>
+                    
+                    {/* 主内容区 */}
+                    <div className="main-content">
+                        <div className="flow-container">
+                            {/* 侧边栏切换按钮 */}
+                            <button 
+                                className={`sidebar-toggle ${!showSidebar ? '' : 'sidebar-open'}`}
+                                onClick={() => setShowSidebar(!showSidebar)}
+                                title={showSidebar ? '隐藏侧边栏' : '显示侧边栏'}
+                            >
+                                {showSidebar ? '▶' : '◀'}
+                            </button>
+                            
+                            {/* 搜索框 */}
+                            {showSearch && (
+                                <div className="search-box">
+                                    <span className="search-icon">🔍</span>
+                                    <input
+                                        type="text"
+                                        className="search-input"
+                                        placeholder="搜索节点... (Esc 关闭)"
+                                        value={searchTerm}
+                                        onChange={(e) => handleSearch(e.target.value)}
+                                        autoFocus
+                                    />
+                                    <button 
+                                        className="search-close"
+                                        onClick={closeSearch}
+                                        title="关闭搜索"
+                                    >
+                                        ×
+                                    </button>
+                                </div>
+                            )}
+                            
+                            {/* React Flow 画布 */}
+                            <ReactFlow
+                                nodes={nodes}
+                                edges={edges}
+                                onNodesChange={onNodesChange}
+                                onEdgesChange={onEdgesChange}
+                                onConnect={onConnect}
+                                onNodeClick={onNodeClick}
+                                onNodeContextMenu={onNodeContextMenu}
+                                nodeTypes={nodeTypes}
+                                edgeTypes={edgeTypes}
+                                fitView
+                                attributionPosition="bottom-right"
+                            >
+                                <MiniMap 
+                                    nodeColor={(node) => {
+                                        const colors = {
+                                            client: '#4FC3F7',
+                                            gateway: '#81C784',
+                                            application: '#BA68C8',
+                                            service: '#64B5F6',
+                                            data: '#FFB74D',
+                                            external: '#4DB6AC',
+                                            cache: '#FF5252',
+                                            monitor: '#FFC107'
+                                        };
+                                        return colors[node.data.type] || '#999';
+                                    }}
+                                    nodeStrokeWidth={3}
+                                    style={{
+                                        background: 'rgba(30, 30, 46, 0.95)',
+                                        border: '1px solid rgba(255, 255, 255, 0.2)',
+                                    }}
+                                />
+                                <Controls />
+                                <Background variant="dots" gap={20} size={1} color="#333" />
+                            </ReactFlow>
+                            
+                            {/* 统计面板 */}
+                            <div className={`stats-panel ${statsMinimized ? 'minimized' : ''}`}>
+                                <div className="stats-panel-header">
+                                    <span className="stats-panel-title">
+                                        {statsMinimized ? '📊' : '📊 系统统计'}
+                                    </span>
+                                    <button 
+                                        className="stats-panel-toggle"
+                                        onClick={() => setStatsMinimized(!statsMinimized)}
+                                    >
+                                        {statsMinimized ? '▲' : '▼'}
+                                    </button>
+                                </div>
+                                {!statsMinimized && (
+                                    <div className="stats-grid">
+                                        <div className="stat-card">
+                                            <div className="stat-value">{stats.totalNodes}</div>
+                                            <div className="stat-label">节点总数</div>
+                                            <div className="stat-change">+12.5%</div>
+                                        </div>
+                                        <div className="stat-card">
+                                            <div className="stat-value">{stats.totalEdges}</div>
+                                            <div className="stat-label">连接数</div>
+                                            <div className="stat-change">+8.3%</div>
+                                        </div>
+                                        <div className="stat-card">
+                                            <div className="stat-value">{stats.nodeTypes}</div>
+                                            <div className="stat-label">模块类型</div>
+                                            <div className="stat-change">稳定</div>
+                                        </div>
+                                        <div className="stat-card">
+                                            <div className="stat-value">{stats.activeConnections}</div>
+                                            <div className="stat-label">活跃连接</div>
+                                            <div className="stat-change negative">-2.1%</div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                            
+                            {/* 右键菜单 */}
+                            {contextMenu && (
+                                <div 
+                                    className="context-menu"
+                                    style={{ left: contextMenu.x, top: contextMenu.y }}
+                                    onMouseLeave={() => setContextMenu(null)}
+                                >
+                                    <div className="context-menu-item">
+                                        📊 查看详情
+                                    </div>
+                                    <div className="context-menu-item">
+                                        📝 查看日志
+                                    </div>
+                                    <div className="context-menu-item">
+                                        ⚙️ 配置设置
+                                    </div>
+                                    <div className="context-menu-divider"></div>
+                                    <div className="context-menu-item">
+                                        🔄 重启服务
+                                    </div>
+                                    <div className="context-menu-item">
+                                        📈 性能监控
+                                    </div>
+                                    <div className="context-menu-divider"></div>
+                                    <div className="context-menu-item">
+                                        🗑️ 删除节点
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                        
+                        {/* 侧边栏 */}
+                        <div className={`sidebar ${!showSidebar ? 'hidden' : ''}`}>
+                            <div className="sidebar-section">
+                                <div className="sidebar-title">布局选项</div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                    <button 
+                                        className="toolbar-button"
+                                        onClick={() => changeLayout('hierarchical')}
+                                    >
+                                        层次布局
+                                    </button>
+                                    <button 
+                                        className="toolbar-button"
+                                        onClick={() => changeLayout('circular')}
+                                    >
+                                        环形布局
+                                    </button>
+                                    <button 
+                                        className="toolbar-button"
+                                        onClick={() => changeLayout('grid')}
+                                    >
+                                        网格布局
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            {selectedNode && (
+                                <div className="sidebar-section">
+                                    <div className="sidebar-title">节点信息</div>
+                                    <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '12px' }}>
+                                        <p><strong>名称:</strong> {selectedNode.data.label}</p>
+                                        <p><strong>类型:</strong> {selectedNode.data.type}</p>
+                                        <p><strong>描述:</strong> {selectedNode.data.description}</p>
+                                        <p><strong>ID:</strong> {selectedNode.id}</p>
+                                        <p><strong>位置:</strong> ({Math.round(selectedNode.position.x)}, {Math.round(selectedNode.position.y)})</p>
+                                    </div>
+                                </div>
+                            )}
+                            
+                            <div className="sidebar-section">
+                                <div className="sidebar-title">系统状态</div>
+                                <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '12px' }}>
+                                    <p>🟢 所有服务正常运行</p>
+                                    <p>⚡ 平均响应时间: 128ms</p>
+                                    <p>💾 内存使用率: 62%</p>
+                                    <p>🔥 CPU使用率: 45%</p>
+                                    <p>📊 QPS: 12,456</p>
+                                </div>
+                            </div>
+                            
+                            <div className="sidebar-section">
+                                <div className="sidebar-title">快捷操作</div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                    <button className="toolbar-button">
+                                        导出为 SVG
+                                    </button>
+                                    <button className="toolbar-button">
+                                        保存布局
+                                    </button>
+                                    <button 
+                                        className="toolbar-button"
+                                        onClick={() => reactFlowInstance.fitView({ padding: 0.2 })}
+                                    >
+                                        适应视图
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {/* 加载遮罩 */}
+                    {loading && (
+                        <div className="loading-overlay">
+                            <div className="loading-spinner"></div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+        
+        // 包装组件，提供 ReactFlowProvider
+        function App() {
+            return (
+                <ReactFlowProvider>
+                    <AdvancedArchitectureFlow />
+                </ReactFlowProvider>
+            );
+        }
+        
+        // 渲染应用
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
