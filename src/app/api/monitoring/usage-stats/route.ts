@@ -180,28 +180,28 @@ function generateMockUsageStats(timeRange: string, users: any[], groups: any[]) 
   // 按服务类型分解
   const serviceBreakdown = [
     {
-      serviceType: 'claude',
+      platform: 'claude',
       serviceName: 'Claude',
       requests: Math.floor(totalRequests * 0.4),
       cost: Math.round(totalCost * 0.5 * 100) / 100,
       percentage: 40
     },
     {
-      serviceType: 'gemini',
+      platform: 'gemini',
       serviceName: 'Gemini',
       requests: Math.floor(totalRequests * 0.3),
       cost: Math.round(totalCost * 0.2 * 100) / 100,
       percentage: 30
     },
     {
-      serviceType: 'openai',
+      platform: 'openai',
       serviceName: 'OpenAI',
       requests: Math.floor(totalRequests * 0.2),
       cost: Math.round(totalCost * 0.25 * 100) / 100,
       percentage: 20
     },
     {
-      serviceType: 'qwen',
+      platform: 'qwen',
       serviceName: '通义千问',
       requests: Math.floor(totalRequests * 0.1),
       cost: Math.round(totalCost * 0.05 * 100) / 100,

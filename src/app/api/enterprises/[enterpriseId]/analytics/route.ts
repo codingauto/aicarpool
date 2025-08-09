@@ -108,28 +108,28 @@ export async function GET(
     // 生成服务使用分布数据
     const serviceUsage = [
       { 
-        serviceType: 'Claude', 
+        platform: 'Claude', 
         tokens: Math.floor(usageData.reduce((sum, day) => sum + day.tokens, 0) * 0.45),
         cost: Math.floor(usageData.reduce((sum, day) => sum + day.cost, 0) * 0.45 * 100) / 100,
         requests: Math.floor(usageData.reduce((sum, day) => sum + day.requests, 0) * 0.45),
         percentage: 45 
       },
       { 
-        serviceType: 'OpenAI', 
+        platform: 'OpenAI', 
         tokens: Math.floor(usageData.reduce((sum, day) => sum + day.tokens, 0) * 0.32),
         cost: Math.floor(usageData.reduce((sum, day) => sum + day.cost, 0) * 0.32 * 100) / 100,
         requests: Math.floor(usageData.reduce((sum, day) => sum + day.requests, 0) * 0.32),
         percentage: 32 
       },
       { 
-        serviceType: 'Gemini', 
+        platform: 'Gemini', 
         tokens: Math.floor(usageData.reduce((sum, day) => sum + day.tokens, 0) * 0.15),
         cost: Math.floor(usageData.reduce((sum, day) => sum + day.cost, 0) * 0.15 * 100) / 100,
         requests: Math.floor(usageData.reduce((sum, day) => sum + day.requests, 0) * 0.15),
         percentage: 15 
       },
       { 
-        serviceType: '千帆', 
+        platform: '千帆', 
         tokens: Math.floor(usageData.reduce((sum, day) => sum + day.tokens, 0) * 0.08),
         cost: Math.floor(usageData.reduce((sum, day) => sum + day.cost, 0) * 0.08 * 100) / 100,
         requests: Math.floor(usageData.reduce((sum, day) => sum + day.requests, 0) * 0.08),

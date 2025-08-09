@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
     // 4. 构建AI请求
     const aiRequest: AiRequest = {
       messages,
-      serviceType: serviceType || 'claude',
+      platform: serviceType || 'claude',
       model,
       maxTokens,
       temperature,
@@ -185,25 +185,25 @@ export async function GET(request: NextRequest) {
     // 返回支持的AI服务信息
     const supportedServices = [
       {
-        serviceType: 'claude',
+        platform: 'claude',
         displayName: 'Claude',
         models: ['claude-3.5-sonnet', 'claude-3-opus', 'claude-3-haiku'],
         capabilities: ['chat', 'completion', 'analysis']
       },
       {
-        serviceType: 'gemini',
+        platform: 'gemini',
         displayName: 'Gemini',
         models: ['gemini-pro', 'gemini-pro-vision'],
         capabilities: ['chat', 'completion', 'vision']
       },
       {
-        serviceType: 'openai',
+        platform: 'openai',
         displayName: 'OpenAI',
         models: ['gpt-4', 'gpt-4-turbo', 'gpt-3.5-turbo'],
         capabilities: ['chat', 'completion', 'embedding']
       },
       {
-        serviceType: 'qwen',
+        platform: 'qwen',
         displayName: '通义千问',
         models: ['qwen-max', 'qwen-plus', 'qwen-turbo'],
         capabilities: ['chat', 'completion']

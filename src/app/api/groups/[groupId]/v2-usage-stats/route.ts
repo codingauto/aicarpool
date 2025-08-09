@@ -18,7 +18,7 @@ interface CarpoolUsageStats {
     boundAccount?: {
       id: string;
       name: string;
-      serviceType: string;
+      platform: string;
       status: string;
     };
   };
@@ -100,7 +100,7 @@ export async function GET(
                   select: {
                     id: true,
                     name: true,
-                    serviceType: true,
+                    platform: true,
                     status: true
                   }
                 }
@@ -256,7 +256,7 @@ export async function GET(
         boundAccount: boundAccount ? {
           id: boundAccount.id,
           name: boundAccount.name,
-          serviceType: boundAccount.serviceType,
+          platform: boundAccount.serviceType,
           status: boundAccount.status
         } : undefined
       },

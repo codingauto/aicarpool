@@ -89,7 +89,7 @@ export async function GET(
               select: {
                 id: true,
                 name: true,
-                serviceType: true,
+                platform: true,
                 status: true
               }
             }
@@ -115,7 +115,7 @@ export async function GET(
       boundAccounts: group.accountBindings.map(binding => ({
         id: binding.account.id,
         name: binding.account.name,
-        serviceType: binding.account.serviceType,
+        platform: binding.account.platform,
         status: binding.account.status,
         isActive: binding.isActive,
         bindingType: binding.bindingType,

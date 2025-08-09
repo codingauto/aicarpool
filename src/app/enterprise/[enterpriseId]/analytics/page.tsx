@@ -58,7 +58,7 @@ interface AnalyticsData {
     successRate: number;
   }[];
   serviceUsage: {
-    serviceType: string;
+    platform: string;
     tokens: number;
     cost: number;
     requests: number;
@@ -397,7 +397,7 @@ export default function EnterpriseAnalyticsPage({ params }: { params: Promise<{ 
                       <div className="flex items-center space-x-3">
                         <Zap className="w-5 h-5 text-blue-500" />
                         <div>
-                          <h4 className="font-medium text-gray-900">{service.serviceType}</h4>
+                          <h4 className="font-medium text-gray-900">{service.platform}</h4>
                           <p className="text-sm text-gray-600">
                             占比 {service.percentage}%
                           </p>

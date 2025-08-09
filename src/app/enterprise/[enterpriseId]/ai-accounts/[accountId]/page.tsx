@@ -43,7 +43,7 @@ interface AiAccount {
   id: string;
   name: string;
   description: string;
-  serviceType: string;
+  platform: string;
   accountType: string;
   isEnabled: boolean;
   status: string;
@@ -188,7 +188,7 @@ export default function AiAccountDetailPage({
     }
   };
 
-  const getServiceTypeDisplayName = (serviceType: string) => {
+  const getServiceTypeDisplayName = (platform: string) => {
     const displayNames: Record<string, string> = {
       'claude': 'Claude',
       'gemini': 'Gemini',
@@ -318,7 +318,7 @@ export default function AiAccountDetailPage({
                 <p className="text-gray-600 mb-3">{account.description}</p>
                 <div className="flex items-center gap-3">
                   <Badge variant="outline">
-                    {getServiceTypeDisplayName(account.serviceType)}
+                    {getServiceTypeDisplayName(account.platform)}
                   </Badge>
                   {getStatusBadge(account.status, account.isEnabled)}
                   <Badge variant="secondary">
@@ -416,7 +416,7 @@ export default function AiAccountDetailPage({
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="text-sm font-medium text-gray-500">服务类型</label>
-                        <p className="mt-1">{getServiceTypeDisplayName(account.serviceType)}</p>
+                        <p className="mt-1">{getServiceTypeDisplayName(account.platform)}</p>
                       </div>
                       <div>
                         <label className="text-sm font-medium text-gray-500">账号类型</label>

@@ -32,7 +32,7 @@ interface Enterprise {
 interface AiServiceAccount {
   id: string;
   name: string;
-  serviceType: string;
+  platform: string;
   accountType: string;
   isEnabled: boolean;
   status: string;
@@ -194,7 +194,7 @@ export default function CreateEnterpriseGroupPage({ params }: PageProps) {
             break;
           case 'shared':
             bindingConfig = {
-              poolConfig: form.sharedPoolConfig.serviceTypes.map(serviceType => ({
+              poolConfig: form.sharedPoolConfig.platforms.map(serviceType => ({
                 serviceType,
                 maxUsagePercent: form.sharedPoolConfig.maxUsagePercent,
                 priority: form.sharedPoolConfig.priority === 'high' ? 1 : 

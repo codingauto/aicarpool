@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
     // 5. 构建AI请求
     const aiRequest = {
       messages,
-      serviceType: serviceType || 'claude',
+      platform: serviceType || 'claude',
       model,
       maxTokens,
       temperature,
@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
         accountUsed: {
           id: 'fallback-account',
           name: 'Fallback Account',
-          serviceType: serviceType || 'claude'
+          platform: serviceType || 'claude'
         },
         performance: {
           routingTime: 50,
@@ -315,7 +315,7 @@ export async function POST_WITH_API_KEY(request: NextRequest) {
     // 3. 构建AI请求（包含API Key信息）
     const aiRequest = {
       messages,
-      serviceType: serviceType || 'claude',
+      platform: serviceType || 'claude',
       model,
       maxTokens,
       temperature,

@@ -61,7 +61,7 @@ export async function GET(
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
     const granularity = searchParams.get('granularity') || 'day'; // hour, day, week, month
-    const serviceType = searchParams.get('serviceType');
+    const serviceType = searchParams.get('platform');
     const includeEnterprise = searchParams.get('includeEnterprise') === 'true';
 
     // 5. 构建查询时间范围
@@ -199,7 +199,7 @@ export async function GET(
         select: {
           id: true,
           name: true,
-          serviceType: true,
+          platform: true,
           currentLoad: true,
           totalRequests: true,
           totalTokens: true,
@@ -240,7 +240,7 @@ export async function GET(
           errorRate: Math.round(errorRate * 100) / 100
         },
         breakdown: serviceBreakdown.map(item => ({
-          serviceType: item.aiServiceType,
+          platform: item.aiServiceType,
           requests: item._count,
           tokens: Number(item._sum.totalTokens || 0),
           cost: Number(item._sum.cost || 0),

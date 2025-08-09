@@ -56,7 +56,7 @@ import {
 import { CardDescription } from '@/components/ui/card';
 
 interface ServiceMetrics {
-  serviceType: string;
+  platform: string;
   serviceName: string;
   status: 'healthy' | 'warning' | 'error';
   responseTime: number;

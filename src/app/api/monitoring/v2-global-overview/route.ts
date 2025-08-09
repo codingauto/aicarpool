@@ -41,7 +41,7 @@ interface GlobalOverview {
     averageResponseTime: number;
     successRate: number;
     topServiceTypes: {
-      serviceType: string;
+      platform: string;
       requests: number;
       cost: number;
     }[];
@@ -112,7 +112,7 @@ export async function GET(
 
     // 按服务类型统计AI账号
     const accountsByServiceType = await prisma.aiServiceAccount.groupBy({
-      by: ['serviceType'],
+      by: ['platform'],
       where: { isEnabled: true },
       _count: true
     });

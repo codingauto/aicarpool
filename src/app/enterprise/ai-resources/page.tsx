@@ -40,7 +40,7 @@ interface AiResourceDashboard {
   dailyCost: number;
   averageResponseTime: number;
   accountsByService: {
-    serviceType: string;
+    platform: string;
     count: number;
     healthyCount: number;
     avgLoad: number;
@@ -76,10 +76,10 @@ export default function AiResourcesPage() {
         dailyCost: 45.67,
         averageResponseTime: 1234,
         accountsByService: [
-          { serviceType: 'claude', count: 6, healthyCount: 5, avgLoad: 45 },
-          { serviceType: 'gemini', count: 4, healthyCount: 4, avgLoad: 32 },
-          { serviceType: 'openai', count: 3, healthyCount: 2, avgLoad: 67 },
-          { serviceType: 'qwen', count: 2, healthyCount: 1, avgLoad: 78 }
+          { platform: 'claude', count: 6, healthyCount: 5, avgLoad: 45 },
+          { platform: 'gemini', count: 4, healthyCount: 4, avgLoad: 32 },
+          { platform: 'openai', count: 3, healthyCount: 2, avgLoad: 67 },
+          { platform: 'qwen', count: 2, healthyCount: 1, avgLoad: 78 }
         ],
         topGroupsByUsage: [
           { groupId: '1', groupName: '前端开发组', dailyCost: 15.23, requestCount: 342 },
@@ -98,7 +98,7 @@ export default function AiResourcesPage() {
     }
   };
 
-  const getServiceTypeDisplayName = (serviceType: string) => {
+  const getServiceTypeDisplayName = (platform: string) => {
     const displayNames: Record<string, string> = {
       'claude': 'Claude',
       'gemini': 'Gemini',
@@ -108,7 +108,7 @@ export default function AiResourcesPage() {
     return displayNames[serviceType] || serviceType;
   };
 
-  const getServiceTypeColor = (serviceType: string) => {
+  const getServiceTypeColor = (platform: string) => {
     const colors: Record<string, string> = {
       'claude': 'bg-blue-500',
       'gemini': 'bg-green-500',
@@ -248,11 +248,11 @@ export default function AiResourcesPage() {
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {dashboardData.accountsByService.map((service) => (
-                  <div key={service.serviceType} className="space-y-3">
+                  <div key={service.platform} className="space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
-                        <div className={`w-3 h-3 rounded-full ${getServiceTypeColor(service.serviceType)}`}></div>
-                        <span className="font-medium">{getServiceTypeDisplayName(service.serviceType)}</span>
+                        <div className={`w-3 h-3 rounded-full ${getServiceTypeColor(service.platform)}`}></div>
+                        <span className="font-medium">{getServiceTypeDisplayName(service.platform)}</span>
                         {getHealthStatusIcon(service.healthyCount, service.count)}
                       </div>
                       <Badge variant="secondary">
