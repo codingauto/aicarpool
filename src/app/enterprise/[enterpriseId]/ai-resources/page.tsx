@@ -36,15 +36,15 @@ import {
   Building2,
   Search,
   Filter,
-  Trash2,
-  Edit,
-  Eye,
   RefreshCw,
-  MoreHorizontal
+  Eye,
+  Edit
+
 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEnterpriseContext } from '@/contexts/enterprise-context';
 import { toast } from 'sonner';
+
 
 interface AiResourceDashboard {
   totalAccounts: number;
@@ -78,13 +78,14 @@ interface AiAccount {
   id: string;
   name: string;
   description: string;
-  serviceType: string;
+  platform: string; // 改为platform
+  authType: string;
   accountType: string;
+  priority: number;
   isEnabled: boolean;
   status: string;
+  validationStatus: string;
   currentLoad: number;
-  supportedModels: string[];
-  currentModel: string;
   dailyLimit: number;
   totalRequests: number;
   totalTokens: number;
@@ -105,9 +106,17 @@ interface AiAccount {
     priority: number;
     isActive: boolean;
   }[];
+  // 平台特定配置
+  geminiProjectId?: string;
+  claudeConsoleApiUrl?: string;
+  proxyEnabled: boolean;
   createdAt: string;
   updatedAt: string;
 }
+
+
+
+
 
 export default function EnterpriseAiResourcesPage({ params }: { params: Promise<{ enterpriseId: string }> }) {
   const { enterpriseId } = use(params);
@@ -132,6 +141,10 @@ export default function EnterpriseAiResourcesPage({ params }: { params: Promise<
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
 
+
+
+
+
   useEffect(() => {
     fetchAiResourceDashboard();
   }, [enterpriseId, selectedTimeRange]);
@@ -139,6 +152,10 @@ export default function EnterpriseAiResourcesPage({ params }: { params: Promise<
   useEffect(() => {
     fetchAccounts();
   }, [enterpriseId, currentPage, selectedService, selectedStatus, searchTerm]);
+
+
+
+
 
   const fetchAiResourceDashboard = async () => {
     try {
@@ -177,7 +194,7 @@ export default function EnterpriseAiResourcesPage({ params }: { params: Promise<
       const params = new URLSearchParams({
         page: currentPage.toString(),
         pageSize: '20',
-        ...(selectedService && { serviceType: selectedService }),
+        ...(selectedService && { platform: selectedService }), // 改为platform
         ...(selectedStatus && { status: selectedStatus }),
         ...(searchTerm && { search: searchTerm })
       });
@@ -209,6 +226,8 @@ export default function EnterpriseAiResourcesPage({ params }: { params: Promise<
     }
   };
 
+
+
   const handleCreateAccount = () => {
     router.push(`/enterprise/${enterpriseId}/ai-accounts/create`);
   };
@@ -221,17 +240,31 @@ export default function EnterpriseAiResourcesPage({ params }: { params: Promise<
     router.push(`/enterprise/${enterpriseId}/ai-accounts/${accountId}`);
   };
 
-  const getServiceTypeDisplayName = (serviceType: string) => {
+
+
+
+
+  const getPlatformDisplayName = (platform: string) => {
     const displayNames: Record<string, string> = {
       'claude': 'Claude',
       'gemini': 'Gemini',
+      'claude_console': 'Claude Console',
       'openai': 'OpenAI',
       'gpt': 'OpenAI',
       'qwen': '通义千问',
       'zhipu': '智谱AI',
       'kimi': 'Kimi'
     };
-    return displayNames[serviceType] || serviceType;
+    return displayNames[platform] || platform;
+  };
+
+  const getAuthTypeDisplayName = (authType: string) => {
+    const displayNames: Record<string, string> = {
+      'oauth': 'OAuth',
+      'manual': '手动Token',
+      'api_key': 'API密钥'
+    };
+    return displayNames[authType] || authType;
   };
 
   const getStatusBadge = (status: string, isEnabled: boolean) => {
@@ -295,6 +328,10 @@ export default function EnterpriseAiResourcesPage({ params }: { params: Promise<
         return <CheckCircle className="w-4 h-4 text-blue-500" />;
     }
   };
+
+
+
+
 
   if (loading) {
     return (
@@ -453,7 +490,7 @@ export default function EnterpriseAiResourcesPage({ params }: { params: Promise<
                           <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-2">
                               <div className={`w-3 h-3 rounded-full ${getServiceTypeColor(service.serviceType)}`}></div>
-                              <span className="font-medium">{getServiceTypeDisplayName(service.serviceType)}</span>
+                              <span className="font-medium">{getPlatformDisplayName(service.serviceType)}</span>
                           {getHealthStatusIcon(service.healthyCount, service.count)}
                         </div>
                         <Badge variant="secondary">
@@ -640,7 +677,7 @@ export default function EnterpriseAiResourcesPage({ params }: { params: Promise<
               </div>
             </div>
 
-            {/* 账号列表 */}
+            {/* 账号列表 - 表格格式 */}
             {accountsError ? (
               <Card>
                 <CardContent className="pt-6">
@@ -657,103 +694,182 @@ export default function EnterpriseAiResourcesPage({ params }: { params: Promise<
                 <CardHeader>
                   <CardTitle>AI账号列表 ({totalCount})</CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-0">
                   {accountsLoading ? (
-                    <div className="space-y-4">
-                      {[...Array(3)].map((_, i) => (
-                        <div key={i} className="animate-pulse">
-                          <div className="flex items-center justify-between p-4 border rounded-lg">
-                            <div className="flex items-center space-x-4">
-                              <div className="w-4 h-4 bg-gray-200 rounded"></div>
-                              <div className="space-y-2">
-                                <div className="h-4 bg-gray-200 rounded w-32"></div>
-                                <div className="h-3 bg-gray-200 rounded w-48"></div>
+                    <div className="p-6">
+                      <div className="space-y-4">
+                        {[...Array(3)].map((_, i) => (
+                          <div key={i} className="animate-pulse">
+                            <div className="flex items-center justify-between p-4 border rounded-lg">
+                              <div className="flex items-center space-x-4">
+                                <div className="w-4 h-4 bg-gray-200 rounded"></div>
+                                <div className="space-y-2">
+                                  <div className="h-4 bg-gray-200 rounded w-32"></div>
+                                  <div className="h-3 bg-gray-200 rounded w-48"></div>
+                                </div>
+                              </div>
+                              <div className="flex space-x-2">
+                                <div className="h-6 bg-gray-200 rounded w-16"></div>
+                                <div className="h-6 bg-gray-200 rounded w-12"></div>
                               </div>
                             </div>
-                            <div className="flex space-x-2">
-                              <div className="h-6 bg-gray-200 rounded w-16"></div>
-                              <div className="h-6 bg-gray-200 rounded w-12"></div>
-                            </div>
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
                   ) : (
-                    <div className="space-y-4">
-                      {accounts.map((account) => (
-                        <div key={account.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
-                          <div className="flex items-center space-x-4">
-                            <div className="flex items-center space-x-2">
-                              {getHealthIcon(account.healthStatus)}
-                              <div>
-                                <h4 className="font-medium text-gray-900">{account.name}</h4>
-                                <p className="text-sm text-gray-600">{account.description}</p>
-                              </div>
-                            </div>
-                            
-                            <div className="flex items-center space-x-2">
-                              <Badge variant="outline">
-                                {getServiceTypeDisplayName(account.serviceType)}
-                              </Badge>
-                              {getStatusBadge(account.status, account.isEnabled)}
-                              <Badge variant="secondary">
-                                {account.accountType === 'dedicated' ? '专用' : '共享'}
-                              </Badge>
-                            </div>
-                          </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead className="bg-gray-50 border-b">
+                          <tr>
+                            <th className="text-left py-3 px-4 font-medium text-gray-900">名称</th>
+                            <th className="text-left py-3 px-4 font-medium text-gray-900">平台/类型</th>
+                            <th className="text-left py-3 px-4 font-medium text-gray-900">状态</th>
+                            <th className="text-left py-3 px-4 font-medium text-gray-900">优先级</th>
+                            <th className="text-left py-3 px-4 font-medium text-gray-900">代理</th>
+                            <th className="text-left py-3 px-4 font-medium text-gray-900">今日使用</th>
+                            <th className="text-left py-3 px-4 font-medium text-gray-900">合适端口</th>
+                            <th className="text-left py-3 px-4 font-medium text-gray-900">最后使用</th>
+                            <th className="text-left py-3 px-4 font-medium text-gray-900">操作</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {accounts.map((account) => (
+                            <tr key={account.id} className="border-b hover:bg-gray-50">
+                              {/* 名称列 */}
+                              <td className="py-3 px-4">
+                                <div className="flex items-center space-x-2">
+                                  <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center text-white text-xs font-medium">
+                                    {account.name.charAt(0).toUpperCase()}
+                                  </div>
+                                  <div>
+                                    <div className="font-medium text-gray-900">{account.name}</div>
+                                    <div className="text-xs text-gray-500">{account.id.substring(0, 8)}...</div>
+                                  </div>
+                                </div>
+                              </td>
+                              
+                              {/* 平台/类型列 */}
+                              <td className="py-3 px-4">
+                                <div className="flex items-center space-x-1">
+                                  <Badge variant="outline" className="text-xs">
+                                    {getPlatformDisplayName(account.platform)}
+                                  </Badge>
+                                  <Badge variant="secondary" className="text-xs">
+                                    {getAuthTypeDisplayName(account.authType)}
+                                  </Badge>
+                                </div>
+                              </td>
+                              
+                              {/* 状态列 */}
+                              <td className="py-3 px-4">
+                                {getStatusBadge(account.status, account.isEnabled)}
+                              </td>
+                              
+                              {/* 优先级列 */}
+                              <td className="py-3 px-4">
+                                <span className="text-sm text-gray-900">
+                                  {account.priority ? account.priority : 'N/A'}
+                                </span>
+                              </td>
+                              
+                              {/* 代理列 */}
+                              <td className="py-3 px-4">
+                                <span className="text-sm text-gray-600">
+                                  {account.proxyEnabled ? '已启用' : '无代理'}
+                                </span>
+                              </td>
+                              
+                              {/* 今日使用列 */}
+                              <td className="py-3 px-4">
+                                <div className="text-sm">
+                                  <div className="text-gray-900">
+                                    {account.recentUsage.tokens}次
+                                  </div>
+                                  <div className="text-gray-500">
+                                    {account.recentUsage.tokens.toLocaleString()} tokens
+                                  </div>
+                                </div>
+                              </td>
+                              
+                              {/* 合适端口列 */}
+                              <td className="py-3 px-4">
+                                <span className="text-sm text-gray-600">N/A</span>
+                              </td>
+                              
+                              {/* 最后使用列 */}
+                              <td className="py-3 px-4">
+                                <span className="text-sm text-gray-600">
+                                  {account.lastUsedAt 
+                                    ? new Date(account.lastUsedAt).toLocaleDateString('zh-CN')
+                                    : '从未使用'
+                                  }
+                                </span>
+                              </td>
+                              
+                              {/* 操作列 */}
+                              <td className="py-3 px-4">
+                                <div className="flex items-center space-x-1">
+                                  {/* 启用/禁用按钮 */}
+                                  <Button
+                                    variant={account.isEnabled ? "default" : "secondary"}
+                                    size="sm"
+                                    className="h-8 px-3 text-xs"
+                                  >
+                                    {account.isEnabled ? '启用' : '禁用'}
+                                  </Button>
+                                  
+                                  {/* 编辑按钮 */}
+                                  {(hasRole('owner') || hasRole('admin')) && (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => handleEditAccount(account.id)}
+                                      className="h-8 px-3 text-xs"
+                                    >
+                                      编辑
+                                    </Button>
+                                  )}
+                                  
+                                  {/* 删除按钮 */}
+                                  {(hasRole('owner') || hasRole('admin')) && (
+                                    <Button
+                                      variant="destructive"
+                                      size="sm"
+                                      className="h-8 px-3 text-xs"
+                                    >
+                                      删除
+                                    </Button>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
                           
-                          <div className="flex items-center space-x-2">
-                            <div className="text-right text-sm">
-                              <div className="font-medium">
-                                {account.recentUsage.tokens.toLocaleString()} tokens
-                              </div>
-                              <div className="text-gray-500">
-                                ${account.recentUsage.cost.toFixed(2)} (24h)
-                              </div>
-                            </div>
-                            
-                            <div className="flex space-x-1">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleViewAccount(account.id)}
-                                title="查看账号详情"
-                              >
-                                <Eye className="w-4 h-4" />
-                              </Button>
-                              {(hasRole('owner') || hasRole('admin')) && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleEditAccount(account.id)}
-                                  title="编辑账号"
-                                >
-                                  <Edit className="w-4 h-4" />
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                      
-                      {accounts.length === 0 && !accountsLoading && (
-                        <div className="text-center py-12">
-                          <Server className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                          <p className="text-gray-500">暂无AI账号</p>
-                          {(hasRole('owner') || hasRole('admin')) && (
-                            <Button onClick={handleCreateAccount} className="mt-4">
-                              <Plus className="h-4 w-4 mr-2" />
-                              添加第一个账号
-                            </Button>
+                          {accounts.length === 0 && !accountsLoading && (
+                            <tr>
+                              <td colSpan={9} className="text-center py-12">
+                                <Server className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                                <p className="text-gray-500 mb-4">暂无AI账号</p>
+                                {(hasRole('owner') || hasRole('admin')) && (
+                                  <Button onClick={handleCreateAccount}>
+                                    <Plus className="h-4 w-4 mr-2" />
+                                    添加第一个账号
+                                  </Button>
+                                )}
+                              </td>
+                            </tr>
                           )}
-                        </div>
-                      )}
+                        </tbody>
+                      </table>
                     </div>
                   )}
                 </CardContent>
               </Card>
             )}
           </TabsContent>
+
+
         </Tabs>
         </div>
       </div>

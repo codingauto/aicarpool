@@ -175,8 +175,10 @@ jobs:
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
-            # short commit sha for PRs and other branches
-            type=sha,prefix={{branch}}-,suffix=-{{date 'YYYYMMDDHHmmss'}},enable=${{ github.event_name == 'pull_request' }}
+            # for PRs: pr-<number>-<short-sha>
+            type=ref,event=pr,prefix=pr-,suffix=-{{sha}}
+            # for branches: branch-<name>-<short-sha>
+            type=ref,event=branch,prefix=branch-,suffix=-{{sha}}
           labels: |
             org.opencontainers.image.title=AiCarpool
             org.opencontainers.image.description=Enterprise AI Service Carpool Management Platform
