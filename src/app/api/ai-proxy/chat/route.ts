@@ -11,6 +11,10 @@ import { createApiResponse } from '@/lib/middleware';
 import { AiServiceClient, AiRequest } from '@/lib/ai-platforms/ai-service-client';
 import { ServiceType } from '@/lib/ai-platforms/platform-configs';
 
+// 导入限流模块
+import { checkApiKeyLimits, updateApiKeyUsage } from '@/lib/rate-limit';
+import { checkGroupQuota, updateGroupUsage } from '@/lib/rate-limit';
+
 const chatRequestSchema = z.object({
   messages: z.array(z.object({
     role: z.enum(['system', 'user', 'assistant']),
@@ -25,8 +29,13 @@ const chatRequestSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    // 临时返回维护中状态，直到新架构迁移完成
-    return createApiResponse(false, null, 'AI Proxy正在升级中，暂时不可用', 503);
+    // 检查是否启用优化路由
+    const ENABLE_OPTIMIZED_ROUTER = process.env.ENABLE_OPTIMIZED_ROUTER === 'true';
+    
+    if (!ENABLE_OPTIMIZED_ROUTER) {
+      // 临时返回维护中状态，直到新架构迁移完成
+      return createApiResponse(false, null, 'AI Proxy正在升级中，暂时不可用', 503);
+    }
     
     // 从请求头获取API密钥
     const apiKey = request.headers.get('authorization')?.replace('Bearer ', '');
@@ -63,12 +72,60 @@ export async function POST(request: NextRequest) {
     }
 
     // 检查用户和组状态
-    if (apiKeyRecord.user?.status !== 'active') {
+    if (apiKeyRecord && apiKeyRecord.user?.status !== 'active') {
       return createApiResponse(false, null, '用户账户已被禁用', 403);
     }
 
-    if (apiKeyRecord.group?.status !== 'active') {
+    if (apiKeyRecord && apiKeyRecord.group?.status !== 'active') {
       return createApiResponse(false, null, '拼车组已被禁用', 403);
+    }
+
+    // 解析请求体获取预估Token数
+    const body = await request.json();
+    const validatedData = chatRequestSchema.parse(body);
+    
+    // 预估Token使用量（简单估算）
+    let estimatedTokens = 100; // 基础响应
+    if (validatedData.messages) {
+      estimatedTokens += validatedData.messages.reduce((acc, msg) => 
+        acc + Math.ceil(msg.content.length / 4), 0); // 粗略估算：4字符=1token
+    }
+    
+    // 预估费用（根据模型）
+    let estimatedCost = 0.002; // 默认费用
+    if (validatedData.model?.includes('gpt-4')) {
+      estimatedCost = estimatedTokens * 0.00003;
+    } else if (validatedData.model?.includes('claude')) {
+      estimatedCost = estimatedTokens * 0.00002;
+    } else {
+      estimatedCost = estimatedTokens * 0.000002;
+    }
+
+    // 检查API密钥限流
+    const rateLimitResult = await checkApiKeyLimits(
+      apiKeyRecord.id,
+      apiKeyRecord,
+      estimatedTokens,
+      estimatedCost
+    );
+
+    if (!rateLimitResult.allowed) {
+      return createApiResponse(false, null, rateLimitResult.reason || '请求被限流', 429, {
+        headers: rateLimitResult.headers
+      });
+    }
+
+    // 检查拼车组配额
+    if (apiKeyRecord.group) {
+      const groupQuotaResult = await checkGroupQuota(
+        apiKeyRecord.group.id,
+        estimatedTokens,
+        estimatedCost
+      );
+
+      if (!groupQuotaResult.allowed) {
+        return createApiResponse(false, null, groupQuotaResult.reason || '拼车组配额不足', 429);
+      }
     }
 
     // 静态AI服务信息
@@ -99,25 +156,24 @@ export async function POST(request: NextRequest) {
       },
     };
 
-    const aiServiceInfo = staticAiServices[apiKeyRecord?.aiServiceId as keyof typeof staticAiServices];
+    // 从 apiKey 的 permissions 字段获取服务类型，默认为 claude
+    const serviceId = apiKeyRecord?.permissions || 'claude';
+    const aiServiceInfo = staticAiServices[serviceId as keyof typeof staticAiServices] || staticAiServices.claude;
     if (!aiServiceInfo || !aiServiceInfo.isEnabled) {
       return createApiResponse(false, null, 'AI服务已被禁用', 403);
     }
 
-    // 检查配额
-    if (apiKeyRecord?.quotaLimit && apiKeyRecord?.quotaUsed && apiKeyRecord.quotaUsed >= apiKeyRecord.quotaLimit) {
+    // 旧的配额检查已被Redis限流替代
+    // 保留向后兼容
+    if (apiKeyRecord && apiKeyRecord.quotaLimit && apiKeyRecord.quotaUsed && apiKeyRecord.quotaUsed >= apiKeyRecord.quotaLimit) {
       return createApiResponse(false, null, '配额已用完', 429);
     }
-
-    // 解析请求体
-    const body = await request.json();
-    const validatedData = chatRequestSchema.parse(body);
 
     // 检查服务类型以决定使用哪种路由策略
     const serviceType = aiServiceInfo.serviceType;
     const startTime = Date.now();
     
-    let response;
+    let response: any = null;
     let cost = 0;
 
     try {
@@ -134,6 +190,7 @@ export async function POST(request: NextRequest) {
             completionTokens: 50,
             totalTokens: 150
           },
+          model: 'claude-3-sonnet',
           cost: 0.01
         };
         /*
@@ -155,7 +212,7 @@ export async function POST(request: NextRequest) {
         const groupAiService = await prisma.groupAiService.findFirst({
           where: {
             groupId: apiKeyRecord?.group?.id || '',
-            aiServiceId: apiKeyRecord?.aiServiceId || '',
+            aiServiceId: serviceId,
             isEnabled: true,
           },
         });
@@ -169,36 +226,56 @@ export async function POST(request: NextRequest) {
           return createApiResponse(false, null, 'AI服务未配置API密钥', 400);
         }
 
-        // 创建AI服务实例
-        const aiService = AIServiceFactory.create(
-          aiServiceInfo.serviceName as SupportedAIService,
-          {
-            apiKey: authConfig.apiKey as string,
-            baseUrl: aiServiceInfo.baseUrl,
-            timeout: 30000,
-          }
-        );
-
-        // 调用AI服务
-        response = await aiService.chat(validatedData as ChatRequest);
+        // 暂时返回模拟响应，待AIServiceFactory实现
+        response = {
+          message: {
+            role: 'assistant' as const,
+            content: `${aiServiceInfo.displayName} 服务正在维护中`
+          },
+          usage: {
+            promptTokens: 100,
+            completionTokens: 50,
+            totalTokens: 150
+          },
+          model: 'default',
+          cost: 0.01
+        };
         
         // 计算成本
-        cost = aiService.calculateCost(response.usage, response.model);
+        cost = response.cost || 0.01;
       }
 
       const endTime = Date.now();
       const responseTime = endTime - startTime;
+
+      // 更新Redis限流计数器
+      const actualTokens = response?.usage?.totalTokens || estimatedTokens;
+      const actualCost = cost || estimatedCost;
+      
+      await Promise.all([
+        // 更新API密钥使用量
+        updateApiKeyUsage(apiKeyRecord.id, {
+          tokens: actualTokens,
+          cost: actualCost,
+          requests: 1
+        }),
+        // 更新拼车组使用量
+        apiKeyRecord.group && updateGroupUsage(apiKeyRecord.group.id, {
+          tokens: actualTokens,
+          cost: actualCost
+        })
+      ]);
 
       // 记录使用统计
       await prisma.$transaction(async (tx) => {
         // 创建使用记录
         await tx.usageStat.create({
           data: {
-            userId: apiKeyRecord.user.id,
-            groupId: apiKeyRecord.group.id,
-            aiServiceId: apiKeyRecord.aiServiceId,
+            userId: apiKeyRecord?.user?.id || '',
+            groupId: apiKeyRecord?.group?.id || '',
+            aiServiceId: serviceId,
             requestType: 'chat',
-            tokenCount: BigInt(response.usage.totalTokens),
+            totalTokens: BigInt(response?.usage?.totalTokens || 0),
             cost: cost,
             requestTime: new Date(startTime),
             responseTime: responseTime,
@@ -207,24 +284,35 @@ export async function POST(request: NextRequest) {
               model: response.model,
               promptTokens: response.usage.promptTokens,
               completionTokens: response.usage.completionTokens,
-              apiKeyId: apiKeyRecord.id,
+              apiKeyId: apiKeyRecord?.id || '',
             },
           },
         });
 
         // 更新API密钥使用量
         await tx.apiKey.update({
-          where: { id: apiKeyRecord.id },
+          where: { id: apiKeyRecord?.id || '' },
           data: {
             quotaUsed: {
-              increment: BigInt(response.usage.totalTokens),
+              increment: BigInt(response?.usage?.totalTokens || 0),
             },
             lastUsedAt: new Date(),
           },
         });
       });
 
-      return createApiResponse(true, response, 'AI服务调用成功', 200);
+      // 返回响应，包含限流头信息
+      const responseHeaders = rateLimitResult?.headers || {};
+      return new Response(
+        JSON.stringify(createApiResponse(true, response, 'AI服务调用成功', 200)),
+        {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            ...responseHeaders
+          }
+        }
+      );
 
     } catch (aiError) {
       const endTime = Date.now();
@@ -233,24 +321,26 @@ export async function POST(request: NextRequest) {
       console.error('AI service error:', aiError);
 
       // 记录错误统计
-      await prisma.usageStat.create({
-        data: {
-          userId: apiKeyRecord.user.id,
-          groupId: apiKeyRecord.group.id,
-          aiServiceId: apiKeyRecord.aiServiceId,
-          requestType: 'chat',
-          tokenCount: BigInt(0),
-          cost: 0,
-          requestTime: new Date(startTime),
-          responseTime: responseTime,
-          status: 'error',
-          errorCode: aiError instanceof Error ? aiError.message : 'unknown_error',
-          metadata: {
-            apiKeyId: apiKeyRecord.id,
-            error: aiError instanceof Error ? aiError.message : 'Unknown error',
+      if (apiKeyRecord) {
+        await prisma.usageStat.create({
+          data: {
+            userId: apiKeyRecord.user?.id || '',
+            groupId: apiKeyRecord.group?.id || '',
+            aiServiceId: serviceId,
+            requestType: 'chat',
+            totalTokens: BigInt(0),
+            cost: 0,
+            requestTime: new Date(startTime),
+            responseTime: responseTime,
+            status: 'error',
+            errorCode: aiError instanceof Error ? aiError.message : 'unknown_error',
+            metadata: {
+              apiKeyId: apiKeyRecord.id,
+              error: aiError instanceof Error ? aiError.message : 'Unknown error',
+            },
           },
-        },
-      });
+        });
+      }
 
       const errorMessage = aiError instanceof Error ? aiError.message : 'AI服务调用失败';
       return createApiResponse(false, null, errorMessage, 500);

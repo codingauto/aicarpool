@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { withAuth, createApiResponse, createErrorResponse } from '@/lib/middleware';
+import { verifyToken } from '@/lib/auth';
 
 const createCarpoolGroupSchema = z.object({
   name: z.string().min(1, '拼车组名称不能为空').max(50, '拼车组名称不能超过50个字符'),
@@ -98,7 +99,7 @@ async function createCarpoolGroupHandler(request: NextRequest, user: any) {
 // GET /api/carpool-groups - 获取用户的拼车组列表
 export async function GET(request: NextRequest) {
   try {
-    const user = await verifyToken(request);
+    const user = await verifyToken(request.headers.get('authorization') || '');
     if (!user) {
       return NextResponse.json(
         createErrorResponse('未授权访问', 401),

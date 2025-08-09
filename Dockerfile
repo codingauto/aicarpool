@@ -27,7 +27,7 @@ COPY prisma ./prisma/
 
 # 🔽 Install dependencies
 # Use npm ci for reproducible builds
-RUN npm ci --frozen-lockfile
+RUN npm ci
 
 # ========================================================================================
 # Stage 2: Builder - Build the application
@@ -61,6 +61,7 @@ RUN apk add --no-cache \
     curl \
     dumb-init \
     mysql-client \
+    netcat-openbsd \
     && rm -rf /var/cache/apk/*
 
 WORKDIR /app

@@ -7,9 +7,9 @@ import { cacheService } from '../cache/cache-service';
 import { usageQueueProcessor } from '../queue/usage-queue-processor';
 import { accountPoolManager } from '../services/account-pool-manager';
 import { performanceMonitor } from '../monitoring/performance-monitor';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 
-const prisma = new PrismaClient();
+// Use shared Prisma client singleton
 
 // 作业调度配置
 const JOB_CONFIG = {

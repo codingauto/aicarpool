@@ -20,12 +20,12 @@ export async function POST(
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '');
     if (!token) {
-      return createApiResponse(null, false, '缺少认证令牌', 401);
+      return createApiResponse(false, null, '缺少认证令牌', 401);
     }
 
     const user = await verifyToken(token);
     if (!user) {
-      return createApiResponse(null, false, '认证令牌无效', 401);
+      return createApiResponse(false, null, '认证令牌无效', 401);
     }
 
     const resolvedParams = await params;
@@ -41,7 +41,7 @@ export async function POST(
     });
 
     if (!groupMembership) {
-      return createApiResponse(null, false, '无权限访问该拼车组', 403);
+      return createApiResponse(false, null, '无权限访问该拼车组', 403);
     }
 
     // 获取API Key
@@ -66,7 +66,7 @@ export async function POST(
     });
 
     if (!apiKey || apiKey.groupId !== groupId) {
-      return createApiResponse(null, false, 'API密钥不存在', 404);
+      return createApiResponse(false, null, 'API密钥不存在', 404);
     }
 
     // 权限检查：只有管理员或密钥创建者可以测试
@@ -74,7 +74,7 @@ export async function POST(
     const isOwner = apiKey.userId === user.id;
 
     if (!isAdmin && !isOwner) {
-      return createApiResponse(null, false, '无权限测试此API密钥', 403);
+      return createApiResponse(false, null, '无权限测试此API密钥', 403);
     }
 
     // 执行完整的API Key验证
@@ -151,7 +151,7 @@ export async function POST(
 
   } catch (error) {
     console.error('测试API密钥失败:', error);
-    return createApiResponse(null, false, '测试API密钥失败', 500);
+    return createApiResponse(false, null, '测试API密钥失败', 500);
   }
 }
 

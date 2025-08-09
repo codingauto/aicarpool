@@ -173,7 +173,8 @@ export async function PUT(
           features: body.enterpriseSettings.features || {},
           security: body.enterpriseSettings.security || {},
           notifications: body.enterpriseSettings.notifications || {},
-          budgetSettings: body.enterpriseSettings.budgetSettings || {}
+          budgetSettings: body.enterpriseSettings.budgetSettings || {},
+          integrations: body.enterpriseSettings.integrations || {}
         }
       });
     }

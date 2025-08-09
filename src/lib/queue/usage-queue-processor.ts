@@ -3,11 +3,11 @@
  * v2.7 高并发优化 - 避免同步数据库写入阻塞API响应
  */
 
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import { cacheClient } from '../cache/redis-config';
 import { cacheService } from '../cache/cache-service';
 
-const prisma = new PrismaClient();
+// Use shared Prisma client singleton
 
 // 使用记录接口
 export interface UsageRecord {

@@ -25,12 +25,12 @@ export async function PUT(
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '');
     if (!token) {
-      return createApiResponse(null, false, '缺少认证令牌', 401);
+      return createApiResponse(false, null, '缺少认证令牌', 401);
     }
 
     const user = await verifyToken(token);
     if (!user) {
-      return createApiResponse(null, false, '认证令牌无效', 401);
+      return createApiResponse(false, null, '认证令牌无效', 401);
     }
 
     const { groupId, memberId } = params;
@@ -38,7 +38,7 @@ export async function PUT(
     // 验证拼车组管理权限
     const permissionResult = await verifyGroupPermissions(user, groupId, 'manage');
     if (!permissionResult.hasAccess) {
-      return createApiResponse(null, false, '您没有权限管理此拼车组的成员', 403);
+      return createApiResponse(false, null, '您没有权限管理此拼车组的成员', 403);
     }
 
     const body = await request.json();
@@ -46,7 +46,7 @@ export async function PUT(
 
     // 验证角色参数
     if (!role || !['member', 'admin'].includes(role)) {
-      return createApiResponse(null, false, '无效的角色设置', 400);
+      return createApiResponse(false, null, '无效的角色设置', 400);
     }
 
     // 检查成员是否存在
@@ -71,21 +71,21 @@ export async function PUT(
     });
 
     if (!existingMember) {
-      return createApiResponse(null, false, '成员不存在', 404);
+      return createApiResponse(false, null, '成员不存在', 404);
     }
 
     if (existingMember.group.id !== groupId) {
-      return createApiResponse(null, false, '成员不属于此拼车组', 400);
+      return createApiResponse(false, null, '成员不属于此拼车组', 400);
     }
 
     // 不能修改组长角色
     if (existingMember.role === 'owner') {
-      return createApiResponse(null, false, '无法修改创建者角色', 400);
+      return createApiResponse(false, null, '无法修改创建者角色', 400);
     }
 
     // 不能自己修改自己的角色
     if (existingMember.user.id === user.id) {
-      return createApiResponse(null, false, '无法修改自己的角色', 400);
+      return createApiResponse(false, null, '无法修改自己的角色', 400);
     }
 
     // 更新成员角色
@@ -118,7 +118,7 @@ export async function PUT(
 
   } catch (error) {
     console.error('更新成员角色失败:', error);
-    return createApiResponse(null, false, '更新成员角色失败', 500);
+    return createApiResponse(false, null, '更新成员角色失败', 500);
   }
 }
 
@@ -132,12 +132,12 @@ export async function DELETE(
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '');
     if (!token) {
-      return createApiResponse(null, false, '缺少认证令牌', 401);
+      return createApiResponse(false, null, '缺少认证令牌', 401);
     }
 
     const user = await verifyToken(token);
     if (!user) {
-      return createApiResponse(null, false, '认证令牌无效', 401);
+      return createApiResponse(false, null, '认证令牌无效', 401);
     }
 
     const { groupId, memberId } = params;
@@ -145,7 +145,7 @@ export async function DELETE(
     // 验证拼车组管理权限
     const permissionResult = await verifyGroupPermissions(user, groupId, 'manage');
     if (!permissionResult.hasAccess) {
-      return createApiResponse(null, false, '您没有权限管理此拼车组的成员', 403);
+      return createApiResponse(false, null, '您没有权限管理此拼车组的成员', 403);
     }
 
     // 检查成员是否存在
@@ -169,21 +169,21 @@ export async function DELETE(
     });
 
     if (!existingMember) {
-      return createApiResponse(null, false, '成员不存在', 404);
+      return createApiResponse(false, null, '成员不存在', 404);
     }
 
     if (existingMember.group.id !== groupId) {
-      return createApiResponse(null, false, '成员不属于此拼车组', 400);
+      return createApiResponse(false, null, '成员不属于此拼车组', 400);
     }
 
     // 不能移除组长
     if (existingMember.role === 'owner') {
-      return createApiResponse(null, false, '无法移除拼车组创建者', 400);
+      return createApiResponse(false, null, '无法移除拼车组创建者', 400);
     }
 
     // 不能移除自己
     if (existingMember.user.id === user.id) {
-      return createApiResponse(null, false, '无法移除自己', 400);
+      return createApiResponse(false, null, '无法移除自己', 400);
     }
 
     // 删除成员记录

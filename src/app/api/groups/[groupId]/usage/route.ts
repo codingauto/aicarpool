@@ -25,12 +25,12 @@ export async function GET(
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '');
     if (!token) {
-      return createApiResponse(null, false, '缺少认证令牌', 401);
+      return createApiResponse(false, null, '缺少认证令牌', 401);
     }
 
     const user = await verifyToken(token);
     if (!user) {
-      return createApiResponse(null, false, '认证令牌无效', 401);
+      return createApiResponse(false, null, '认证令牌无效', 401);
     }
 
     const resolvedParams = await params;
@@ -46,7 +46,7 @@ export async function GET(
     });
 
     if (!groupMembership) {
-      return createApiResponse(null, false, '无权限访问该拼车组', 403);
+      return createApiResponse(false, null, '无权限访问该拼车组', 403);
     }
 
     // 获取查询参数
@@ -117,7 +117,7 @@ export async function GET(
     });
 
     if (!group) {
-      return createApiResponse(null, false, '拼车组不存在', 404);
+      return createApiResponse(false, null, '拼车组不存在', 404);
     }
 
     // 如果没有关联企业，返回空统计
@@ -304,7 +304,7 @@ export async function GET(
 
   } catch (error) {
     console.error('获取使用统计失败:', error);
-    return createApiResponse(null, false, '获取使用统计失败', 500);
+    return createApiResponse(false, null, '获取使用统计失败', 500);
   }
 }
 
@@ -318,12 +318,12 @@ export async function POST(
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '');
     if (!token) {
-      return createApiResponse(null, false, '缺少认证令牌', 401);
+      return createApiResponse(false, null, '缺少认证令牌', 401);
     }
 
     const user = await verifyToken(token);
     if (!user) {
-      return createApiResponse(null, false, '认证令牌无效', 401);
+      return createApiResponse(false, null, '认证令牌无效', 401);
     }
 
     const resolvedParams = await params;
@@ -343,7 +343,7 @@ export async function POST(
     });
 
     if (!groupMembership) {
-      return createApiResponse(null, false, '无权限导出使用统计', 403);
+      return createApiResponse(false, null, '无权限导出使用统计', 403);
     }
 
     // 获取详细统计数据

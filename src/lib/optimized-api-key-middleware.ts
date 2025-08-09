@@ -3,10 +3,10 @@
  * v2.7 高并发优化 - 大幅减少数据库查询，提升验证性能
  */
 
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import { cacheService, CachedApiKey, QuotaInfo, RateInfo } from './cache/cache-service';
 
-const prisma = new PrismaClient();
+// Use shared Prisma client singleton
 
 // 功能开关配置
 const FeatureFlags = {

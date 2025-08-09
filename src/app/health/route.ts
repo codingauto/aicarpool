@@ -2,9 +2,9 @@ import { NextResponse } from 'next/server';
 
 export async function GET() {
   return NextResponse.json({
-    status: 'ok',
+    ok: true,
+    service: 'aicarpool',
+    version: process.env.npm_package_version || 'unknown',
     timestamp: new Date().toISOString(),
-    service: 'AiCarpool 拼车',
-    version: '1.0.0'
   });
 }

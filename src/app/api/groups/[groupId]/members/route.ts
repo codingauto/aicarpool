@@ -66,7 +66,7 @@ export async function GET(
       return createApiResponse(false, null, '拼车组不存在', 404);
     }
 
-    // 获取所有成员及其详细信息
+    // 获取所有成员及其详细信息（包含API密钥统计）
     const members = await prisma.groupMember.findMany({
       where: {
         groupId,
@@ -80,7 +80,21 @@ export async function GET(
             email: true,
             avatar: true,
             role: true,
-            status: true
+            status: true,
+            // 包含该用户在此组的API密钥
+            apiKeys: {
+              where: {
+                groupId: groupId
+              },
+              select: {
+                id: true,
+                name: true,
+                isActive: true,
+                expiresAt: true,
+                lastUsedAt: true,
+                createdAt: true
+              }
+            }
           }
         }
       },
@@ -110,9 +124,20 @@ export async function GET(
       });
     }
 
-    // 格式化成员数据
+    // 格式化成员数据（包含API密钥统计）
     const formattedMembers = members.map(member => {
       const userEnterpriseRoles = enterpriseRoles.filter(er => er.userId === member.userId);
+      
+      // 处理API密钥统计
+      const apiKeys = member.user.apiKeys || [];
+      const activeKeys = apiKeys.filter((key: any) => 
+        key.isActive && (!key.expiresAt || new Date(key.expiresAt) > new Date())
+      );
+      const lastUsedKey = apiKeys
+        .filter((key: any) => key.lastUsedAt)
+        .sort((a: any, b: any) => 
+          new Date(b.lastUsedAt).getTime() - new Date(a.lastUsedAt).getTime()
+        )[0];
       
       return {
         id: member.id,
@@ -120,13 +145,28 @@ export async function GET(
         status: member.status,
         joinedAt: member.joinedAt,
         user: {
-          ...member.user,
+          id: member.user.id,
+          name: member.user.name,
+          email: member.user.email,
+          avatar: member.user.avatar,
+          role: member.user.role,
+          status: member.user.status,
           enterpriseRoles: userEnterpriseRoles.map(er => ({
             roleName: er.role.name,
             displayName: er.role.displayName,
             scope: er.scope,
             resourceId: er.resourceId
           }))
+        },
+        // 新增：API密钥统计信息
+        apiKeyStats: {
+          total: apiKeys.length,
+          active: activeKeys.length,
+          lastKey: lastUsedKey ? {
+            id: lastUsedKey.id,
+            name: lastUsedKey.name,
+            lastUsedAt: lastUsedKey.lastUsedAt
+          } : null
         }
       };
     });

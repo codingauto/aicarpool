@@ -18,12 +18,12 @@ export async function POST(request: NextRequest) {
     // 1. 认证验证
     const token = request.headers.get('authorization')?.replace('Bearer ', '');
     if (!token) {
-      return createApiResponse(null, false, '缺少认证令牌', 401);
+      return createApiResponse(false, null, '缺少认证令牌', 401);
     }
 
     const user = await verifyToken(token);
     if (!user) {
-      return createApiResponse(null, false, '认证令牌无效', 401);
+      return createApiResponse(false, null, '认证令牌无效', 401);
     }
 
     // 2. 解析请求体
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
 
     // 3. 参数验证
     if (!groupId) {
-      return createApiResponse(null, false, '缺少拼车组ID', 400);
+      return createApiResponse(false, null, '缺少拼车组ID', 400);
     }
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     );
 
     if (!isValidMessages) {
-      return createApiResponse(null, false, '消息格式无效', 400);
+      return createApiResponse(false, null, '消息格式无效', 400);
     }
 
     // 4. 构建AI请求
@@ -88,19 +88,19 @@ export async function POST(request: NextRequest) {
       const errorMessage = error.message;
       
       if (errorMessage.includes('配额') || errorMessage.includes('限制')) {
-        return createApiResponse(null, false, errorMessage, 429);
+        return createApiResponse(false, null, errorMessage, 429);
       }
       
       if (errorMessage.includes('账号') || errorMessage.includes('不可用')) {
-        return createApiResponse(null, false, errorMessage, 503);
+        return createApiResponse(false, null, errorMessage, 503);
       }
       
       if (errorMessage.includes('权限') || errorMessage.includes('绑定')) {
-        return createApiResponse(null, false, errorMessage, 403);
+        return createApiResponse(false, null, errorMessage, 403);
       }
     }
     
-    return createApiResponse(null, false, 'AI服务暂时不可用', 500);
+    return createApiResponse(false, null, 'AI服务暂时不可用', 500);
   }
 }
 

@@ -45,7 +45,7 @@ async function quickDiagnose(userIdOrEmail?: string) {
       
       console.log(`   🏢 企业角色: ${userEnterprises.length} 个`);
       userEnterprises.forEach(ue => {
-        console.log(`     - ${ue.enterprise.name}: ${ue.role} (${ue.status})`);
+        console.log(`     - ${ue.enterprise.name}: ${ue.role} (${ue.isActive ? '活跃' : '非活跃'})`);
       });
 
       // 2. 检查拼车组成员

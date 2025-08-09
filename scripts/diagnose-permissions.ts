@@ -79,8 +79,8 @@ async function diagnoseUserPermissions(userIdOrEmail?: string): Promise<Diagnosi
         enterpriseId: ue.enterpriseId,
         enterpriseName: ue.enterprise.name,
         role: ue.role,
-        status: ue.status,
-        joinedAt: ue.createdAt
+        status: ue.isActive ? 'active' : 'inactive',
+        joinedAt: ue.joinedAt
       }));
 
       // 2. 检查拼车组成员身份
@@ -111,25 +111,18 @@ async function diagnoseUserPermissions(userIdOrEmail?: string): Promise<Diagnosi
 
       // 3. 检查企业角色权限配置
       const enterpriseRoles = await prisma.userEnterpriseRole.findMany({
-        where: { userId: user.id },
-        include: {
-          role: {
-            include: {
-              permissions: true
-            }
-          }
-        }
+        where: { userId: user.id }
       });
 
       result.enterpriseRoles = enterpriseRoles.map(uer => ({
-        roleId: uer.roleId,
-        roleName: uer.role.name,
-        roleDisplayName: uer.role.displayName,
+        roleId: uer.role,
+        roleName: uer.role,
+        roleDisplayName: uer.role,
         enterpriseId: uer.enterpriseId,
         scope: uer.scope,
         resourceId: uer.resourceId,
         isActive: uer.isActive,
-        permissions: uer.role.permissions.map(p => p.permission)
+        permissions: [] // 权限需要从权限管理器获取
       }));
 
       // 4. 分析权限问题
@@ -300,4 +293,5 @@ if (require.main === module) {
   main();
 }
 
-export { diagnoseUserPermissions, DiagnosisResult };
+export { diagnoseUserPermissions };
+export type { DiagnosisResult };

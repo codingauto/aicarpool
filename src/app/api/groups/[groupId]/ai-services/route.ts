@@ -25,12 +25,12 @@ export async function GET(
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '');
     if (!token) {
-      return createApiResponse(null, false, '缺少认证令牌', 401);
+      return createApiResponse(false, null, '缺少认证令牌', 401);
     }
 
     const user = await verifyToken(token);
     if (!user) {
-      return createApiResponse(null, false, '认证令牌无效', 401);
+      return createApiResponse(false, null, '认证令牌无效', 401);
     }
 
     const resolvedParams = await params;
@@ -46,7 +46,7 @@ export async function GET(
     });
 
     if (!groupMembership) {
-      return createApiResponse(null, false, '无权限访问该拼车组', 403);
+      return createApiResponse(false, null, '无权限访问该拼车组', 403);
     }
 
     // 获取拼车组和企业信息
@@ -97,7 +97,7 @@ export async function GET(
     });
 
     if (!group) {
-      return createApiResponse(null, false, '拼车组不存在', 404);
+      return createApiResponse(false, null, '拼车组不存在', 404);
     }
 
     // 如果没有关联企业，返回提示信息
@@ -243,7 +243,7 @@ export async function GET(
 
   } catch (error) {
     console.error('获取AI服务配置失败:', error);
-    return createApiResponse(null, false, '获取AI服务配置失败', 500);
+    return createApiResponse(false, null, '获取AI服务配置失败', 500);
   }
 }
 
@@ -257,12 +257,12 @@ export async function POST(
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '');
     if (!token) {
-      return createApiResponse(null, false, '缺少认证令牌', 401);
+      return createApiResponse(false, null, '缺少认证令牌', 401);
     }
 
     const user = await verifyToken(token);
     if (!user) {
-      return createApiResponse(null, false, '认证令牌无效', 401);
+      return createApiResponse(false, null, '认证令牌无效', 401);
     }
 
     const resolvedParams = await params;
@@ -272,7 +272,7 @@ export async function POST(
     const { serviceType, bindingMode = 'shared', quickSetup = true } = body;
 
     if (!serviceType) {
-      return createApiResponse(null, false, '缺少服务类型', 400);
+      return createApiResponse(false, null, '缺少服务类型', 400);
     }
 
     // 验证当前用户是否为拼车组管理员
@@ -286,7 +286,7 @@ export async function POST(
     });
 
     if (!groupMembership) {
-      return createApiResponse(null, false, '无权限配置AI服务', 403);
+      return createApiResponse(false, null, '无权限配置AI服务', 403);
     }
 
     // 获取拼车组和企业信息
@@ -308,12 +308,12 @@ export async function POST(
     });
 
     if (!group || !group.enterpriseId) {
-      return createApiResponse(null, false, '拼车组未关联企业', 400);
+      return createApiResponse(false, null, '拼车组未关联企业', 400);
     }
 
     const availableAccounts = group.enterprise?.aiAccounts || [];
     if (availableAccounts.length === 0) {
-      return createApiResponse(null, false, `企业没有可用的 ${serviceType} 账号`, 400);
+      return createApiResponse(false, null, `企业没有可用的 ${serviceType} 账号`, 400);
     }
 
     // 构建绑定配置
@@ -387,7 +387,7 @@ export async function POST(
 
   } catch (error) {
     console.error('配置AI服务失败:', error);
-    return createApiResponse(null, false, '配置AI服务失败', 500);
+    return createApiResponse(false, null, '配置AI服务失败', 500);
   }
 }
 
