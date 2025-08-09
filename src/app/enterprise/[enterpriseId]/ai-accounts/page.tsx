@@ -40,13 +40,14 @@ interface AiAccount {
   id: string;
   name: string;
   description: string;
-  serviceType: string;
+  platform: string; // 改为platform
+  authType: string;
   accountType: string;
+  priority: number;
   isEnabled: boolean;
   status: string;
+  validationStatus: string;
   currentLoad: number;
-  supportedModels: string[];
-  currentModel: string;
   dailyLimit: number;
   totalRequests: number;
   totalTokens: number;
@@ -67,6 +68,10 @@ interface AiAccount {
     priority: number;
     isActive: boolean;
   }[];
+  // 平台特定配置
+  geminiProjectId?: string;
+  claudeConsoleApiUrl?: string;
+  proxyEnabled: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -106,7 +111,7 @@ export default function EnterpriseAiAccountsPage({ params }: { params: Promise<{
       const params = new URLSearchParams({
         page: currentPage.toString(),
         pageSize: '20',
-        ...(selectedService && { serviceType: selectedService }),
+        ...(selectedService && { platform: selectedService }), // 改为platform
         ...(selectedStatus && { status: selectedStatus })
       });
 
@@ -137,16 +142,26 @@ export default function EnterpriseAiAccountsPage({ params }: { params: Promise<{
     }
   };
 
-  const getServiceTypeDisplayName = (serviceType: string) => {
+  const getPlatformDisplayName = (platform: string) => {
     const displayNames: Record<string, string> = {
       'claude': 'Claude',
       'gemini': 'Gemini',
+      'claude_console': 'Claude Console',
       'openai': 'OpenAI',
       'qwen': '通义千问',
       'zhipu': '智谱AI',
       'kimi': 'Kimi'
     };
-    return displayNames[serviceType] || serviceType;
+    return displayNames[platform] || platform;
+  };
+
+  const getAuthTypeDisplayName = (authType: string) => {
+    const displayNames: Record<string, string> = {
+      'oauth': 'OAuth',
+      'manual': '手动Token',
+      'api_key': 'API密钥'
+    };
+    return displayNames[authType] || authType;
   };
 
   const getStatusBadge = (status: string, isEnabled: boolean) => {
@@ -236,11 +251,11 @@ export default function EnterpriseAiAccountsPage({ params }: { params: Promise<{
         {/* 页面标题和操作 */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold">AI账号管理</h1>
+            <h1 className="text-3xl font-bold">AI账号管理111</h1>
             <p className="text-gray-600 mt-1">管理企业的AI服务账号和配置</p>
           </div>
           
-          {hasRole(['owner', 'admin']) && (
+          {(hasRole('owner') || hasRole('admin')) && (
             <Button onClick={handleCreateAccount}>
               <Plus className="h-4 w-4 mr-2" />
               添加账号
@@ -288,7 +303,7 @@ export default function EnterpriseAiAccountsPage({ params }: { params: Promise<{
           </div>
         </div>
 
-        {/* 账号列表 */}
+        {/* 账号列表 - 表格格式 */}
         {error ? (
           <Card>
             <CardContent className="pt-6">
@@ -305,75 +320,150 @@ export default function EnterpriseAiAccountsPage({ params }: { params: Promise<{
             <CardHeader>
               <CardTitle>AI账号列表 ({totalCount})</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {accounts.map((account) => (
-                  <div key={account.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
-                    <div className="flex items-center space-x-4">
-                      <div className="flex items-center space-x-2">
-                        {getHealthIcon(account.healthStatus)}
-                        <div>
-                          <h4 className="font-medium text-gray-900">{account.name}</h4>
-                          <p className="text-sm text-gray-600">{account.description}</p>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center space-x-2">
-                        <Badge variant="outline">
-                          {getServiceTypeDisplayName(account.serviceType)}
-                        </Badge>
-                        {getStatusBadge(account.status, account.isEnabled)}
-                        <Badge variant="secondary">
-                          {account.accountType === 'dedicated' ? '专用' : '共享'}
-                        </Badge>
-                      </div>
-                    </div>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 border-b">
+                    <tr>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">名称</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">平台/类型</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">状态</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">优先级</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">代理</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">今日使用</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">合适端口</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">最后使用</th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {accounts.map((account) => (
+                      <tr key={account.id} className="border-b hover:bg-gray-50">
+                        {/* 名称列 */}
+                        <td className="py-3 px-4">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center text-white text-xs font-medium">
+                              {account.name.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                              <div className="font-medium text-gray-900">{account.name}</div>
+                              <div className="text-xs text-gray-500">{account.id.substring(0, 8)}...</div>
+                            </div>
+                          </div>
+                        </td>
+                        
+                        {/* 平台/类型列 */}
+                        <td className="py-3 px-4">
+                          <div className="flex items-center space-x-1">
+                            <Badge variant="outline" className="text-xs">
+                              {getPlatformDisplayName(account.platform)}
+                            </Badge>
+                            <Badge variant="secondary" className="text-xs">
+                              {getAuthTypeDisplayName(account.authType)}
+                            </Badge>
+                          </div>
+                        </td>
+                        
+                        {/* 状态列 */}
+                        <td className="py-3 px-4">
+                          {getStatusBadge(account.status, account.isEnabled)}
+                        </td>
+                        
+                        {/* 优先级列 */}
+                        <td className="py-3 px-4">
+                          <span className="text-sm text-gray-900">
+                            {account.priority ? account.priority : 'N/A'}
+                          </span>
+                        </td>
+                        
+                        {/* 代理列 */}
+                        <td className="py-3 px-4">
+                          <span className="text-sm text-gray-600">
+                            {account.proxyEnabled ? '已启用' : '无代理'}
+                          </span>
+                        </td>
+                        
+                        {/* 今日使用列 */}
+                        <td className="py-3 px-4">
+                          <div className="text-sm">
+                            <div className="text-gray-900">
+                              {account.recentUsage.tokens}次
+                            </div>
+                            <div className="text-gray-500">
+                              {account.recentUsage.tokens.toLocaleString()} tokens
+                            </div>
+                          </div>
+                        </td>
+                        
+                        {/* 合适端口列 */}
+                        <td className="py-3 px-4">
+                          <span className="text-sm text-gray-600">N/A</span>
+                        </td>
+                        
+                        {/* 最后使用列 */}
+                        <td className="py-3 px-4">
+                          <span className="text-sm text-gray-600">
+                            {account.lastUsedAt 
+                              ? new Date(account.lastUsedAt).toLocaleDateString('zh-CN')
+                              : '从未使用'
+                            }
+                          </span>
+                        </td>
+                        
+                        {/* 操作列 */}
+                        <td className="py-3 px-4">
+                          <div className="flex items-center space-x-1">
+                            {/* 启用/禁用按钮 */}
+                            <Button
+                              variant={account.isEnabled ? "default" : "secondary"}
+                              size="sm"
+                              className="h-8 px-3 text-xs"
+                            >
+                              {account.isEnabled ? '启用' : '禁用'}
+                            </Button>
+                            
+                            {/* 编辑按钮 */}
+                            {(hasRole('owner') || hasRole('admin')) && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleEditAccount(account.id)}
+                                className="h-8 px-3 text-xs"
+                              >
+                                编辑
+                              </Button>
+                            )}
+                            
+                            {/* 删除按钮 */}
+                            {(hasRole('owner') || hasRole('admin')) && (
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                className="h-8 px-3 text-xs"
+                              >
+                                删除
+                              </Button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
                     
-                    <div className="flex items-center space-x-2">
-                      <div className="text-right text-sm">
-                        <div className="font-medium">
-                          {account.recentUsage.tokens.toLocaleString()} tokens
-                        </div>
-                        <div className="text-gray-500">
-                          ${account.recentUsage.cost.toFixed(2)} (24h)
-                        </div>
-                      </div>
-                      
-                      <div className="flex space-x-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleViewAccount(account.id)}
-                          title="查看账号详情"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                        {hasRole(['owner', 'admin']) && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEditAccount(account.id)}
-                            title="编辑账号"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                
-                {accounts.length === 0 && (
-                  <div className="text-center py-12">
-                    <p className="text-gray-500">暂无AI账号</p>
-                    {hasRole(['owner', 'admin']) && (
-                      <Button onClick={handleCreateAccount} className="mt-4">
-                        <Plus className="h-4 w-4 mr-2" />
-                        添加第一个账号
-                      </Button>
+                    {accounts.length === 0 && (
+                      <tr>
+                        <td colSpan={9} className="text-center py-12">
+                          <p className="text-gray-500 mb-4">暂无AI账号</p>
+                          {(hasRole('owner') || hasRole('admin')) && (
+                            <Button onClick={handleCreateAccount}>
+                              <Plus className="h-4 w-4 mr-2" />
+                              添加第一个账号
+                            </Button>
+                          )}
+                        </td>
+                      </tr>
                     )}
-                  </div>
-                )}
+                  </tbody>
+                </table>
               </div>
             </CardContent>
           </Card>

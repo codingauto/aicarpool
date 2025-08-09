@@ -69,15 +69,15 @@ export async function GET(
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const pageSize = parseInt(searchParams.get('pageSize') || '20');
-    const serviceType = searchParams.get('serviceType');
+    const platform = searchParams.get('platform'); // 改为platform
     const accountType = searchParams.get('accountType');
     const status = searchParams.get('status');
 
     // 5. 构建查询条件
     const where: any = { enterpriseId };
     
-    if (serviceType) {
-      where.serviceType = serviceType;
+    if (platform) {
+      where.platform = platform; // 改为platform
     }
     
     if (accountType) {
@@ -135,13 +135,14 @@ export async function GET(
       id: account.id,
       name: account.name,
       description: account.description,
-      serviceType: account.serviceType,
+      platform: account.platform, // 改为platform
+      authType: account.authType,
       accountType: account.accountType,
+      priority: account.priority,
       isEnabled: account.isEnabled,
       status: account.status,
+      validationStatus: account.validationStatus,
       currentLoad: account.currentLoad,
-      supportedModels: account.supportedModels,
-      currentModel: account.currentModel,
       dailyLimit: account.dailyLimit,
       
       // 统计信息
@@ -171,6 +172,11 @@ export async function GET(
         isActive: binding.isActive
       })),
       
+      // 平台特定配置
+      geminiProjectId: account.geminiProjectId,
+      claudeConsoleApiUrl: account.claudeConsoleApiUrl,
+      proxyEnabled: account.proxyEnabled,
+      
       createdAt: account.createdAt,
       updatedAt: account.updatedAt
     }));
@@ -195,7 +201,8 @@ export async function GET(
 }
 
 /**
- * 创建新的AI账号
+ * 创建新的AI账号 - 重构版本
+ * 支持新的表结构和前端数据格式
  */
 export async function POST(
   request: NextRequest,
@@ -221,35 +228,52 @@ export async function POST(
     const {
       name,
       description,
-      serviceType,
       accountType,
-      authType,
-      credentials,
-      apiEndpoint,
-      proxyConfig,
+      proxy,
+      claudeAiOauth,
+      geminiOauth,
+      projectId,
+      apiUrl,
+      apiKey,
+      priority,
       supportedModels,
-      dailyLimit,
-      costPerToken
+      userAgent,
+      rateLimitDuration
     } = body;
 
+    console.log('📝 创建AI账号请求数据:', {
+      name,
+      accountType,
+      hasProxy: !!proxy,
+      hasClaudeOauth: !!claudeAiOauth,
+      hasGeminiOauth: !!geminiOauth,
+      hasApiKey: !!apiKey,
+      projectId
+    });
+
     // 3. 参数验证
-    if (!name || !serviceType || !authType || !credentials) {
-      return createApiResponse(false, null, '缺少必要参数', 400);
+    if (!name?.trim()) {
+      return createApiResponse(false, null, '缺少账户名称', 400);
     }
 
-    if (!['claude', 'gemini', 'openai', 'qwen', 'zhipu', 'kimi'].includes(serviceType)) {
-      return createApiResponse(false, null, '不支持的AI服务类型', 400);
+    // 4. 检测平台和认证类型
+    let platform: string;
+    let authType: string;
+    
+    if (claudeAiOauth) {
+      platform = 'claude';
+      authType = claudeAiOauth.accessToken ? 'manual' : 'oauth';
+    } else if (geminiOauth) {
+      platform = 'gemini';
+      authType = geminiOauth.access_token ? 'manual' : 'oauth';
+    } else if (apiUrl && apiKey) {
+      platform = 'claude_console';
+      authType = 'api_key';
+    } else {
+      return createApiResponse(false, null, '缺少有效的认证信息', 400);
     }
 
-    if (!['dedicated', 'shared'].includes(accountType)) {
-      return createApiResponse(false, null, '不支持的账号类型', 400);
-    }
-
-    if (!['oauth', 'api_key'].includes(authType)) {
-      return createApiResponse(false, null, '不支持的认证类型', 400);
-    }
-
-    // 4. 企业权限验证
+    // 5. 企业权限验证
     const enterprise = await prisma.enterprise.findUnique({
       where: { id: enterpriseId }
     });
@@ -258,11 +282,11 @@ export async function POST(
       return createApiResponse(false, null, '企业不存在', 404);
     }
 
-    // 5. 检查同名账号
+    // 6. 检查同名账号
     const existingAccount = await prisma.aiServiceAccount.findFirst({
       where: {
         enterpriseId,
-        name
+        name: name.trim()
       }
     });
 
@@ -270,58 +294,118 @@ export async function POST(
       return createApiResponse(false, null, '账号名称已存在', 409);
     }
 
-    // 6. 创建AI账号
-    const newAccount = await prisma.aiServiceAccount.create({
-      data: {
-        enterpriseId,
-        name,
-        description: description || '',
-        serviceType,
-        accountType: accountType || 'shared',
-        authType,
-        encryptedCredentials: JSON.stringify(credentials), // 实际应该加密存储
-        apiEndpoint,
-        
-        // 代理配置
-        proxyType: proxyConfig?.type,
-        proxyHost: proxyConfig?.host,
-        proxyPort: proxyConfig?.port,
-        proxyUsername: proxyConfig?.username,
-        proxyPassword: proxyConfig?.password,
-        
-        // 能力配置
-        supportedModels: supportedModels || [],
-        currentModel: supportedModels?.[0],
-        dailyLimit: dailyLimit || 10000,
-        costPerToken: costPerToken || 0.00001,
-        
-        // 初始状态
-        isEnabled: true,
-        status: 'active',
-        currentLoad: 0,
-        totalRequests: BigInt(0),
-        totalTokens: BigInt(0),
-        totalCost: 0
+    // 7. 准备账号数据
+    const accountData: any = {
+      enterpriseId,
+      name: name.trim(),
+      description: description || '',
+      accountType: accountType || 'shared',
+      priority: priority || 50,
+      platform,
+      authType,
+      createdBy: user.id,
+      
+      // 状态管理
+      isEnabled: true,
+      status: 'active',
+      validationStatus: 'pending',
+      currentLoad: 0,
+      totalRequests: BigInt(0),
+      totalTokens: BigInt(0),
+      totalCost: 0,
+      
+      // 限制配置
+      dailyLimit: 10000,
+      costPerToken: 0.00001,
+      timeoutMs: 30000
+    };
+
+    // 8. 处理OAuth认证数据
+    if (claudeAiOauth) {
+      if (claudeAiOauth.accessToken) {
+        // 手动输入的Token
+        accountData.manualAccessToken = claudeAiOauth.accessToken;
+        accountData.manualRefreshToken = claudeAiOauth.refreshToken || '';
+      } else {
+        // OAuth流程获得的Token
+        accountData.oauthAccessToken = claudeAiOauth.accessToken || '';
+        accountData.oauthRefreshToken = claudeAiOauth.refreshToken || '';
+        accountData.oauthExpiresAt = claudeAiOauth.expiresAt ? new Date(claudeAiOauth.expiresAt) : null;
+        accountData.oauthScopes = claudeAiOauth.scopes ? claudeAiOauth.scopes.join(',') : '';
       }
+    }
+
+    if (geminiOauth) {
+      if (geminiOauth.access_token) {
+        // 手动输入的Token
+        accountData.manualAccessToken = geminiOauth.access_token;
+        accountData.manualRefreshToken = geminiOauth.refresh_token || '';
+      } else {
+        // OAuth流程获得的Token
+        accountData.oauthAccessToken = geminiOauth.access_token || '';
+        accountData.oauthRefreshToken = geminiOauth.refresh_token || '';
+        accountData.oauthExpiresAt = geminiOauth.expiry_date ? new Date(geminiOauth.expiry_date) : null;
+        accountData.oauthScopes = geminiOauth.scope || '';
+      }
+      
+      // Gemini特定配置
+      if (projectId) {
+        accountData.geminiProjectId = projectId;
+      }
+      accountData.geminiLocation = 'us-central1';
+    }
+
+    // 9. 处理Claude Console配置
+    if (platform === 'claude_console') {
+      accountData.claudeConsoleApiUrl = apiUrl;
+      accountData.claudeConsoleApiKey = apiKey;
+      accountData.claudeConsoleUserAgent = userAgent || '';
+      accountData.claudeConsoleRateLimitDuration = rateLimitDuration || 60;
+      
+      if (supportedModels) {
+        const models = typeof supportedModels === 'string' 
+          ? supportedModels.split('\n').filter(m => m.trim())
+          : supportedModels;
+        accountData.claudeConsoleSupportedModels = models;
+      }
+    }
+
+    // 10. 处理代理配置
+    if (proxy && proxy.enabled) {
+      accountData.proxyEnabled = true;
+      accountData.proxyType = proxy.type || 'socks5';
+      accountData.proxyHost = proxy.host || '';
+      accountData.proxyPort = proxy.port ? parseInt(proxy.port) : null;
+      
+      if (proxy.username) {
+        accountData.proxyAuthEnabled = true;
+        accountData.proxyUsername = proxy.username;
+        accountData.proxyPassword = proxy.password || '';
+      }
+    } else {
+      accountData.proxyEnabled = false;
+      accountData.proxyAuthEnabled = false;
+    }
+
+    // 11. 创建AI账号
+    const newAccount = await prisma.aiServiceAccount.create({
+      data: accountData
     });
 
-    console.log(`✅ API 企业AI账号: 成功创建账号 ${newAccount.name} (${newAccount.serviceType})`);
+    console.log(`✅ API 企业AI账号: 成功创建账号 ${newAccount.name} (${newAccount.platform})`);
 
-    // 7. 返回创建的账号信息（不包含敏感信息）
+    // 12. 返回创建的账号信息（不包含敏感信息）
     const responseAccount = {
       id: newAccount.id,
       name: newAccount.name,
       description: newAccount.description,
-      serviceType: newAccount.serviceType,
-      accountType: newAccount.accountType,
+      platform: newAccount.platform,
       authType: newAccount.authType,
-      apiEndpoint: newAccount.apiEndpoint,
-      supportedModels: newAccount.supportedModels,
-      currentModel: newAccount.currentModel,
-      dailyLimit: newAccount.dailyLimit,
-      costPerToken: Number(newAccount.costPerToken),
+      accountType: newAccount.accountType,
+      priority: newAccount.priority,
       isEnabled: newAccount.isEnabled,
       status: newAccount.status,
+      validationStatus: newAccount.validationStatus,
       createdAt: newAccount.createdAt
     };
 
@@ -331,7 +415,8 @@ export async function POST(
 
   } catch (error) {
     console.error('创建AI账号失败:', error);
-    return createApiResponse(false, null, '创建AI账号失败', 500);
+    console.error('错误详情:', error);
+    return createApiResponse(false, null, '创建AI账号失败: ' + (error as Error).message, 500);
   }
 }
 
