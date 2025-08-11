@@ -45,6 +45,9 @@ import {
 } from 'lucide-react';
 import { UserDetailsDialog } from '@/components/user-details-dialog';
 import { RoleManagementDialog } from '@/components/role-management-dialog';
+import { RoleViewDialog } from '@/components/role-view-dialog';
+import { RoleCreateDialog } from '@/components/role-create-dialog';
+import { RoleEditDialog } from '@/components/role-edit-dialog';
 import { BatchUserManagementDialog } from '@/components/batch-user-management-dialog';
 import { DepartmentManagementDialog } from '@/components/department-management-dialog';
 import { PermissionAssignmentDialog } from '@/components/permission-assignment-dialog';
@@ -228,6 +231,12 @@ export default function EnterprisePermissionsPage({ params }: { params: Promise<
   const [selectedPermissionForView, setSelectedPermissionForView] = useState<{ key: string; name: string } | null>(null);
   const [selectedPermissionForAssign, setSelectedPermissionForAssign] = useState<{ key: string; name: string } | null>(null);
   const [showPermissionAssignUserDialog, setShowPermissionAssignUserDialog] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<any>(null);
+  const [showRoleViewDialog, setShowRoleViewDialog] = useState(false);
+  const [showRoleCreateDialog, setShowRoleCreateDialog] = useState(false);
+  const [showRoleEditDialog, setShowRoleEditDialog] = useState(false);
+  const [selectedRoleForView, setSelectedRoleForView] = useState<any>(null);
+  const [selectedRoleForEdit, setSelectedRoleForEdit] = useState<any>(null);
 
   useEffect(() => {
     // 直接尝试加载数据（API会处理权限验证）
@@ -321,6 +330,42 @@ export default function EnterprisePermissionsPage({ params }: { params: Promise<
         return 'bg-green-100 text-green-800 border-green-200';
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  // 新的角色图标映射（支持新格式）
+  const getRoleIconByKey = (roleKey: string) => {
+    switch (roleKey) {
+      case 'system_admin':
+        return <Shield className="w-5 h-5 text-red-500" />;
+      case 'enterprise_owner':
+        return <Crown className="w-5 h-5 text-purple-500" />;
+      case 'enterprise_admin':
+        return <Shield className="w-5 h-5 text-blue-500" />;
+      case 'group_owner':
+        return <UserCheck className="w-5 h-5 text-green-500" />;
+      case 'group_member':
+        return <Users className="w-5 h-5 text-gray-500" />;
+      default:
+        return <Key className="w-5 h-5 text-indigo-500" />;
+    }
+  };
+
+  // 新的角色颜色映射（支持新格式）
+  const getRoleColorByKey = (roleKey: string) => {
+    switch (roleKey) {
+      case 'system_admin':
+        return 'bg-red-100 text-red-800 border-red-200';
+      case 'enterprise_owner':
+        return 'bg-purple-100 text-purple-800 border-purple-200';
+      case 'enterprise_admin':
+        return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'group_owner':
+        return 'bg-green-100 text-green-800 border-green-200';
+      case 'group_member':
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+      default:
+        return 'bg-indigo-100 text-indigo-800 border-indigo-200';
     }
   };
 
@@ -872,30 +917,98 @@ export default function EnterprisePermissionsPage({ params }: { params: Promise<
           <TabsContent value="roles">
             <Card>
               <CardHeader>
-                <CardTitle>角色管理</CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle>角色管理</CardTitle>
+                  <Button 
+                    size="sm"
+                    onClick={() => setShowRoleCreateDialog(true)}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    创建角色
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {permissionsData.availableRoles?.map((role) => (
-                    <div key={role.key} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center space-x-3">
-                        <Key className="w-5 h-5 text-blue-500" />
-                        <div>
-                          <h4 className="font-medium text-gray-900">{role.name}</h4>
-                          <p className="text-sm text-gray-600">{role.key}</p>
+                  {permissionsData.availableRoles?.map((role) => {
+                    const isSystemRole = ['system_admin', 'enterprise_owner', 'enterprise_admin', 'group_owner', 'group_member'].includes(role.key);
+                    const roleIcon = getRoleIconByKey(role.key);
+                    const roleColor = getRoleColorByKey(role.key);
+                    
+                    return (
+                      <div key={role.key} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors">
+                        <div className="flex items-center space-x-3">
+                          {roleIcon}
+                          <div>
+                            <h4 className="font-medium text-gray-900">{role.name}</h4>
+                            <p className="text-sm text-gray-600">{role.key}</p>
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {role.permissions.slice(0, 3).map(perm => (
+                                <Badge key={perm} variant="outline" className="text-xs">
+                                  {perm}
+                                </Badge>
+                              ))}
+                              {role.permissions.length > 3 && (
+                                <Badge variant="outline" className="text-xs">
+                                  +{role.permissions.length - 3} 更多
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <Badge 
+                            variant={isSystemRole ? "secondary" : "default"}
+                            className={roleColor}
+                          >
+                            {isSystemRole ? '系统角色' : '自定义角色'}
+                          </Badge>
+                          <div className="text-right text-sm text-gray-500">
+                            <p>{role.permissions.length} 个权限</p>
+                          </div>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => {
+                              if (isSystemRole) {
+                                setSelectedRoleForView({
+                                  key: role.key,
+                                  name: role.name,
+                                  permissions: role.permissions,
+                                  description: role.key === 'system_admin' ? '系统管理员，拥有系统的完全控制权' :
+                                              role.key === 'enterprise_owner' ? '企业拥有者，拥有企业的最高权限' :
+                                              role.key === 'enterprise_admin' ? '企业管理员，可以管理企业的日常事务' :
+                                              role.key === 'group_owner' ? '拼车组创建者，拥有拼车组的管理权' :
+                                              role.key === 'group_member' ? '拼车组成员，可以参与拼车活动' : '系统角色',
+                                  isSystem: true,
+                                  userCount: users.filter(u => u.role === role.key).length
+                                });
+                                setShowRoleViewDialog(true);
+                              } else {
+                                setSelectedRoleForEdit({
+                                  key: role.key,
+                                  name: role.name,
+                                  permissions: role.permissions,
+                                  description: '自定义角色',
+                                  isSystem: false
+                                });
+                                setShowRoleEditDialog(true);
+                              }
+                            }}
+                            title={isSystemRole ? "查看角色详情" : "编辑角色"}
+                          >
+                            {isSystemRole ? <Eye className="w-4 h-4" /> : <Edit className="w-4 h-4" />}
+                          </Button>
                         </div>
                       </div>
-                      <div className="flex items-center space-x-3">
-                        <Badge variant="secondary">系统角色</Badge>
-                        <div className="text-right text-sm text-gray-500">
-                          <p>{role.permissions.length} 个权限</p>
-                        </div>
-                        <Button variant="ghost" size="sm">
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                      </div>
+                    );
+                  })}
+                  {(!permissionsData.availableRoles || permissionsData.availableRoles.length === 0) && (
+                    <div className="text-center py-8 text-gray-500">
+                      <Key className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                      <p>暂无角色数据</p>
                     </div>
-                  ))}
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -1335,6 +1448,103 @@ export default function EnterprisePermissionsPage({ params }: { params: Promise<
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* 角色查看对话框 */}
+        <RoleViewDialog
+          open={showRoleViewDialog}
+          onOpenChange={setShowRoleViewDialog}
+          role={selectedRoleForView}
+          users={selectedRoleForView ? permissionsData?.users.filter(u => u.role === selectedRoleForView.key) || [] : []}
+          permissionDetails={PERMISSION_DETAILS}
+        />
+
+        {/* 角色创建对话框 */}
+        <RoleCreateDialog
+          open={showRoleCreateDialog}
+          onOpenChange={setShowRoleCreateDialog}
+          availablePermissions={Object.entries(PERMISSION_DETAILS).map(([key, detail]) => ({
+            key,
+            name: detail.name,
+            description: detail.description,
+            category: detail.category
+          }))}
+          onCreateRole={async (role) => {
+            try {
+              const headers: HeadersInit = {
+                'Content-Type': 'application/json'
+              };
+              
+              const token = localStorage.getItem('token');
+              if (token) {
+                headers.Authorization = `Bearer ${token}`;
+              }
+              
+              const response = await fetch(`/api/enterprises/${enterpriseId}/roles`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({
+                  action: 'create',
+                  roleKey: role.key,
+                  roleName: role.name,
+                  permissions: role.permissions
+                })
+              });
+              
+              if (response.ok) {
+                await fetchPermissionsData();
+                return true;
+              }
+              return false;
+            } catch (error) {
+              console.error('创建角色失败:', error);
+              return false;
+            }
+          }}
+        />
+
+        {/* 角色编辑对话框 */}
+        <RoleEditDialog
+          open={showRoleEditDialog}
+          onOpenChange={setShowRoleEditDialog}
+          role={selectedRoleForEdit}
+          availablePermissions={Object.entries(PERMISSION_DETAILS).map(([key, detail]) => ({
+            key,
+            name: detail.name,
+            description: detail.description,
+            category: detail.category
+          }))}
+          onUpdateRole={async (role) => {
+            try {
+              const headers: HeadersInit = {
+                'Content-Type': 'application/json'
+              };
+              
+              const token = localStorage.getItem('token');
+              if (token) {
+                headers.Authorization = `Bearer ${token}`;
+              }
+              
+              const response = await fetch(`/api/enterprises/${enterpriseId}/roles`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({
+                  action: 'update',
+                  roleKey: role.key,
+                  permissions: role.permissions
+                })
+              });
+              
+              if (response.ok) {
+                await fetchPermissionsData();
+                return true;
+              }
+              return false;
+            } catch (error) {
+              console.error('更新角色失败:', error);
+              return false;
+            }
+          }}
+        />
         </div>
       </div>
     </div>
