@@ -272,7 +272,6 @@ export async function POST(
             userId: user.id,
             enterpriseId: inviteLink.group.enterpriseId!,
             role: inviteRole,
-            departmentId: inviteDepartmentId,
             isActive: true,
           },
           include: {
