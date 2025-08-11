@@ -89,15 +89,16 @@ export function RoleViewDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[700px] max-h-[80vh]">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-hidden flex flex-col">
+        <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Shield className="w-5 h-5" />
             角色详情 - {role.name}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="flex-1 overflow-y-auto">
+          <div className="space-y-4 pr-2">
           {/* 基本信息 */}
           <div className="bg-gray-50 rounded-lg p-4 space-y-2">
             <div className="flex items-center justify-between">
@@ -135,7 +136,7 @@ export function RoleViewDialog({
             </TabsList>
 
             <TabsContent value="permissions" className="mt-4">
-              <ScrollArea className="h-[400px] pr-4">
+              <ScrollArea className="h-[350px] pr-4 overflow-hidden">
                 <div className="space-y-4">
                   {Object.entries(groupedPermissions).map(([category, perms]) => (
                     <div key={category} className="space-y-2">
@@ -174,7 +175,7 @@ export function RoleViewDialog({
             </TabsContent>
 
             <TabsContent value="users" className="mt-4">
-              <ScrollArea className="h-[400px] pr-4">
+              <ScrollArea className="h-[350px] pr-4 overflow-hidden">
                 {users.length === 0 ? (
                   <div className="text-center py-8">
                     <Users className="w-12 h-12 text-gray-300 mx-auto mb-4" />
@@ -211,6 +212,7 @@ export function RoleViewDialog({
               </ScrollArea>
             </TabsContent>
           </Tabs>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
