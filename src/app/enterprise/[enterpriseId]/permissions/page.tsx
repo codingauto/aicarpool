@@ -981,7 +981,7 @@ export default function EnterprisePermissionsPage({ params }: { params: Promise<
                                               role.key === 'group_owner' ? '拼车组创建者，拥有拼车组的管理权' :
                                               role.key === 'group_member' ? '拼车组成员，可以参与拼车活动' : '系统角色',
                                   isSystem: true,
-                                  userCount: users.filter(u => u.role === role.key).length
+                                  userCount: permissionsData?.users.filter(u => u.role === role.key).length || 0
                                 });
                                 setShowRoleViewDialog(true);
                               } else {
