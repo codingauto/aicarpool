@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { EnhancedUserInviteDialog } from './EnhancedUserInviteDialog';
+import { toast } from 'sonner';
 import { 
   Plus, 
   Building2, 
@@ -130,13 +131,13 @@ export function OrganizationStructure({ enterpriseId, isAdmin }: OrganizationStr
         await fetchOrganizationData();
         setCreateDialogOpen(false);
         resetForm();
-        alert('部门创建成功');
+        toast.success('部门创建成功');
       } else {
-        alert(data.error || '创建部门失败');
+        toast.error(data.error || '创建部门失败');
       }
     } catch (error) {
       console.error('创建部门失败:', error);
-      alert('创建部门失败');
+      toast.error('创建部门失败');
     }
   };
 
@@ -164,13 +165,13 @@ export function OrganizationStructure({ enterpriseId, isAdmin }: OrganizationStr
         await fetchOrganizationData();
         setEditingDepartment(null);
         resetForm();
-        alert('部门更新成功');
+        toast.success('部门更新成功');
       } else {
-        alert(data.error || '更新部门失败');
+        toast.error(data.error || '更新部门失败');
       }
     } catch (error) {
       console.error('更新部门失败:', error);
-      alert('更新部门失败');
+      toast.error('更新部门失败');
     }
   };
 
@@ -191,13 +192,13 @@ export function OrganizationStructure({ enterpriseId, isAdmin }: OrganizationStr
       const data = await response.json();
       if (data.success) {
         await fetchOrganizationData();
-        alert('部门删除成功');
+        toast.success('部门删除成功');
       } else {
-        alert(data.error || '删除部门失败');
+        toast.error(data.error || '删除部门失败');
       }
     } catch (error) {
       console.error('删除部门失败:', error);
-      alert('删除部门失败');
+      toast.error('删除部门失败');
     }
   };
 

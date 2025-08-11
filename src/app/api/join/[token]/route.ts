@@ -35,6 +35,15 @@ export async function GET(
             description: true,
             maxMembers: true,
             status: true,
+            organizationType: true,
+            enterpriseId: true,
+            settings: true,
+            enterprise: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
             _count: {
               select: {
                 members: {
@@ -80,14 +89,20 @@ export async function GET(
       return createApiResponse(false, null, '邀请链接使用次数已达上限', 400);
     }
 
-    // 检查拼车组状态
-    if (inviteLink.group.status !== 'active') {
-      return createApiResponse(false, null, '拼车组已被禁用', 400);
-    }
+    // 检查是否是企业邀请
+    const isEnterpriseInvite = inviteLink.group.organizationType === 'enterprise_group' &&
+                               inviteLink.group.settings?.invitationType === 'enterprise_link';
 
-    // 检查拼车组是否已满
-    if (inviteLink.group._count.members >= inviteLink.group.maxMembers) {
-      return createApiResponse(false, null, '拼车组已满', 400);
+    if (!isEnterpriseInvite) {
+      // 普通拼车组邀请的检查
+      if (inviteLink.group.status !== 'active') {
+        return createApiResponse(false, null, '拼车组已被禁用', 400);
+      }
+
+      // 检查拼车组是否已满
+      if (inviteLink.group._count.members >= inviteLink.group.maxMembers) {
+        return createApiResponse(false, null, '拼车组已满', 400);
+      }
     }
 
     return createApiResponse(true, inviteLink, '邀请链接有效', 200);
@@ -118,7 +133,11 @@ export async function POST(
     const inviteLink = await prisma.inviteLink.findUnique({
       where: { token },
       include: {
-        group: true,
+        group: {
+          include: {
+            enterprise: true,
+          },
+        },
       },
     });
 
@@ -157,19 +176,25 @@ export async function POST(
       return createApiResponse(false, null, '邀请链接使用次数已达上限', 400);
     }
 
-    // 检查拼车组是否已满
-    const memberCount = await prisma.groupMember.count({
-      where: {
-        groupId: inviteLink.groupId,
-        status: 'active',
-      },
-    });
+    // 检查是否是企业邀请
+    const isEnterpriseInvite = inviteLink.group.organizationType === 'enterprise_group' &&
+                               inviteLink.group.settings?.invitationType === 'enterprise_link';
 
-    console.log('Current member count:', memberCount, '/', inviteLink.group.maxMembers);
+    // 如果不是企业邀请，检查拼车组是否已满
+    if (!isEnterpriseInvite) {
+      const memberCount = await prisma.groupMember.count({
+        where: {
+          groupId: inviteLink.groupId,
+          status: 'active',
+        },
+      });
 
-    if (memberCount >= inviteLink.group.maxMembers) {
-      console.log('Error: 拼车组已满');
-      return createApiResponse(false, null, '拼车组已满', 400);
+      console.log('Current member count:', memberCount, '/', inviteLink.group.maxMembers);
+
+      if (memberCount >= inviteLink.group.maxMembers) {
+        console.log('Error: 拼车组已满');
+        return createApiResponse(false, null, '拼车组已满', 400);
+      }
     }
 
     // 查找或创建用户
@@ -201,17 +226,32 @@ export async function POST(
       console.log('Created new user:', user.id);
     }
 
-    // 检查是否已是成员
-    const existingMember = await prisma.groupMember.findFirst({
-      where: {
-        groupId: inviteLink.groupId,
-        userId: user.id,
-      },
-    });
+    // 如果是企业邀请，检查是否已是企业成员
+    if (isEnterpriseInvite) {
+      const existingEnterpriseMember = await prisma.userEnterprise.findFirst({
+        where: {
+          enterpriseId: inviteLink.group.enterpriseId!,
+          userId: user.id,
+        },
+      });
 
-    if (existingMember) {
-      console.log('Error: 用户已经是成员');
-      return createApiResponse(false, null, '您已经是该拼车组成员', 400);
+      if (existingEnterpriseMember) {
+        console.log('Error: 用户已经是企业成员');
+        return createApiResponse(false, null, '用户已经是企业成员', 400);
+      }
+    } else {
+      // 普通拼车组邀请，检查是否已是成员
+      const existingMember = await prisma.groupMember.findFirst({
+        where: {
+          groupId: inviteLink.groupId,
+          userId: user.id,
+        },
+      });
+
+      if (existingMember) {
+        console.log('Error: 用户已经是成员');
+        return createApiResponse(false, null, '您已经是该拼车组成员', 400);
+      }
     }
 
     // 使用事务处理加入
@@ -222,39 +262,81 @@ export async function POST(
         data: { usedCount: inviteLink.usedCount + 1 },
       });
 
-      // 添加用户到拼车组
-      const member = await tx.groupMember.create({
-        data: {
-          groupId: inviteLink.groupId,
-          userId: user.id,
-          role: 'member',
-          status: 'active',
-        },
-        include: {
-          group: true,
-          user: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
+      if (isEnterpriseInvite) {
+        // 企业邀请：添加用户到企业
+        const inviteRole = inviteLink.group.settings?.inviteRole || 'member';
+        const inviteDepartmentId = inviteLink.group.settings?.inviteDepartmentId;
+
+        const userEnterprise = await tx.userEnterprise.create({
+          data: {
+            userId: user.id,
+            enterpriseId: inviteLink.group.enterpriseId!,
+            role: inviteRole,
+            departmentId: inviteDepartmentId,
+            isActive: true,
+          },
+          include: {
+            enterprise: true,
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
             },
           },
-        },
-      });
+        });
 
-      return member;
+        return { 
+          isEnterpriseInvite: true, 
+          userEnterprise,
+          enterpriseId: inviteLink.group.enterpriseId
+        };
+      } else {
+        // 普通拼车组邀请：添加用户到拼车组
+        const member = await tx.groupMember.create({
+          data: {
+            groupId: inviteLink.groupId,
+            userId: user.id,
+            role: 'member',
+            status: 'active',
+          },
+          include: {
+            group: true,
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+          },
+        });
+
+        return { 
+          isEnterpriseInvite: false, 
+          member 
+        };
+      }
     });
 
-    console.log('Successfully joined group:', result.id);
+    console.log('Successfully joined:', result);
 
     // 发送欢迎邮件
     try {
       const { emailQueue } = await import('@/lib/email');
-      await emailQueue.addToQueue('welcome', {
-        to: user.email,
-        userName: user.name,
-        groupName: inviteLink.group.name,
-      });
+      const emailData = result.isEnterpriseInvite
+        ? {
+            to: user.email,
+            userName: user.name,
+            enterpriseName: result.userEnterprise.enterprise.name,
+          }
+        : {
+            to: user.email,
+            userName: user.name,
+            groupName: inviteLink.group.name,
+          };
+      await emailQueue.addToQueue('welcome', emailData);
     } catch (emailError) {
       console.log('Email sending failed:', emailError);
       // 不阻止加入流程
@@ -264,11 +346,27 @@ export async function POST(
     const { generateToken } = await import('@/lib/auth');
     const authToken = generateToken(user.id);
 
-    return createApiResponse(true, {
-      member: serializeBigInt(result),
-      authToken,
-      isNewUser: user.createdAt.getTime() > Date.now() - 60000, // 刚刚创建的用户
-    }, '成功加入拼车组', 200);
+    const responseData = result.isEnterpriseInvite
+      ? {
+          userEnterprise: serializeBigInt(result.userEnterprise),
+          enterpriseId: result.enterpriseId,
+          authToken,
+          isNewUser: user.createdAt.getTime() > Date.now() - 60000,
+          isEnterpriseInvite: true,
+        }
+      : {
+          member: serializeBigInt(result.member),
+          authToken,
+          isNewUser: user.createdAt.getTime() > Date.now() - 60000,
+          isEnterpriseInvite: false,
+        };
+
+    return createApiResponse(
+      true, 
+      responseData, 
+      result.isEnterpriseInvite ? '成功加入企业' : '成功加入拼车组', 
+      200
+    );
 
   } catch (error) {
     console.error('Join through invite link error:', error);

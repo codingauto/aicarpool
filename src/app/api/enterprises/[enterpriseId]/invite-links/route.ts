@@ -106,7 +106,7 @@ export async function POST(
       }
     });
 
-    const inviteUrl = `${request.nextUrl.origin}/invite-link/${inviteToken}`;
+    const inviteUrl = `${request.nextUrl.origin}/join/${inviteToken}`;
 
     return createApiResponse(true, {
       id: inviteLink.id,

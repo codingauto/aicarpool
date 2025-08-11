@@ -71,9 +71,10 @@ export function AppLayout({ children, title, actions }: AppLayoutProps) {
   const isAuthPage = pathname.startsWith('/auth/') || pathname === '/landing';
   const isEnterpriseSelectionPage = pathname === '/'; // 企业选择页面
   const isEnterprisePage = pathname.startsWith('/enterprise/'); // 企业内部页面
+  const isJoinPage = pathname.startsWith('/join/'); // 邀请链接页面
 
-  // 认证页面和企业页面跳过全局布局
-  if (isAuthPage || isEnterprisePage) {
+  // 认证页面、企业页面和邀请链接页面跳过全局布局
+  if (isAuthPage || isEnterprisePage || isJoinPage) {
     return <>{children}</>;
   }
 

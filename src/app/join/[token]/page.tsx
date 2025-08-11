@@ -131,11 +131,22 @@ export default function JoinPage() {
           localStorage.setItem('token', data.data.authToken);
         }
         
-        // 成功加入，跳转到主页
-        if (data.data.isNewUser) {
-          router.push('/dashboard?message=欢迎加入AiCarpool！账户已自动创建');
+        // 成功加入，根据类型跳转
+        if (data.data.isEnterpriseInvite) {
+          // 企业邀请，跳转到企业页面
+          const enterpriseId = data.data.enterpriseId;
+          if (data.data.isNewUser) {
+            router.push(`/enterprise/${enterpriseId}/dashboard?message=欢迎加入企业！账户已自动创建`);
+          } else {
+            router.push(`/enterprise/${enterpriseId}/dashboard?message=成功加入企业`);
+          }
         } else {
-          router.push('/dashboard?message=成功加入拼车组');
+          // 普通拼车组邀请
+          if (data.data.isNewUser) {
+            router.push('/dashboard?message=欢迎加入AiCarpool！账户已自动创建');
+          } else {
+            router.push('/dashboard?message=成功加入拼车组');
+          }
         }
       } else {
         console.log('API Error:', data);
@@ -202,28 +213,59 @@ export default function JoinPage() {
   const remainingUses = inviteLink.maxUses - inviteLink.usedCount;
   const expiresAt = new Date(inviteLink.expiresAt);
   const remainingHours = Math.ceil((expiresAt.getTime() - new Date().getTime()) / (1000 * 60 * 60));
+  
+  // 检查是否是企业邀请
+  const isEnterpriseInvite = inviteLink.group.organizationType === 'enterprise_group' &&
+                             inviteLink.group.settings?.invitationType === 'enterprise_link';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl">🎉 加入拼车组</CardTitle>
+          <CardTitle className="text-2xl">
+            {isEnterpriseInvite ? '🏢 加入企业' : '🎉 加入拼车组'}
+          </CardTitle>
           <CardDescription>
-            通过邀请链接加入 AiCarpool 拼车组
+            {isEnterpriseInvite 
+              ? `通过邀请链接加入 ${inviteLink.group.enterprise?.name || '企业'}`
+              : '通过邀请链接加入 AiCarpool 拼车组'
+            }
           </CardDescription>
         </CardHeader>
         
         <CardContent className="space-y-4">
           <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg p-4 border">
-            <h3 className="font-semibold text-lg mb-2">{inviteLink.group.name}</h3>
+            <h3 className="font-semibold text-lg mb-2">
+              {isEnterpriseInvite 
+                ? inviteLink.group.enterprise?.name || '企业' 
+                : inviteLink.group.name
+              }
+            </h3>
             {inviteLink.group.description && (
               <p className="text-gray-600 text-sm mb-3">{inviteLink.group.description}</p>
             )}
             <div className="space-y-1 text-sm text-gray-500">
-              <div className="flex justify-between">
-                <span>成员数量</span>
-                <span>{inviteLink.group._count.members}/{inviteLink.group.maxMembers}</span>
-              </div>
+              {isEnterpriseInvite ? (
+                <>
+                  <div className="flex justify-between">
+                    <span>邀请角色</span>
+                    <span>{inviteLink.group.settings?.inviteRole || 'member'}</span>
+                  </div>
+                  {inviteLink.group.settings?.inviteDepartmentId && (
+                    <div className="flex justify-between">
+                      <span>部门</span>
+                      <span>指定部门</span>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div className="flex justify-between">
+                    <span>成员数量</span>
+                    <span>{inviteLink.group._count.members}/{inviteLink.group.maxMembers}</span>
+                  </div>
+                </>
+              )}
               <div className="flex justify-between">
                 <span>剩余名额</span>
                 <span>{remainingUses}/{inviteLink.maxUses}</span>
@@ -303,10 +345,21 @@ export default function JoinPage() {
           <div className="bg-blue-50 rounded-lg p-4">
             <h4 className="font-medium mb-2">🚀 加入后您将获得：</h4>
             <ul className="text-sm text-gray-600 space-y-1">
-              <li>• 使用多种AI编程工具（Claude Code、Gemini CLI等）</li>
-              <li>• 享受成本分摊，降低使用费用</li>
-              <li>• 统一的API接口和服务管理</li>
-              <li>• 团队协作，提升开发效率</li>
+              {isEnterpriseInvite ? (
+                <>
+                  <li>• 访问企业的组织架构和资源</li>
+                  <li>• 使用企业配置的AI服务账号</li>
+                  <li>• 参与企业内部的协作与管理</li>
+                  <li>• 享受企业级的权限和配额</li>
+                </>
+              ) : (
+                <>
+                  <li>• 使用多种AI编程工具（Claude Code、Gemini CLI等）</li>
+                  <li>• 享受成本分摊，降低使用费用</li>
+                  <li>• 统一的API接口和服务管理</li>
+                  <li>• 团队协作，提升开发效率</li>
+                </>
+              )}
             </ul>
           </div>
 
@@ -316,7 +369,13 @@ export default function JoinPage() {
               disabled={joining}
               className="w-full"
             >
-              {joining ? '正在加入...' : (showRegistration ? '完成注册并加入' : '加入拼车组')}
+              {joining 
+                ? '正在加入...' 
+                : (showRegistration 
+                  ? '完成注册并加入' 
+                  : (isEnterpriseInvite ? '加入企业' : '加入拼车组')
+                )
+              }
             </Button>
             
             <Link href="/">
