@@ -7,7 +7,19 @@ export async function GET(request: NextRequest) {
   try {
     console.log('🔐 API 权限: 开始处理权限请求');
     
-    const user = await getCurrentUser(request);
+    let user = await getCurrentUser(request);
+    
+    // 开发环境下的兼容处理
+    if (!user && process.env.NODE_ENV === 'development') {
+      console.log('🔐 开发模式：使用默认测试用户');
+      user = {
+        id: 'test_user_001',
+        email: 'test@example.com',
+        name: '测试用户',
+        role: 'admin'
+      };
+    }
+    
     console.log('🔐 API 权限: 获取用户信息', user);
     
     if (!user) {
@@ -69,7 +81,19 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getCurrentUser(request);
+    let user = await getCurrentUser(request);
+    
+    // 开发环境下的兼容处理
+    if (!user && process.env.NODE_ENV === 'development') {
+      console.log('🔐 开发模式：使用默认测试用户');
+      user = {
+        id: 'test_user_001',
+        email: 'test@example.com',
+        name: '测试用户',
+        role: 'admin'
+      };
+    }
+    
     if (!user) {
       return NextResponse.json(
         { success: false, message: '未登录' }, 

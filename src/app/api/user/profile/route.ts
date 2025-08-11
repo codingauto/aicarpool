@@ -78,12 +78,13 @@ async function getHandler(req: NextRequest, user: any) {
             select: {
               id: true,
               name: true,
-              aiServiceId: true,
-              quotaLimit: true,
-              quotaUsed: true,
+              description: true,
               status: true,
               lastUsedAt: true,
               createdAt: true,
+              tokenLimit: true,
+              rateLimitWindow: true,
+              rateLimitRequests: true,
             },
           },
         },
@@ -101,11 +102,7 @@ async function getHandler(req: NextRequest, user: any) {
           memberRole: gm.role,
           joinedAt: gm.joinedAt,
         })),
-        apiKeys: userData.apiKeys.map(key => ({
-          ...key,
-          quotaLimit: key.quotaLimit ? key.quotaLimit.toString() : null,
-          quotaUsed: key.quotaUsed.toString(),
-        })),
+        apiKeys: userData.apiKeys,
       };
 
       console.log('✅ 完整用户信息获取成功');
