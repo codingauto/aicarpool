@@ -1,6 +1,6 @@
 {
   "name": "aicarpool-拼车",
-  "version": "0.21.0",
+  "version": "0.22.0",
   "private": true,
   "scripts": {
     "dev": "next dev --port 4000",
@@ -17,7 +17,9 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:seed-groups": "node prisma/seed-groups.js",
     "db:create-admin": "tsx prisma/create-admin.ts",
-    "db:assign-admin-permissions": "tsx prisma/assign-admin-permissions.ts"
+    "db:assign-admin-permissions": "tsx prisma/assign-admin-permissions.ts",
+    "init-permissions": "tsx scripts/init-permissions.ts",
+    "db:migrate-permissions": "npx prisma db execute --file ./prisma/migrations/init_permissions.sql"
   },
   "dependencies": {
     "@prisma/client": "^6.12.0",

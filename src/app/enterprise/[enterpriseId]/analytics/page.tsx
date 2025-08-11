@@ -88,7 +88,7 @@ interface AnalyticsData {
 export default function EnterpriseAnalyticsPage({ params }: { params: Promise<{ enterpriseId: string }> }) {
   const { enterpriseId } = use(params);
   const router = useRouter();
-  const { currentEnterprise, hasRole } = useEnterpriseContext();
+  const enterpriseContext = useEnterpriseContext();
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -191,7 +191,7 @@ export default function EnterpriseAnalyticsPage({ params }: { params: Promise<{ 
           </Button>
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <Building2 className="w-4 h-4" />
-            <span>{currentEnterprise?.name || '未知企业'}</span>
+            <span>{enterpriseContext?.currentEnterprise?.name || '未知企业'}</span>
             <span>/</span>
             <span>数据分析</span>
           </div>
@@ -221,7 +221,7 @@ export default function EnterpriseAnalyticsPage({ params }: { params: Promise<{ 
                 <SelectItem value="90d">最近90天</SelectItem>
               </SelectContent>
             </Select>
-            {(hasRole('owner') || hasRole('admin')) && (
+            {(enterpriseContext?.hasRole('owner') || enterpriseContext?.hasRole('admin')) && (
               <Button variant="outline">
                 <Download className="w-4 h-4 mr-2" />
                 导出报告

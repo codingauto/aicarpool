@@ -1,7 +1,8 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
-import { verifyPassword, generateToken } from '@/lib/auth';
+import { verifyPassword } from '@/lib/auth';
+import { generateTokenPair } from '@/lib/auth/jwt-utils';
 import { createApiResponse, createErrorResponse } from '@/lib/middleware';
 
 const loginSchema = z.object({
@@ -36,25 +37,68 @@ export async function POST(request: NextRequest) {
       return createErrorResponse('邮箱或密码错误', 401);
     }
 
+    // 获取用户的默认企业和角色
+    const userEnterprise = await prisma.userEnterprise.findFirst({
+      where: {
+        userId: user.id,
+        isActive: true
+      },
+      orderBy: {
+        joinedAt: 'desc'
+      },
+      select: {
+        enterpriseId: true,
+        role: true,
+        enterprise: {
+          select: {
+            name: true
+          }
+        }
+      }
+    });
+
     // 准备返回的用户数据（排除密码）
     const userData = {
       id: user.id,
       name: user.name,
       email: user.email,
       avatar: user.avatar,
-      role: user.role,
+      role: userEnterprise?.role || user.role,
       status: user.status,
       emailVerified: user.emailVerified,
+      enterprise: userEnterprise ? {
+        id: userEnterprise.enterpriseId,
+        name: userEnterprise.enterprise.name
+      } : undefined,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     };
 
-    // 生成JWT令牌
-    const token = generateToken(user.id);
+    // 生成JWT令牌对
+    const tokenPayload = {
+      userId: user.id,
+      email: user.email,
+      name: user.name || '未知用户',
+      role: userEnterprise?.role || user.role,
+      enterpriseId: userEnterprise?.enterpriseId
+    };
+    
+    const tokens = generateTokenPair(tokenPayload);
+
+    // 更新最后登录时间（如果需要可以记录到其他表）
+    // 暂时注释掉，因为User模型没有lastLoginAt字段
+    // await prisma.user.update({
+    //   where: { id: user.id },
+    //   data: { lastLoginAt: new Date() }
+    // });
 
     return createApiResponse(true, {
       user: userData,
-      token,
+      tokens: {
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+        expiresIn: tokens.expiresIn
+      }
     }, '登录成功', 200);
 
   } catch (error) {

@@ -1,0 +1,122 @@
+/**
+ * Next.js 中间件配置
+ * 
+ * 统一处理所有请求的认证、日志、限流等
+ */
+
+import { NextRequest, NextResponse } from 'next/server';
+import { authMiddleware } from './middleware/auth';
+
+// 需要认证的API路径
+const PROTECTED_API_PATHS = [
+  '/api/enterprises',
+  '/api/groups',
+  '/api/permissions',
+  '/api/user',
+  '/api/ai-accounts'
+];
+
+// 公开API路径（不需要认证）
+const PUBLIC_API_PATHS = [
+  '/api/auth/login',
+  '/api/auth/register', 
+  '/api/auth/refresh',
+  '/api/auth/logout',
+  '/api/health',
+  '/api/status',
+  '/api/public'
+];
+
+// 需要认证的页面路径
+const PROTECTED_PAGE_PATHS = [
+  '/dashboard',
+  '/enterprise',
+  '/groups',
+  '/permissions',
+  '/settings'
+];
+
+/**
+ * 主中间件函数
+ */
+export async function middleware(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+  
+  // 记录请求日志（开发环境）
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`📝 [${new Date().toISOString()}] ${request.method} ${pathname}`);
+  }
+  
+  // API路径认证处理
+  if (pathname.startsWith('/api/')) {
+    // 检查是否是公开API
+    const isPublicApi = PUBLIC_API_PATHS.some(path => pathname.startsWith(path));
+    
+    if (!isPublicApi) {
+      // 应用认证中间件
+      return authMiddleware(request);
+    }
+  }
+  
+  // 页面路径认证处理
+  if (PROTECTED_PAGE_PATHS.some(path => pathname.startsWith(path))) {
+    // 检查是否有token（从cookie或localStorage）
+    const token = request.cookies.get('token')?.value;
+    
+    if (!token) {
+      // 重定向到登录页
+      const url = request.nextUrl.clone();
+      url.pathname = '/login';
+      url.searchParams.set('redirect', pathname);
+      return NextResponse.redirect(url);
+    }
+    
+    // TODO: 验证token有效性
+    // 这里可以添加token验证逻辑
+  }
+  
+  // CORS处理（如果需要）
+  if (request.method === 'OPTIONS') {
+    return new NextResponse(null, {
+      status: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        'Access-Control-Max-Age': '86400',
+      },
+    });
+  }
+  
+  // 添加安全响应头
+  const response = NextResponse.next();
+  
+  // 安全响应头
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+  response.headers.set('X-Frame-Options', 'DENY');
+  response.headers.set('X-XSS-Protection', '1; mode=block');
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  
+  // 在开发环境添加CORS头
+  if (process.env.NODE_ENV === 'development') {
+    response.headers.set('Access-Control-Allow-Origin', '*');
+  }
+  
+  return response;
+}
+
+/**
+ * 配置中间件匹配规则
+ */
+export const config = {
+  matcher: [
+    /*
+     * 匹配所有路径除了:
+     * - _next/static (静态文件)
+     * - _next/image (图片优化)
+     * - favicon.ico (网站图标)
+     * - public文件夹中的文件
+     */
+    '/((?!_next/static|_next/image|favicon.ico|public/).*)',
+  ]
+};
