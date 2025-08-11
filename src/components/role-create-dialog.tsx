@@ -176,19 +176,20 @@ export function RoleCreateDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[700px] max-h-[80vh]">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-hidden flex flex-col">
+        <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Plus className="w-5 h-5" />
             创建新角色
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="flex-1 overflow-y-auto pr-2">
+          <div className="space-y-4">
           {/* 基本信息 */}
           <div className="space-y-3">
             <div>
-              <Label htmlFor="role-key">角色标识 *</Label>
+              <Label htmlFor="role-key" className="mb-2 block">角色标识 *</Label>
               <Input
                 id="role-key"
                 placeholder="例如: custom_manager"
@@ -205,7 +206,7 @@ export function RoleCreateDialog({
             </div>
 
             <div>
-              <Label htmlFor="role-name">角色名称 *</Label>
+              <Label htmlFor="role-name" className="mb-2 block">角色名称 *</Label>
               <Input
                 id="role-name"
                 placeholder="例如: 自定义管理员"
@@ -219,7 +220,7 @@ export function RoleCreateDialog({
             </div>
 
             <div>
-              <Label htmlFor="role-desc">角色描述</Label>
+              <Label htmlFor="role-desc" className="mb-2 block">角色描述</Label>
               <Textarea
                 id="role-desc"
                 placeholder="描述这个角色的职责和用途..."
@@ -232,7 +233,7 @@ export function RoleCreateDialog({
 
           {/* 权限选择 */}
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between mb-2">
               <Label>权限配置 *</Label>
               <span className="text-sm text-gray-500">
                 已选择 {formData.permissions.length} 个权限
@@ -256,8 +257,8 @@ export function RoleCreateDialog({
               />
             </div>
 
-            <ScrollArea className="h-[250px] border rounded-lg p-3">
-              <div className="space-y-4">
+            <ScrollArea className="h-[250px] border rounded-lg p-3 overflow-hidden">
+              <div className="space-y-4 relative">
                 {Object.entries(filteredGroups).map(([category, perms]) => (
                   <div key={category} className="space-y-2">
                     <div className="flex items-center justify-between">
@@ -309,10 +310,11 @@ export function RoleCreateDialog({
                 ))}
               </div>
             </ScrollArea>
+            </div>
           </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="shrink-0 border-t pt-4 mt-4">
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
