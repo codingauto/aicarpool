@@ -44,7 +44,6 @@ import {
   Building2
 } from 'lucide-react';
 import { UserDetailsDialog } from '@/components/user-details-dialog';
-import { RoleManagementDialog } from '@/components/role-management-dialog';
 import { RoleViewDialog } from '@/components/role-view-dialog';
 import { RoleCreateDialog } from '@/components/role-create-dialog';
 import { RoleEditDialog } from '@/components/role-edit-dialog';
@@ -214,7 +213,6 @@ export default function EnterprisePermissionsPage({ params }: { params: Promise<
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [showRoleDialog, setShowRoleDialog] = useState(false);
-  const [showRoleManagementDialog, setShowRoleManagementDialog] = useState(false);
   const [showBatchManagementDialog, setShowBatchManagementDialog] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [showUserDetailsDialog, setShowUserDetailsDialog] = useState(false);
@@ -765,7 +763,7 @@ export default function EnterprisePermissionsPage({ params }: { params: Promise<
             </Button>
             <Button 
               variant="outline"
-              onClick={() => setShowRoleManagementDialog(true)}
+              onClick={() => setShowRoleCreateDialog(true)}
             >
               <Key className="w-4 h-4 mr-2" />
               管理角色
@@ -1175,114 +1173,6 @@ export default function EnterprisePermissionsPage({ params }: { params: Promise<
           onUpdateUser={handleUserUpdate}
         />
 
-        
-        {/* 角色管理对话框 */}
-        <RoleManagementDialog
-          open={showRoleManagementDialog}
-          onOpenChange={setShowRoleManagementDialog}
-          availableRoles={permissionsData?.availableRoles || []}
-          users={permissionsData?.users || []}
-          availablePermissions={permissionsData?.availablePermissions || []}
-          onCreateRole={async (role) => {
-            try {
-              const headers: HeadersInit = {
-                'Content-Type': 'application/json'
-              };
-              
-              if (process.env.NODE_ENV !== 'development') {
-                const token = localStorage.getItem('token');
-                if (token) {
-                  headers.Authorization = `Bearer ${token}`;
-                }
-              }
-              
-              const response = await fetch(`/api/enterprises/${enterpriseId}/roles`, {
-                method: 'POST',
-                headers,
-                body: JSON.stringify({
-                  action: 'create',
-                  roleKey: role.key,
-                  roleName: role.name,
-                  permissions: role.permissions
-                })
-              });
-              
-              if (response.ok) {
-                await fetchPermissionsData();
-                return true;
-              }
-              return false;
-            } catch (error) {
-              console.error('创建角色失败:', error);
-              return false;
-            }
-          }}
-          onUpdateRole={async (roleKey, updates) => {
-            try {
-              const headers: HeadersInit = {
-                'Content-Type': 'application/json'
-              };
-              
-              if (process.env.NODE_ENV !== 'development') {
-                const token = localStorage.getItem('token');
-                if (token) {
-                  headers.Authorization = `Bearer ${token}`;
-                }
-              }
-              
-              const response = await fetch(`/api/enterprises/${enterpriseId}/roles`, {
-                method: 'POST',
-                headers,
-                body: JSON.stringify({
-                  action: 'update',
-                  roleKey,
-                  permissions: updates.permissions
-                })
-              });
-              
-              if (response.ok) {
-                await fetchPermissionsData();
-                return true;
-              }
-              return false;
-            } catch (error) {
-              console.error('更新角色失败:', error);
-              return false;
-            }
-          }}
-          onDeleteRole={async (roleKey) => {
-            try {
-              const headers: HeadersInit = {
-                'Content-Type': 'application/json'
-              };
-              
-              if (process.env.NODE_ENV !== 'development') {
-                const token = localStorage.getItem('token');
-                if (token) {
-                  headers.Authorization = `Bearer ${token}`;
-                }
-              }
-              
-              const response = await fetch(`/api/enterprises/${enterpriseId}/roles`, {
-                method: 'POST',
-                headers,
-                body: JSON.stringify({
-                  action: 'delete',
-                  roleKey
-                })
-              });
-              
-              if (response.ok) {
-                await fetchPermissionsData();
-                return true;
-              }
-              return false;
-            } catch (error) {
-              console.error('删除角色失败:', error);
-              return false;
-            }
-          }}
-        />
         
         {/* 批量用户管理对话框 */}
         <BatchUserManagementDialog
