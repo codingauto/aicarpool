@@ -94,7 +94,14 @@ export default function EdgeNodesPage() {
 
       const data = await response.json();
       if (data.success) {
-        setNodes(data.data.nodes || []);
+        // 确保每个节点的 nodeName 是字符串
+        const validatedNodes = (data.data.nodes || []).map((node: any) => ({
+          ...node,
+          nodeName: String(node.nodeName || ''),
+          status: String(node.status || 'inactive'),
+          location: String(node.location || ''),
+        }));
+        setNodes(validatedNodes);
       }
     } catch (error) {
       console.error('获取边缘节点失败:', error);
@@ -170,7 +177,7 @@ export default function EdgeNodesPage() {
     setMaxConnections('');
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string): "default" | "secondary" | "destructive" | "outline" => {
     switch (status) {
       case 'active':
         return 'default';
@@ -442,7 +449,7 @@ export default function EdgeNodesPage() {
                         <div>
                           <CardTitle className="flex items-center gap-2">
                             <Server className="w-5 h-5" />
-                            {node.nodeName}
+                            {node.nodeName || '未命名节点'}
                           </CardTitle>
                           <CardDescription className="flex items-center gap-2 mt-1">
                             <MapPin className="w-4 h-4" />
@@ -450,8 +457,8 @@ export default function EdgeNodesPage() {
                           </CardDescription>
                         </div>
                         <div className="flex flex-col items-end gap-2">
-                          <Badge variant={getStatusColor(node.status)}>
-                            {getStatusText(node.status)}
+                          <Badge variant={getStatusColor(node.status || 'inactive')}>
+                            {getStatusText(node.status || 'inactive')}
                           </Badge>
                           <div className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs ${getHealthColor(node.healthScore)}`}>
                             {getHealthIcon(node.healthScore)}
