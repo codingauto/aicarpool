@@ -1,4 +1,4 @@
-# AiCarpool 拼车服务平台
+# AiCarpool - AI服务共享平台
 
 <div align="center">
 
@@ -6,152 +6,49 @@
 [![Next.js](https://img.shields.io/badge/Next.js-15.4+-blue.svg)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5+-blue.svg)](https://www.typescriptlang.org/)
 [![MySQL](https://img.shields.io/badge/MySQL-8+-orange.svg)](https://www.mysql.com/)
+[![Redis](https://img.shields.io/badge/Redis-7+-red.svg)](https://redis.io/)
 
-**🚗 企业级AI服务拼车管理平台，支持多AI服务聚合、智能路由、成本分摊**
+**🚗 企业级AI服务共享管理平台 - 让AI服务更高效、更经济**
 
-**🆕 v0.17.0 - 高并发性能优化升级：Redis缓存、异步处理、预计算账号池、渐进式部署** 
+[快速开始](#-快速开始) • [核心功能](#-核心功能) • [系统架构](#-系统架构) • [部署指南](#-部署指南) • [API文档](docs/api.md)
 
 </div>
 
 ---
 
-## 🚀 核心功能
+## 📌 项目简介
 
-### 🏢 企业级管理 (v0.17.0 高并发优化)
-- ✅ **企业组织**: 创建和管理企业级组织架构
-- ✅ **权限管理**: 完整的RBAC权限系统，支持角色管理对话框
-- ✅ **预算控制**: 全新预算管理模块，AI服务成本分析与监控
-- ✅ **用户管理**: 批量用户操作、权限分配、角色统计
-- ✅ **部门管理**: 多级部门结构，支持复杂企业架构
+AiCarpool 是一个成熟稳定的AI服务共享管理平台，通过智能的资源池化和分配机制，帮助团队和企业高效管理和共享各类AI服务资源。支持Claude、Gemini、通义千问等主流AI服务，提供完整的权限管理、成本控制和使用监控功能。
 
-### 🚀 高并发性能优化 (v0.17.0 新增)
-- ✅ **Redis缓存层**: API Key验证、配额检查、账号池缓存，响应速度提升70%
-- ✅ **异步处理**: 消息队列异步记录使用统计，消除API响应阻塞
-- ✅ **预计算账号池**: 实时计算最优账号选择，集成健康检查和负载均衡
-- ✅ **性能监控**: 实时指标收集、告警系统、性能分析仪表板
-- ✅ **功能开关**: 渐进式部署、A/B测试、紧急回滚机制
-- ✅ **后台作业**: 定时缓存清理、健康检查、数据统计任务
+### 为什么选择 AiCarpool？
 
-### 🎯 拼车组管理
-- ✅ **组织管理**: 创建和管理多个拼车组，支持不同业务场景
-- ✅ **成员权限**: 细粒度角色权限（组长、管理员、成员）
-- ✅ **邀请系统**: 邮件邮请链接，快速加入拼车组
-- ✅ **使用统计**: 每个组的详细使用情况和成本分析
-
-### 🤖 多AI服务支持
-- ✅ **服务聚合**: 支持Claude、GPT、通义千问等主流AI服务
-- ✅ **智能路由**: 基于可用性、成本、性能的智能请求分发
-- ✅ **负载均衡**: 多账户轮换，避免单账户过载
-- ✅ **故障转移**: 自动检测服务异常并切换到备用服务
-
-### 📊 配额与监控
-- ✅ **精细配额**: 按用户、按组、按服务的多维度配额控制
-- ✅ **实时监控**: 使用量、成本、性能指标实时监控
-- ✅ **告警通知**: 配额预警、服务异常等智能告警
-- ✅ **数据分析**: 使用趋势、成本分析、性能报告
-
-### 🌐 部署与容器化 (v0.9.0 新增)
-- ✅ **Docker化部署**: 完整Docker容器化方案，2分钟一键部署
-- ✅ **多架构支持**: AMD64 + ARM64镜像，支持各种硬件平台
-- ✅ **CI/CD流水线**: GitHub Actions自动构建发布到Docker Hub
-- ✅ **服务编排**: Docker Compose完整服务栈管理
-- ✅ **代理管理**: 支持HTTP/SOCKS5代理，确保服务可达性
-- ✅ **多部署模式**: 集中化、分布式、混合部署架构
-- ✅ **边缘节点**: 分布式边缘节点，就近处理请求
+- **💰 成本优化** - 通过资源共享和智能分配，降低AI服务使用成本
+- **🔄 高可用性** - 多账号轮换、故障转移，确保服务稳定性
+- **🎯 灵活管理** - 支持企业级和拼车组两种模式，适应不同规模团队
+- **📊 完整监控** - 实时统计、成本分析、性能监控一应俱全
+- **🔐 安全可靠** - JWT认证、RBAC权限、细粒度访问控制
 
 ---
 
-## 📋 技术栈
+## 🚀 快速开始
 
-- **前端**: Next.js 15 + React 19 + TypeScript + Tailwind CSS
-- **后端**: Next.js API Routes + Prisma ORM
-- **数据库**: MySQL 8.0 + Redis 7
-- **容器化**: Docker + Docker Compose + 多架构镜像
-- **CI/CD**: GitHub Actions + Docker Hub自动构建
-- **认证**: JWT + NextAuth.js
-- **邮件**: React Email + Nodemailer
-- **UI组件**: shadcn/ui + Radix UI
-- **监控**: 可选Prometheus + Grafana + 健康检查
-- **运行时**: Node.js 22 LTS + Alpine Linux
+### 🐳 Docker 一键部署（推荐）
 
----
+最快速的部署方式，2-5分钟完成：
 
-## 🛠️ 本地开发
-
-### 环境要求
-- Node.js 18+
-- MySQL 8.0+
-- Redis 6+
-
-### 🐳 Docker部署（推荐）
-
-**一键Docker部署（最简单、最快速）：**
 ```bash
-# Docker一键部署，自动配置所有服务
+# 自动安装并启动所有服务
 curl -fsSL https://raw.githubusercontent.com/codingauto/aicarpool/main/scripts/docker-deploy.sh | bash
 ```
 
-**使用Docker Compose：**
-```bash
-# 1. 下载配置文件
-curl -fsSL https://raw.githubusercontent.com/codingauto/aicarpool/main/docker-compose.yml -o docker-compose.yml
-curl -fsSL https://raw.githubusercontent.com/codingauto/aicarpool/main/.env.docker.example -o .env
+访问 `http://localhost:4000`，使用默认管理员账号登录：
+- 邮箱：`admin@aicarpool.com`  
+- 密码：`admin123456`
 
-# 2. 编辑环境变量
-nano .env  # 配置必要的环境变量
+> ⚠️ 首次登录后请立即修改密码
 
-# 3. 启动服务
-docker-compose up -d
+### 传统部署
 
-# 4. 查看服务状态
-docker-compose ps
-```
-
-**Docker Hub镜像：**
-```bash
-# 直接运行最新版本
-docker run -d \
-  --name aicarpool \
-  -p 4000:4000 \
-  -e DATABASE_URL="mysql://user:pass@host:3306/aicarpool" \
-  -e NEXTAUTH_SECRET="your-secret-key" \
-  wutongci/aicarpool:latest
-```
-
-**Docker优势：**
-- ⚡ 2-5分钟快速部署
-- 🔒 环境隔离，安全可靠
-- 📦 包含完整服务栈（应用+数据库+缓存）
-- 🔄 易于升级和备份
-- 🌐 支持多架构（AMD64 + ARM64）
-
-### 传统服务器部署
-
-**快速部署模式（自动避免数据库迁移冲突）：**
-```bash
-# 快速模式部署，适用于生产服务器和开发环境
-curl -fsSL https://raw.githubusercontent.com/codingauto/aicarpool/main/scripts/install.sh | QUICK_MODE=true bash
-
-# 如果系统已安装Docker，脚本会自动使用Docker模式
-# 强制使用传统模式: DOCKER_MODE=false bash
-```
-
-**标准部署（传统迁移模式）：**
-```bash
-# 通用安装脚本（自动检测系统和Docker）
-curl -fsSL https://raw.githubusercontent.com/codingauto/aicarpool/main/scripts/install.sh | bash
-
-# 手动指定系统类型
-# Ubuntu/Debian 系统
-curl -fsSL https://raw.githubusercontent.com/codingauto/aicarpool/main/scripts/deploy-ubuntu.sh | bash
-
-# CentOS/RHEL 系统  
-curl -fsSL https://raw.githubusercontent.com/codingauto/aicarpool/main/scripts/deploy-centos.sh | bash
-```
-
-### 手动安装部署
-
-**快速部署（推荐 - 适用于本地开发和服务器部署）：**
 ```bash
 # 1. 克隆项目
 git clone https://github.com/codingauto/aicarpool.git
@@ -162,171 +59,92 @@ npm install
 
 # 3. 配置环境变量
 cp .env.example .env.local
-# 编辑 .env.local 配置数据库连接
+# 编辑 .env.local 配置数据库等信息
 
-# 4. 快速初始化数据库（避免迁移冲突）
+# 4. 初始化数据库
 npm run quick-install
 
 # 5. 启动服务
-npm run dev          # 开发环境
-# 或
-npm run build && npm run start  # 生产环境
+npm run dev
 ```
 
-**传统部署方式（使用数据库迁移）：**
-```bash
-# 1-3 步骤相同...
-
-# 4. 传统数据库迁移
-npx prisma migrate dev      # 开发环境
-# 或
-npx prisma migrate deploy   # 生产环境
-npx prisma db seed
-npm run db:create-admin
-
-# 5. 启动服务
-npm run dev                 # 开发环境
-# 或
-npm run build && npm run start  # 生产环境
-```
-
-### 开发命令
-
-```bash
-# 应用开发
-npm run dev          # 启动开发服务器
-npm run build        # 构建生产版本
-npm run start        # 启动生产服务器
-npm run lint         # 代码检查
-npm run typecheck    # TypeScript类型检查
-
-# 快速部署相关
-npm run quick-install    # 一键快速部署（推荐，适用于开发和生产）
-npm run db:reset         # 重置数据库（强制推送schema）
-npm run db:init          # 初始化数据库和管理员
-
-# 数据库相关（传统方式）
-npx prisma generate       # 生成Prisma客户端
-npx prisma migrate dev     # 创建开发迁移
-npx prisma studio         # 打开数据库管理界面
-npm run db:seed           # 初始化种子数据
-npm run db:create-admin   # 创建管理员账号
-```
+详细部署文档请参考 [部署指南](#-部署指南)
 
 ---
 
-## 🎮 使用指南
+## ✨ 核心功能
 
-### 1. 创建管理员账号
-首次部署后，需要创建管理员账号：
-```bash
-npm run db:create-admin
-```
-默认管理员信息：
-- **邮箱**: admin@aicarpool.com
-- **密码**: admin123456
-- **角色**: admin
+### 🏢 组织管理
 
-⚠️ **重要**：首次登录后请立即修改密码！
+**企业模式** - 适合中大型团队
+- 多级部门架构管理
+- AI账号池智能分配
+- 统一预算控制
+- 集中权限管理
 
-### 2. 访问管理界面
-浏览器访问：`http://localhost:4000`（开发环境）或 `http://localhost:3000`（生产环境）
+**拼车组模式** - 适合小团队
+- 独立拼车组管理
+- 专属AI账号绑定
+- 成员费用均摊
+- 简单权限控制
 
-### 3. 企业级管理 (v0.6.2)
-使用管理员账号登录后：
-1. 进入「企业管理」页面
-2. 创建企业组织
-3. 设置部门结构
-4. 配置账号池和负载均衡策略
-5. 分配预算和设置权限
+### 🤖 AI服务集成
 
-### 4. 配置AI服务
-1. 进入「AI服务管理」页面
-2. 添加AI服务（Claude、GPT等）
-3. 配置API密钥和代理设置
-4. 测试连接
+支持主流AI服务，统一接入管理：
 
-### 5. 创建拼车组
-1. 进入「拼车组管理」页面
-2. 创建新的拼车组
-3. 设置成员权限和配额
-4. 邀请成员加入
+- **Claude系列**
+  - Claude Code OAuth认证
+  - Claude Console原生API
+  - 多种中转服务支持
+- **Gemini系列** - 完整API支持
+- **国产AI服务** - 通义千问、智谱GLM、Kimi等
+- **其他CLI工具** - Cursor、AmpCode、Auggie等
 
-### 6. 选择部署模式
-根据团队规模选择合适的部署模式：
-- **集中化模式**: 适合小团队（<10人）
-- **分布式模式**: 适合大团队（>20人）
-- **混合模式**: 灵活配置，平衡性能和成本
+### 🔐 认证与权限
 
----
+- **JWT Token自动刷新** - 7天内无需重新登录，token过期自动刷新
+- **RBAC权限体系** - 系统、企业、部门、成员多级权限
+- **API Key管理** - 细粒度配额控制，支持多种CLI工具
+- **访问控制** - 基于角色的功能访问限制
 
-## 🌟 主要API接口
+### 📊 监控与分析
 
-### 认证接口
-```http
-POST /api/auth/login      # 用户登录
-POST /api/auth/register   # 用户注册
-GET  /api/auth/me         # 获取用户信息
-```
+- **实时监控** - API调用、token使用、成本消耗实时追踪
+- **统计分析** - 多维度数据分析，使用趋势图表
+- **预算管理** - 企业、部门、个人多级预算控制
+- **告警通知** - 配额预警、服务异常自动告警
 
-### 拼车组管理
-```http
-GET    /api/groups        # 获取拼车组列表
-POST   /api/groups        # 创建拼车组
-GET    /api/groups/[id]   # 获取拼车组详情
-PUT    /api/groups/[id]   # 更新拼车组
-POST   /api/groups/[id]/invite  # 邀请成员
-```
+### ⚡ 性能优化
 
-### 企业管理接口 (v0.6.2 新增)
-```http
-GET    /api/enterprises                    # 获取企业列表
-POST   /api/enterprises                    # 创建企业
-GET    /api/enterprises/[id]               # 获取企业详情
-PUT    /api/enterprises/[id]               # 更新企业
-DELETE /api/enterprises/[id]               # 删除企业
-GET    /api/enterprises/[id]/departments   # 获取部门列表
-POST   /api/enterprises/[id]/departments   # 创建部门
-GET    /api/enterprises/[id]/account-pools # 获取账号池列表
-POST   /api/enterprises/[id]/account-pools # 创建账号池
-```
-
-### AI服务接口
-```http
-POST /api/chat/completions  # 聊天补全
-GET  /api/models           # 获取模型列表
-GET  /api/usage            # 使用统计
-```
+- **Redis缓存** - API Key、配额、账号池多级缓存
+- **异步处理** - 消息队列处理统计数据，API无阻塞响应
+- **智能路由** - 负载均衡、健康检查、故障自动转移
+- **批量优化** - 数据库查询优化，批量写入
 
 ---
 
-## 📈 项目结构
+## 🏗 系统架构
 
 ```
-aicarpool/
-├── src/
-│   ├── app/                 # Next.js页面和API路由
-│   │   ├── api/            # API路由
-│   │   │   ├── enterprises/ # 企业管理API (v0.6.2)
-│   │   │   ├── groups/     # 拼车组API
-│   │   │   └── auth/       # 认证API
-│   │   ├── enterprise/     # 企业管理页面 (v0.6.2)
-│   │   └── dashboard/      # 仪表板页面
-│   ├── components/          # React组件
-│   │   ├── ui/             # 基础UI组件
-│   │   ├── layout/         # 布局组件
-│   │   ├── enterprise/     # 企业管理组件 (v0.6.2)
-│   │   └── groups/         # 拼车组相关组件
-│   ├── lib/                # 工具库和配置
-│   ├── hooks/              # 自定义Hook
-│   └── types/              # TypeScript类型定义
-├── prisma/                 # 数据库schema和迁移
-│   ├── schema.prisma       # 数据库模型定义
-│   ├── seed-enterprise.ts  # 企业数据种子 (v0.6.2)
-│   └── create-admin.ts     # 管理员账号创建 (v0.6.2)
-├── public/                 # 静态资源
-└── docs/                   # 项目文档
+客户端 → API网关 → 认证中间件 → 智能路由器 → AI服务
+                        ↓
+                    权限管理 → 资源管理 → 统计监控
+                        ↓
+                  MySQL + Redis
 ```
+
+详细架构说明请参考 [架构文档](docs/aicarpool-current-architecture.md)
+
+---
+
+## 📋 技术栈
+
+- **前端**: Next.js 15 + React 19 + TypeScript + Tailwind CSS
+- **后端**: Next.js API Routes + Prisma ORM  
+- **数据库**: MySQL 8.0 + Redis 7
+- **认证**: JWT + 自动刷新机制
+- **容器**: Docker + Docker Compose
+- **UI组件**: shadcn/ui + Radix UI
 
 ---
 
@@ -334,742 +152,131 @@ aicarpool/
 
 ### 环境要求
 
-**硬件要求（最低配置）：**
-- **CPU**: 2核心
-- **内存**: 4GB（建议8GB）
-- **硬盘**: 50GB可用空间
-- **网络**: 稳定的网络连接
+- Node.js 18+ / Docker
+- MySQL 8.0+
+- Redis 7+
+- 2核4G内存（最低配置）
 
-**技术栈：**
-- **Node.js** 22+ (推荐)
-- **MySQL** 8.0+
-- **Redis** 7+
-- **Docker** (推荐)
+### Docker Compose 部署
 
-### 🐳 Docker部署（推荐方式）
-
-Docker部署是最简单、最可靠的部署方式，适合生产环境和开发环境。
-
-#### Docker一键部署
-
-```bash
-# 自动下载并运行Docker部署脚本
-curl -fsSL https://raw.githubusercontent.com/codingauto/aicarpool/main/scripts/docker-deploy.sh | bash
-```
-
-这个脚本会自动：
-- 检查Docker环境
-- 下载docker-compose.yml配置
-- 生成安全的环境变量
-- 启动完整的服务栈
-- 配置数据库和管理员账号
-
-#### 手动Docker部署
-
-**1. 准备环境文件**
-```bash
-# 下载配置文件
-wget https://raw.githubusercontent.com/codingauto/aicarpool/main/docker-compose.yml
-wget https://raw.githubusercontent.com/codingauto/aicarpool/main/.env.docker.example -O .env
-```
-
-**2. 配置环境变量**
-```bash
-# 编辑 .env 文件，配置必要参数
-nano .env
-
-# 必须配置的参数：
-# NEXTAUTH_SECRET=your-random-secret-key-at-least-32-chars
-# MYSQL_ROOT_PASSWORD=your-secure-root-password
-# DB_PASSWORD=your-secure-db-password
-```
-
-**3. 启动服务**
-```bash
-# 启动核心服务
-docker-compose up -d aicarpool mysql redis
-
-# 启动开发环境（包含管理工具）
-docker-compose --profile development up -d
-
-# 启动生产环境（包含监控）
-docker-compose --profile production up -d
-```
-
-**4. 验证部署**
-```bash
-# 查看服务状态
-docker-compose ps
-
-# 查看应用日志
-docker-compose logs -f aicarpool
-
-# 访问应用
-curl http://localhost:4000/health
-```
-
-#### Docker管理命令
-
-```bash
-# 服务管理
-docker-compose start     # 启动服务
-docker-compose stop      # 停止服务
-docker-compose restart   # 重启服务
-docker-compose down      # 停止并删除容器
-
-# 日志查看
-docker-compose logs aicarpool     # 查看应用日志
-docker-compose logs mysql         # 查看数据库日志
-docker-compose logs -f             # 查看所有日志
-
-# 数据备份
-docker-compose exec mysql mysqldump -u root -p aicarpool > backup.sql
-
-# 进入容器
-docker-compose exec aicarpool sh  # 进入应用容器
-docker-compose exec mysql mysql -u root -p  # 进入数据库
-```
-
-#### Docker环境配置
-
-**生产环境配置示例：**
-```bash
-# .env 文件配置
-NEXTAUTH_SECRET=your-super-secure-secret-key-32-chars-minimum
-NEXTAUTH_URL=https://your-domain.com
-MYSQL_ROOT_PASSWORD=your-secure-root-password
-DB_PASSWORD=your-secure-db-password
-QUICK_MODE=true
-NODE_ENV=production
-
-# 可选：邮件配置
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=your-email@gmail.com
-SMTP_PASSWORD=your-app-password
-
-# 可选：AI服务配置
-CLAUDE_API_KEY=your-claude-api-key
-OPENAI_API_KEY=your-openai-api-key
-```
-
-**反向代理配置（Nginx）：**
-```bash
-# 启用Nginx反向代理
-docker-compose --profile nginx up -d
-
-# 或手动配置外部Nginx
-# upstream aicarpool {
-#     server localhost:4000;
-# }
-```
-
-### 传统手动部署
-
-#### 第一步：环境准备
-
-**Ubuntu/Debian用户：**
-```bash
-# 安装Node.js
-curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-sudo apt-get install -y nodejs
-
-# 安装MySQL
-sudo apt update
-sudo apt install mysql-server
-sudo systemctl start mysql
-sudo systemctl enable mysql
-
-# 安装Redis
-sudo apt install redis-server
-sudo systemctl start redis-server
-sudo systemctl enable redis-server
-```
-
-**CentOS/RHEL用户：**
-```bash
-# 安装Node.js
-curl -fsSL https://rpm.nodesource.com/setup_18.x | sudo bash -
-sudo yum install -y nodejs
-
-# 安装MySQL
-sudo yum install mysql-server
-sudo systemctl start mysqld
-sudo systemctl enable mysqld
-
-# 安装Redis
-sudo yum install redis
-sudo systemctl start redis
-sudo systemctl enable redis
-```
-
-#### 第二步：下载和配置
-
-```bash
-# 下载项目
-git clone https://github.com/codingauto/aicarpool.git
-cd aicarpool
-
-# 安装依赖
-npm install
-
-# 复制环境配置文件
-cp .env.example .env.local
-```
-
-#### 第三步：配置环境变量
-
-编辑 `.env.local` 文件：
-```bash
-# 数据库配置
-DATABASE_URL="mysql://username:password@localhost:3306/aicarpool"
-
-# Redis配置
-REDIS_URL="redis://localhost:6379"
-
-# JWT密钥（随机生成32字符以上）
-NEXTAUTH_SECRET="your_random_secret_key_here"
-
-# 应用配置
-NEXTAUTH_URL="http://localhost:3000"
-NODE_ENV="production"
-
-# 邮件配置（可选）
-SMTP_HOST="smtp.gmail.com"
-SMTP_PORT="587"
-SMTP_USER="your_email@gmail.com"
-SMTP_PASSWORD="your_app_password"
-
-# AI服务配置（根据需要配置）
-CLAUDE_API_KEY="your_claude_api_key"
-OPENAI_API_KEY="your_openai_api_key"
-```
-
-#### 第四步：数据库初始化
-
-**快速部署模式（推荐，避免迁移冲突）：**
-```bash
-# 创建数据库
-mysql -u root -p -e "CREATE DATABASE aicarpool;"
-
-# 一键快速部署（适用于开发和生产环境）
-npm run quick-install
-```
-
-**传统部署模式（使用迁移）：**
-```bash
-# 创建数据库
-mysql -u root -p -e "CREATE DATABASE aicarpool;"
-
-# 生成Prisma客户端
-npx prisma generate
-
-# 运行数据库迁移
-npx prisma migrate deploy
-
-# 初始化种子数据
-npm run db:seed
-
-# 创建管理员账号
-npm run db:create-admin
-```
-
-#### 第五步：构建和启动
-
-```bash
-# 构建项目
-npm run build
-
-# 启动生产服务器
-npm start
-
-# 或使用PM2管理进程（推荐）
-npm install -g pm2
-pm2 start npm --name "aicarpool" -- start
-pm2 save
-pm2 startup
-```
-
-### Docker部署（推荐）
-
-#### 使用Docker Compose（最简单）
-
-创建 `docker-compose.yml` 文件：
 ```yaml
+# docker-compose.yml 示例
 version: '3.8'
 services:
   aicarpool:
-    build: .
-    container_name: aicarpool-app
-    restart: unless-stopped
+    image: wutongci/aicarpool:latest
     ports:
-      - "3000:3000"
+      - "4000:4000"
     environment:
-      - DATABASE_URL=mysql://aicarpool:password@mysql:3306/aicarpool
+      - DATABASE_URL=mysql://user:pass@mysql:3306/aicarpool
       - REDIS_URL=redis://redis:6379
-      - NEXTAUTH_SECRET=your_random_secret_key_here
-      - NEXTAUTH_URL=http://localhost:3000
-      - NODE_ENV=production
+      - NEXTAUTH_SECRET=your-secret-key
     depends_on:
       - mysql
       - redis
-    volumes:
-      - ./logs:/app/logs
-
-  mysql:
-    image: mysql:8.0
-    container_name: aicarpool-mysql
-    restart: unless-stopped
-    environment:
-      - MYSQL_ROOT_PASSWORD=rootpassword
-      - MYSQL_DATABASE=aicarpool
-      - MYSQL_USER=aicarpool
-      - MYSQL_PASSWORD=password
-    volumes:
-      - mysql_data:/var/lib/mysql
-    ports:
-      - "3306:3306"
-
-  redis:
-    image: redis:7-alpine
-    container_name: aicarpool-redis
-    restart: unless-stopped
-    volumes:
-      - redis_data:/data
-    ports:
-      - "6379:6379"
-
-  # 可选：添加nginx反向代理
-  nginx:
-    image: nginx:alpine
-    container_name: aicarpool-nginx
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf
-      - ./ssl:/etc/ssl
-    depends_on:
-      - aicarpool
-
-volumes:
-  mysql_data:
-  redis_data:
-```
-
-#### 启动服务
-
-```bash
-# 启动所有服务
-docker-compose up -d
-
-# 查看服务状态
-docker-compose ps
-
-# 查看日志
-docker-compose logs -f aicarpool
-
-# 进入容器执行数据库迁移
-docker-compose exec aicarpool npx prisma migrate deploy
 ```
 
 ### 生产环境配置
 
-#### 1. 反向代理配置（Nginx）
-
-创建 `nginx.conf` 文件：
-```nginx
-events {
-    worker_connections 1024;
-}
-
-http {
-    upstream aicarpool {
-        server aicarpool:3000;
-    }
-
-    server {
-        listen 80;
-        server_name your-domain.com;
-        
-        # 重定向到HTTPS
-        return 301 https://$server_name$request_uri;
-    }
-
-    server {
-        listen 443 ssl http2;
-        server_name your-domain.com;
-        
-        # SSL配置
-        ssl_certificate /etc/ssl/your-domain.crt;
-        ssl_certificate_key /etc/ssl/your-domain.key;
-        ssl_protocols TLSv1.2 TLSv1.3;
-        ssl_ciphers HIGH:!aNULL:!MD5;
-        
-        # 安全头
-        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
-        add_header X-Frame-Options "DENY" always;
-        add_header X-Content-Type-Options "nosniff" always;
-        
-        location / {
-            proxy_pass http://aicarpool;
-            proxy_http_version 1.1;
-            proxy_set_header Upgrade $http_upgrade;
-            proxy_set_header Connection 'upgrade';
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-            proxy_cache_bypass $http_upgrade;
-            
-            # 支持长连接
-            proxy_read_timeout 300s;
-            proxy_connect_timeout 75s;
-        }
-    }
-}
+```bash
+# .env.production
+NODE_ENV=production
+DATABASE_URL=mysql://user:password@localhost:3306/aicarpool
+REDIS_URL=redis://localhost:6379
+NEXTAUTH_SECRET=your-32-chars-secret-key
+NEXTAUTH_URL=https://your-domain.com
 ```
 
-#### 2. SSL证书配置
+更多部署选项请参考完整[部署文档](docs/deployment.md)
 
-**使用Let's Encrypt（免费）：**
-```bash
-# 安装certbot
-sudo apt install certbot python3-certbot-nginx
+---
 
-# 申请证书
-sudo certbot --nginx -d your-domain.com
+## 📝 开发指南
 
-# 自动续期
-sudo crontab -e
-# 添加：0 12 * * * /usr/bin/certbot renew --quiet
-```
-
-#### 3. 监控和日志
-
-**使用PM2监控：**
-```bash
-# 安装PM2
-npm install -g pm2
-
-# 创建PM2配置文件 ecosystem.config.js
-module.exports = {
-  apps: [{
-    name: 'aicarpool',
-    script: 'npm',
-    args: 'start',
-    cwd: '/path/to/aicarpool',
-    env: {
-      NODE_ENV: 'production',
-      PORT: 3000
-    },
-    log_file: './logs/combined.log',
-    out_file: './logs/out.log',
-    error_file: './logs/error.log',
-    log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
-    merge_logs: true,
-    max_memory_restart: '1G'
-  }]
-};
-
-# 启动应用
-pm2 start ecosystem.config.js
-pm2 save
-pm2 startup
-```
-
-#### 4. 数据库备份策略
+### 本地开发
 
 ```bash
-# 创建备份脚本 backup.sh
-#!/bin/bash
-DATE=$(date +"%Y%m%d_%H%M%S")
-BACKUP_DIR="/backup/mysql"
-mkdir -p $BACKUP_DIR
+# 开发服务器
+npm run dev
 
-# 备份数据库
-mysqldump -u aicarpool -p aicarpool > $BACKUP_DIR/aicarpool_$DATE.sql
+# 类型检查
+npm run typecheck
 
-# 保留最近30天的备份
-find $BACKUP_DIR -name "aicarpool_*.sql" -mtime +30 -delete
+# 代码检查
+npm run lint
 
-# 添加到crontab每日备份
-# 0 2 * * * /path/to/backup.sh
-```
-
-### 脚本管理
-
-**升级应用：**
-```bash
-# 进入应用目录
-cd /opt/aicarpool
-
-# 拉取最新代码
-git pull origin main
-
-# 安装新依赖
-npm install
-
-# 运行数据库迁移
-npx prisma migrate deploy
-
-# 重新构建
+# 构建生产版本
 npm run build
-
-# 重启服务
-pm2 restart aicarpool
 ```
 
-**完全卸载：**
-```bash
-# 下载并运行卸载脚本
-curl -fsSL https://raw.githubusercontent.com/codingauto/aicarpool/main/scripts/uninstall.sh | bash
+### 项目结构
 
-# 或本地运行
-bash /opt/aicarpool/scripts/uninstall.sh
 ```
-
-**一键更新（推荐）：**
-```bash
-# 使用更新脚本（自动备份配置、更新代码、重启服务）
-bash /opt/aicarpool/scripts/update.sh
-
-# 或者从网络下载最新的更新脚本
-curl -fsSL https://raw.githubusercontent.com/codingauto/aicarpool/main/scripts/update.sh | bash
-```
-
-**服务管理：**
-```bash
-# 查看服务状态
-pm2 status
-
-# 查看应用日志
-pm2 logs aicarpool
-
-# 重启应用
-pm2 restart aicarpool
-
-# 停止应用
-pm2 stop aicarpool
-
-# 查看资源使用
-pm2 monit
-
-# 查看当前版本
-cd /opt/aicarpool && git log --oneline -5
-```
-
-**Git相关操作：**
-```bash
-# 查看当前版本信息
-bash /opt/aicarpool/scripts/update.sh --version
-
-# 检查是否有新版本
-cd /opt/aicarpool
-git fetch origin
-git log --oneline HEAD..origin/main
-
-# 手动更新代码（不推荐，建议使用update.sh）
-cd /opt/aicarpool
-git stash  # 备份本地修改
-git pull origin main  # 更新代码
-npm install  # 更新依赖
-npm run build  # 重新构建
-pm2 restart aicarpool  # 重启服务
+aicarpool/
+├── src/
+│   ├── app/          # Next.js页面和API路由
+│   ├── components/   # React组件
+│   ├── lib/          # 工具库和配置
+│   │   ├── api/      # API客户端和认证服务
+│   │   ├── auth/     # JWT和认证工具
+│   │   └── prisma.ts # 数据库连接
+│   └── contexts/     # React Context
+├── prisma/           # 数据库模型和迁移
+└── public/           # 静态资源
 ```
 
 ---
 
-## 🐛 故障排除
+## 🐛 常见问题
 
-### 常见问题
+### Token刷新相关
 
-**数据库连接失败**
+系统已实现自动token刷新，用户无需手动处理。如需测试，访问 `/test-auth` 页面。
+
+### 数据库连接问题
+
 ```bash
 # 检查MySQL服务
-systemctl status mysql  # Ubuntu/Debian
-systemctl status mysqld # CentOS/RHEL
+systemctl status mysql
 mysql -u root -p -e "SHOW DATABASES;"
+
+# 重置数据库
+npm run db:reset
+npm run db:init
 ```
 
-**Redis连接失败**
-```bash
-# 检查Redis服务
-systemctl status redis-server  # Ubuntu/Debian
-systemctl status redis         # CentOS/RHEL
-redis-cli ping
-```
+### 更多问题
 
-**Git相关问题**
-```bash
-# Git克隆失败（网络问题）
-# 配置代理（如果需要）
-git config --global http.proxy http://proxy-server:port
-git config --global https.proxy https://proxy-server:port
-
-# 清除代理配置
-git config --global --unset http.proxy
-git config --global --unset https.proxy
-
-# 检查Git配置
-git config --global --list
-```
-
-**更新失败**
-```bash
-# 重置本地修改
-cd /opt/aicarpool
-git stash  # 或者 git reset --hard HEAD
-git pull origin main
-
-# 强制更新到最新版本
-git fetch origin
-git reset --hard origin/main
-```
-
-**构建失败**
-```bash
-# 清除缓存重新安装
-cd /opt/aicarpool
-rm -rf node_modules package-lock.json .next
-npm install
-npm run build
-```
-
-**服务启动失败**
-```bash
-# 检查端口占用
-ss -tlnp | grep 3000
-# 或者
-netstat -tlnp | grep 3000
-
-# 检查PM2状态
-pm2 status
-pm2 logs aicarpool
-
-# 重启服务
-pm2 delete aicarpool
-bash /opt/aicarpool/scripts/update.sh
-```
-
----
-
-## 📝 版本更新日志
-
-### v0.17.0 (2025-08-05) - 高并发性能优化升级
-- 🚀 **Redis缓存层集成**
-  - API Key验证缓存，响应速度提升70%
-  - 配额检查缓存，清除数据库查询瓶颈
-  - 账号池缓存，预计算最优账号选择
-  - 缓存无效化机制，保证数据一致性
-- ⚡ **异步处理系统**
-  - 消息队列异步记录使用统计
-  - 批量处理机制，清除高频数据库写入
-  - 死信队列处理，错误重试机制
-  - API响应无阻塞，用户体验大幅提升
-- 📊 **预计算账号池优化**
-  - 实时计算最优账号选择算法
-  - 负载均衡和健康检查集成
-  - 账号池清理和维护任务
-  - 支持多种负载均衡策略
-- 📊 **性能监控系统**
-  - 实时指标收集（API响应时间、缓存命中率、错误率）
-  - 性能告警系统，自定义告警阈值
-  - 系统资源监控（CPU、内存、网络）
-  - 性能分析仪表板和报告
-- 🔄 **功能开关和渐进式部署**
-  - 高级功能开关系统，支持灰度发布
-  - 金丝雀部署、渐进部署、全量部署
-  - A/B测试支持，用户白名单机制
-  - 紧急回滚机制，一键切换到原版实现
-- 🔧 **后台作业调度系统**
-  - 定时缓存清理和统计数据清理
-  - 账号健康检查和状态同步
-  - 系统指标收集和分析任务
-  - 数据备份和清理策略
-
-### v0.9.0 (2025-08-04) - Docker化部署全面升级
-- 🐳 **完整Docker支持**
-  - 多阶段Dockerfile优化，基于Node.js 22 Alpine
-  - 支持AMD64 + ARM64多架构镜像
-  - 完整的docker-compose.yml服务编排
-  - 智能docker-entrypoint.sh启动脚本
-- 🚀 **CI/CD自动化**
-  - GitHub Actions工作流自动构建
-  - Docker Hub自动发布和标签管理
-  - 安全扫描和多平台构建
-  - 自动同步README到Docker Hub
-- ⚡ **部署体验优化**
-  - 一键Docker部署脚本 (2-5分钟部署)
-  - 自动检测Docker环境的智能安装脚本
-  - 完整的环境变量模板和配置
-  - 支持开发、生产、监控多种配置profile
-- 📊 **监控和管理**
-  - 内置健康检查和状态监控
-  - 可选Prometheus + Grafana监控栈
-  - phpMyAdmin + Redis Commander管理界面
-  - 完整的日志聚合和备份方案
-- 🔧 **开发体验改进**
-  - 环境隔离，避免系统污染
-  - 热重载和调试支持
-  - 一键卸载和数据清理
-  - 完整的Docker管理命令文档
-
-### v0.8.6 (2025-08-04) - 权限管理与预算控制全面升级
-- 🏢 **RBAC权限系统优化**
-  - 完善角色管理对话框布局
-  - 修复文本重叠和卡片间距问题
-  - 优化权限分配界面用户体验
-- 💰 **预算管理模块**
-  - 新增企业预算管理页面 `/enterprise/[id]/budget`
-  - 预算概览、服务分析和配置设置
-  - 成本趋势图表和使用统计
-- ⚡ **快速部署优化**
-  - 新增 `npm run quick-install` 快速部署命令
-  - 支持 `QUICK_MODE=true` 环境变量避免迁移冲突
-  - 优化安装脚本，适用于本地开发和服务器生产环境
-  - 大幅减少部署时间和错误
-- 🔧 **部署体验改进**
-  - 清理冲突的数据库迁移文件
-  - 更新README文档和部署指南
-  - 完善错误处理和用户提示
-
-### v0.6.2 (2025-08-01) - 企业级功能升级
-- 🏢 **新增企业级管理功能**
-  - 企业组织创建和管理
-  - 多级部门结构支持
-  - 智能账号池管理
-  - 负载均衡和故障转移
-- 💰 **预算控制系统**
-  - 企业级预算分配
-  - 部门预算管理
-  - 成本监控和告警
-- 👥 **权限管理系统**
-  - 基于角色的访问控制（RBAC）
-  - 企业用户角色分配
-  - 细粒度权限设置
-- 🔧 **开发体验优化**
-  - 管理员账号创建脚本
-  - 企业数据种子文件
-  - 完善的错误处理和用户提示
-
-### v0.6.0 - 核心平台稳定版
-- ✅ 拼车组管理完整功能
-- ✅ 多AI服务支持和智能路由
-- ✅ 配额监控和实时告警
-- ✅ 代理管理和部署模式选择
+请查看 [故障排除文档](docs/troubleshooting.md) 或提交 [Issue](https://github.com/codingauto/aicarpool/issues)
 
 ---
 
 ## 📄 许可证
 
-本项目采用 [MIT许可证](LICENSE)。
+本项目采用 [MIT许可证](LICENSE)
+
+---
+
+## 🤝 贡献
+
+欢迎提交 Pull Request 或 Issue！
+
+请确保：
+- 遵循现有代码风格
+- 添加必要的测试
+- 更新相关文档
+
+---
+
+## 📮 联系我们
+
+- GitHub: [https://github.com/codingauto/aicarpool](https://github.com/codingauto/aicarpool)
+- Issues: [https://github.com/codingauto/aicarpool/issues](https://github.com/codingauto/aicarpool/issues)
 
 ---
 
 <div align="center">
 
-**如果这个项目对你有帮助，请给个⭐Star支持一下！**
+**如果这个项目对你有帮助，请给个 ⭐ Star 支持一下！**
 
 </div>
