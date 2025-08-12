@@ -80,6 +80,16 @@ export default function CreateAiAccountPage({ params }: { params: Promise<{ ente
     }
   }, [hasRole, enterpriseId, router]);
 
+  // 平台切换时设置默认值
+  useEffect(() => {
+    if (form.platform === 'claude-console' && !form.name) {
+      updateForm({ 
+        name: 'Claude通义千问中转账号',
+        apiUrl: 'https://qwen-api.aliyun.com/v1'
+      });
+    }
+  }, [form.platform]);
+
   // 表单验证
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
@@ -157,6 +167,10 @@ export default function CreateAiAccountPage({ params }: { params: Promise<{ ente
           : [];
         data.userAgent = form.userAgent || null;
         data.rateLimitDuration = form.rateLimitDuration;
+        
+        // 添加Claude Console的新配置字段
+        data.claudeConsoleApiMode = 'proxy'; // 默认使用中转服务模式
+        data.claudeConsoleProxyService = 'tongyi-qianwen-3'; // 默认使用通义千问3
       }
 
       const response = await fetch(`/api/enterprises/${enterpriseId}/ai-accounts`, {
