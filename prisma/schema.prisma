@@ -376,6 +376,10 @@ model AiServiceAccount {
   manualRefreshToken    String?   @db.Text
   
   // === Claude Console特定配置 ===
+  /// Claude Console API模式：native=原生API, proxy=中转服务
+  claudeConsoleApiMode          String?   @default("proxy")
+  /// Claude Console中转服务类型：kimi-k2, tongyi-qianwen-3, zhipu-glm-4.5, custom
+  claudeConsoleProxyService     String?   @default("tongyi-qianwen-3")
   /// Claude Console API URL
   claudeConsoleApiUrl           String?
   /// Claude Console API Key（加密存储）
@@ -384,7 +388,7 @@ model AiServiceAccount {
   claudeConsoleUserAgent        String?
   /// Claude Console速率限制时长（秒）
   claudeConsoleRateLimitDuration Int?     @default(60)
-  /// Claude Console支持的模型列表
+  /// Claude Console支持的模型列表（仅在原生API模式下使用）
   claudeConsoleSupportedModels  Json?
   
   // === Gemini特定配置 ===

@@ -9,6 +9,18 @@ export interface ProxyConfig {
   password?: string;
 }
 
+// Claude Console 配置选项
+export interface ClaudeConsoleConfig {
+  mode: 'native-api' | 'relay-service';
+  relayServices: {
+    kimi: boolean;
+    qwen: boolean;
+    glm: boolean;
+    custom: boolean;
+    customUrl?: string;
+  };
+}
+
 export interface AccountForm {
   platform: 'claude' | 'gemini' | 'claude-console';
   addType: 'oauth' | 'manual';
@@ -27,6 +39,8 @@ export interface AccountForm {
   supportedModels?: string;
   userAgent?: string;
   rateLimitDuration: number;
+  // 新增的Console配置
+  consoleConfig?: ClaudeConsoleConfig;
 }
 
 export interface FormErrors {
@@ -34,6 +48,10 @@ export interface FormErrors {
   accessToken?: string;
   apiUrl?: string;
   apiKey?: string;
+  consoleConfig?: {
+    mode?: string;
+    relayServices?: string;
+  };
 }
 
 export interface AccountGroup {
