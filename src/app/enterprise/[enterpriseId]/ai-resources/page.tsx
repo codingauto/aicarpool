@@ -784,7 +784,7 @@ export default function EnterpriseAiResourcesPage({ params }: { params: Promise<
                               <td className="py-3 px-4">
                                 <div className="text-sm">
                                   <div className="text-gray-900">
-                                    {account.recentUsage.tokens}次
+                                    ${account.recentUsage.cost.toFixed(2)}
                                   </div>
                                   <div className="text-gray-500">
                                     {account.recentUsage.tokens.toLocaleString()} tokens

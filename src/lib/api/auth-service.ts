@@ -185,8 +185,20 @@ class AuthService {
     if (!token) return true;
 
     try {
+      // 验证 token 格式
+      const parts = token.split('.');
+      if (parts.length !== 3) {
+        console.warn('Invalid token format');
+        return true;
+      }
+
       // 解码JWT token获取过期时间
-      const payload = JSON.parse(atob(token.split('.')[1]));
+      // 处理 base64url 编码（替换 - 和 _ 字符）
+      const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+      // 添加必要的填充
+      const padded = base64 + '='.repeat((4 - base64.length % 4) % 4);
+      const payload = JSON.parse(atob(padded));
+      
       const expiryTime = payload.exp * 1000; // 转换为毫秒
       const currentTime = Date.now();
       const timeUntilExpiry = expiryTime - currentTime;
