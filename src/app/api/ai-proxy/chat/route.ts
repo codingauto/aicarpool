@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
         displayName: 'Claude Code',
         baseUrl: 'https://api.anthropic.com',
         isEnabled: true,
-        serviceType: 'claude_code' as const,
+        platform: 'claude_code' as const,
       },
       gemini: {
         id: 'gemini',
@@ -144,7 +144,7 @@ export async function POST(request: NextRequest) {
         displayName: 'Gemini CLI',
         baseUrl: 'https://generativelanguage.googleapis.com',
         isEnabled: true,
-        serviceType: 'gemini' as const,
+        platform: 'gemini' as const,
       },
       ampcode: {
         id: 'ampcode',
@@ -152,7 +152,7 @@ export async function POST(request: NextRequest) {
         displayName: 'AmpCode',
         baseUrl: 'https://api.ampcode.com',
         isEnabled: true,
-        serviceType: 'ampcode' as const,
+        platform: 'ampcode' as const,
       },
     };
 

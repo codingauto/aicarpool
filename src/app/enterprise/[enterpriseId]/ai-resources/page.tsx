@@ -54,7 +54,7 @@ interface AiResourceDashboard {
   dailyCost: number;
   averageResponseTime: number;
   accountsByService: {
-    serviceType: string;
+    platform: string;
     count: number;
     healthyCount: number;
     avgLoad: number;
@@ -294,7 +294,7 @@ export default function EnterpriseAiResourcesPage({ params }: { params: Promise<
       : <XCircle className="w-4 h-4 text-red-500" />;
   };
 
-  const getServiceTypeColor = (serviceType: string) => {
+  const getServiceTypeColor = (platform: string) => {
     const colors: Record<string, string> = {
       'claude': 'bg-blue-500',
       'gemini': 'bg-green-500',
@@ -304,7 +304,7 @@ export default function EnterpriseAiResourcesPage({ params }: { params: Promise<
       'zhipu': 'bg-indigo-500',
       'kimi': 'bg-pink-500'
     };
-    return colors[serviceType] || 'bg-gray-500';
+    return colors[platform] || 'bg-gray-500';
   };
 
   const getHealthStatusIcon = (healthyCount: number, totalCount: number) => {
@@ -486,11 +486,11 @@ export default function EnterpriseAiResourcesPage({ params }: { params: Promise<
                   <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {dashboard.accountsByService.map((service) => (
-                        <div key={service.serviceType} className="space-y-3">
+                        <div key={service.platform} className="space-y-3">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-2">
-                              <div className={`w-3 h-3 rounded-full ${getServiceTypeColor(service.serviceType)}`}></div>
-                              <span className="font-medium">{getPlatformDisplayName(service.serviceType)}</span>
+                              <div className={`w-3 h-3 rounded-full ${getServiceTypeColor(service.platform)}`}></div>
+                              <span className="font-medium">{getPlatformDisplayName(service.platform)}</span>
                           {getHealthStatusIcon(service.healthyCount, service.count)}
                         </div>
                         <Badge variant="secondary">

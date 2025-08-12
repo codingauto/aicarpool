@@ -65,7 +65,7 @@ export async function GET(
               select: {
                 id: true,
                 name: true,
-                serviceType: true,
+                platform: true,
                 accountType: true,
                 currentLoad: true,
                 dailyLimit: true,
@@ -86,7 +86,7 @@ export async function GET(
               select: {
                 id: true,
                 name: true,
-                serviceType: true,
+                platform: true,
                 currentLoad: true,
                 status: true
               }
@@ -114,10 +114,10 @@ export async function GET(
     const allAccounts = group.enterprise?.aiAccounts || [];
     
     allAccounts.forEach(account => {
-      if (!accountsByService[account.serviceType]) {
-        accountsByService[account.serviceType] = [];
+      if (!accountsByService[account.platform]) {
+        accountsByService[account.platform] = [];
       }
-      accountsByService[account.serviceType].push({
+      accountsByService[account.platform].push({
         ...account,
         totalRequests: Number(account.totalRequests),
         totalTokens: Number(account.totalTokens),
@@ -325,7 +325,7 @@ export async function POST(
       bindingConfig = {
         accounts: [{
           accountId: bestAccount.id,
-          serviceType: serviceType,
+          platform: serviceType,
           priority: 1
         }]
       };
@@ -333,7 +333,7 @@ export async function POST(
       // 共享模式
       bindingConfig = {
         poolConfig: [{
-          serviceType: serviceType,
+          platform: serviceType,
           priority: 1,
           maxUsagePercent: 80
         }]
@@ -392,7 +392,7 @@ export async function POST(
 }
 
 // 辅助函数
-function getServiceDisplayName(serviceType: string): string {
+function getServiceDisplayName(platform: string): string {
   const displayNames: Record<string, string> = {
     'claude': 'Claude',
     'gemini': 'Gemini',

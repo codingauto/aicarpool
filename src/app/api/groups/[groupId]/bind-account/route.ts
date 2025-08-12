@@ -85,7 +85,7 @@ export async function POST(
       select: {
         id: true,
         name: true,
-        serviceType: true,
+        platform: true,
         isEnabled: true,
         ownerType: true,
         maxConcurrentGroups: true,
@@ -308,7 +308,7 @@ export async function GET(
           select: {
             id: true,
             name: true,
-            serviceType: true,
+            platform: true,
             isEnabled: true,
             status: true,
             lastUsedAt: true

@@ -1,6 +1,6 @@
 {
   "name": "aicarpool-拼车",
-  "version": "0.20.0",
+  "version": "0.26.0",
   "private": true,
   "scripts": {
     "dev": "next dev --port 4000",
@@ -17,7 +17,9 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:seed-groups": "node prisma/seed-groups.js",
     "db:create-admin": "tsx prisma/create-admin.ts",
-    "db:assign-admin-permissions": "tsx prisma/assign-admin-permissions.ts"
+    "db:assign-admin-permissions": "tsx prisma/assign-admin-permissions.ts",
+    "init-permissions": "tsx scripts/init-permissions.ts",
+    "db:migrate-permissions": "npx prisma db execute --file ./prisma/migrations/init_permissions.sql"
   },
   "dependencies": {
     "@prisma/client": "^6.12.0",
@@ -37,6 +39,7 @@
     "@radix-ui/react-tooltip": "^1.2.7",
     "@react-email/components": "^0.3.2",
     "@react-email/render": "^1.1.3",
+    "@reactflow/node-resizer": "^2.2.14",
     "@types/bcryptjs": "^2.4.6",
     "@types/nodemailer": "^6.4.17",
     "@types/qrcode": "^1.5.5",
@@ -60,6 +63,7 @@
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-email": "^4.2.3",
+    "reactflow": "^11.11.4",
     "recharts": "^3.1.0",
     "socks-proxy-agent": "^8.0.4",
     "sonner": "^2.0.6",

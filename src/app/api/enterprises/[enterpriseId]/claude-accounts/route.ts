@@ -66,7 +66,7 @@ export async function GET(
     // 5. 构建查询条件
     const where: any = {
       enterpriseId,
-      serviceType: 'claude'
+      platform: 'claude'
     };
 
     if (status) {

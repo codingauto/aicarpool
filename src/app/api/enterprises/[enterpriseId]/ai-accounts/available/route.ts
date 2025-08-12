@@ -16,13 +16,11 @@ interface AiServiceAccountWithBinding {
   id: string;
   name: string;
   description?: string;
-  serviceType: string;
+  platform: string;  // 改为platform
   accountType: string;
   isEnabled: boolean;
   status: string;
   currentLoad?: number;
-  supportedModels?: string[];
-  currentModel?: string;
   // 绑定状态信息
   isBound: boolean;
   boundToGroupId?: string;
@@ -113,7 +111,7 @@ export async function GET(
         }
       },
       orderBy: [
-        { serviceType: 'asc' },
+        { platform: 'asc' },  // 改为platform
         { name: 'asc' }
       ]
     });
@@ -128,13 +126,11 @@ export async function GET(
         id: account.id,
         name: account.name,
         description: account.description || undefined,
-        serviceType: account.serviceType,
+        platform: account.platform,  // 使用platform字段
         accountType: account.accountType,
         isEnabled: account.isEnabled,
         status: account.status,
         currentLoad: account.currentLoad || undefined,
-        supportedModels: account.supportedModels || undefined,
-        currentModel: account.currentModel || undefined,
         
         // 绑定状态信息
         isBound,
@@ -152,23 +148,23 @@ export async function GET(
       total: formattedAccounts.length,
       available: formattedAccounts.filter(acc => !acc.isBound).length,
       bound: formattedAccounts.filter(acc => acc.isBound).length,
-      byService: formattedAccounts.reduce((services, account) => {
-        const existing = services.find(s => s.serviceType === account.serviceType);
+      byPlatform: formattedAccounts.reduce((platforms, account) => {
+        const existing = platforms.find(p => p.platform === account.platform);
         if (existing) {
           existing.count++;
           if (!account.isBound) existing.available++;
           if (account.isBound) existing.bound++;
         } else {
-          services.push({
-            serviceType: account.serviceType,
+          platforms.push({
+            platform: account.platform,
             count: 1,
             available: account.isBound ? 0 : 1,
             bound: account.isBound ? 1 : 0
           });
         }
-        return services;
+        return platforms;
       }, [] as Array<{
-        serviceType: string;
+        platform: string;
         count: number;
         available: number;
         bound: number;

@@ -38,7 +38,7 @@ import { useRouter } from 'next/navigation';
 interface CreateAccountForm {
   name: string;
   description: string;
-  serviceType: string;
+  platform: string;
   accountType: string;
   authType: 'api_key' | 'oauth';
   apiKey: string;
@@ -106,9 +106,9 @@ export default function CreateAiAccountPage() {
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const currentServiceConfig = form.serviceType ? SERVICE_CONFIGS[form.serviceType as keyof typeof SERVICE_CONFIGS] : null;
+  const currentServiceConfig = form.platform ? SERVICE_CONFIGS[form.platform as keyof typeof SERVICE_CONFIGS] : null;
 
-  const handleServiceTypeChange = (serviceType: string) => {
+  const handleServiceTypeChange = (platform: string) => {
     const config = SERVICE_CONFIGS[serviceType as keyof typeof SERVICE_CONFIGS];
     setForm({
       ...form,
@@ -135,7 +135,7 @@ export default function CreateAiAccountPage() {
   };
 
   const handleTestConnection = async () => {
-    if (!form.serviceType || !form.apiKey) {
+    if (!form.platform || !form.apiKey) {
       setTestResult({ success: false, message: '请先填写服务类型和API密钥' });
       return;
     }
@@ -165,7 +165,7 @@ export default function CreateAiAccountPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!form.name || !form.serviceType || !form.apiKey) {
+    if (!form.name || !form.platform || !form.apiKey) {
       alert('请填写必要信息');
       return;
     }
@@ -177,7 +177,7 @@ export default function CreateAiAccountPage() {
       const submitData = {
         name: form.name,
         description: form.description,
-        serviceType: form.serviceType,
+        serviceType: form.platform,
         accountType: form.accountType,
         authType: form.authType,
         credentials: {
@@ -260,7 +260,7 @@ export default function CreateAiAccountPage() {
                   
                   <div className="space-y-2">
                     <Label htmlFor="serviceType">服务类型 *</Label>
-                    <Select value={form.serviceType} onValueChange={handleServiceTypeChange} required>
+                    <Select value={form.platform} onValueChange={handleServiceTypeChange} required>
                       <SelectTrigger>
                         <SelectValue placeholder="选择AI服务" />
                       </SelectTrigger>
@@ -323,7 +323,7 @@ export default function CreateAiAccountPage() {
                   />
                 </div>
 
-                {form.serviceType && (
+                {form.platform && (
                   <div className="space-y-2">
                     <Label htmlFor="apiEndpoint">API端点</Label>
                     <Input
@@ -343,7 +343,7 @@ export default function CreateAiAccountPage() {
                     type="button"
                     variant="outline"
                     onClick={handleTestConnection}
-                    disabled={testing || !form.serviceType || !form.apiKey}
+                    disabled={testing || !form.platform || !form.apiKey}
                   >
                     {testing ? (
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />

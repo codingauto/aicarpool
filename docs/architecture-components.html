@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AiCarpool 核心功能模块关系图 - React Flow</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/reactflow@11/dist/style.css">
+    <script src="https://unpkg.com/reactflow@11/dist/umd/index.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: #1a1a2e;
+            overflow: hidden;
+            margin: 0;
+        }
+        
+        #root {
+            height: 100vh;
+            width: 100vw;
+        }
+        
+        .modules-container {
+            height: 100%;
+            width: 100%;
+            background: #1a1a2e;
+        }
+        
+        .header {
+            background: rgba(30, 30, 46, 0.95);
+            backdrop-filter: blur(10px);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        
+        .header p {
+            margin: 5px 0 0;
+            opacity: 0.95;
+            font-size: 14px;
+        }
+        
+        .tabs {
+            position: absolute;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            background: rgba(30, 30, 46, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 5px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            display: flex;
+            gap: 5px;
+        }
+        
+        .tabs button {
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.05);
+            color: rgba(255, 255, 255, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        
+        .tabs button:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-1px);
+        }
+        
+        .tabs button.active {
+            background: #667eea;
+            color: white;
+            border-color: transparent;
+        }
+        
+        .module-group {
+            background: rgba(255, 255, 255, 0.02);
+            backdrop-filter: blur(10px);
+            border: 2px solid;
+            border-radius: 12px;
+            padding: 15px;
+            min-width: 200px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            transition: all 0.3s;
+        }
+        
+        .module-group:hover {
+            transform: scale(1.02);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+        }
+        
+        .module-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid;
+        }
+        
+        .module-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 8px 12px;
+            border-radius: 6px;
+            margin: 6px 0;
+            font-size: 12px;
+            transition: all 0.3s;
+            cursor: pointer;
+            color: rgba(255, 255, 255, 0.8);
+            border-left: 3px solid transparent;
+        }
+        
+        .module-item:hover {
+            transform: translateX(5px);
+            background: rgba(255, 255, 255, 0.1);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            border-left-color: currentColor;
+        }
+        
+        /* 用户管理模块 */
+        .module-user {
+            border-color: #42a5f5;
+            background: rgba(66, 165, 245, 0.05);
+        }
+        .module-user .module-title {
+            color: #42a5f5;
+            border-color: rgba(66, 165, 245, 0.3);
+        }
+        .module-user .module-item {
+            background: rgba(66, 165, 245, 0.08);
+        }
+        .module-user .module-item:hover {
+            background: rgba(66, 165, 245, 0.15);
+            border-left-color: #42a5f5;
+        }
+        
+        /* 组织管理模块 */
+        .module-org {
+            border-color: #66bb6a;
+            background: rgba(102, 187, 106, 0.05);
+        }
+        .module-org .module-title {
+            color: #66bb6a;
+            border-color: rgba(102, 187, 106, 0.3);
+        }
+        .module-org .module-item {
+            background: rgba(102, 187, 106, 0.08);
+        }
+        .module-org .module-item:hover {
+            background: rgba(102, 187, 106, 0.15);
+            border-left-color: #66bb6a;
+        }
+        
+        /* AI资源管理模块 */
+        .module-resource {
+            border-color: #ab47bc;
+            background: rgba(171, 71, 188, 0.05);
+        }
+        .module-resource .module-title {
+            color: #ab47bc;
+            border-color: rgba(171, 71, 188, 0.3);
+        }
+        .module-resource .module-item {
+            background: rgba(171, 71, 188, 0.08);
+        }
+        .module-resource .module-item:hover {
+            background: rgba(171, 71, 188, 0.15);
+            border-left-color: #ab47bc;
+        }
+        
+        /* API Key管理模块 */
+        .module-apikey {
+            border-color: #ff7043;
+            background: rgba(255, 112, 67, 0.05);
+        }
+        .module-apikey .module-title {
+            color: #ff7043;
+            border-color: rgba(255, 112, 67, 0.3);
+        }
+        .module-apikey .module-item {
+            background: rgba(255, 112, 67, 0.08);
+        }
+        .module-apikey .module-item:hover {
+            background: rgba(255, 112, 67, 0.15);
+            border-left-color: #ff7043;
+        }
+        
+        /* 权限管理模块 */
+        .module-permission {
+            border-color: #ef5350;
+            background: rgba(239, 83, 80, 0.05);
+        }
+        .module-permission .module-title {
+            color: #ef5350;
+            border-color: rgba(239, 83, 80, 0.3);
+        }
+        .module-permission .module-item {
+            background: rgba(239, 83, 80, 0.08);
+        }
+        .module-permission .module-item:hover {
+            background: rgba(239, 83, 80, 0.15);
+            border-left-color: #ef5350;
+        }
+        
+        /* 智能路由模块 */
+        .module-router {
+            border-color: #5c6bc0;
+            background: rgba(92, 107, 192, 0.05);
+        }
+        .module-router .module-title {
+            color: #5c6bc0;
+            border-color: rgba(92, 107, 192, 0.3);
+        }
+        .module-router .module-item {
+            background: rgba(92, 107, 192, 0.08);
+        }
+        .module-router .module-item:hover {
+            background: rgba(92, 107, 192, 0.15);
+            border-left-color: #5c6bc0;
+        }
+        
+        /* 统计监控模块 */
+        .module-monitor {
+            border-color: #26a69a;
+            background: rgba(38, 166, 154, 0.05);
+        }
+        .module-monitor .module-title {
+            color: #26a69a;
+            border-color: rgba(38, 166, 154, 0.3);
+        }
+        .module-monitor .module-item {
+            background: rgba(38, 166, 154, 0.08);
+        }
+        .module-monitor .module-item:hover {
+            background: rgba(38, 166, 154, 0.15);
+            border-left-color: #26a69a;
+        }
+        
+        .react-flow__edge-path {
+            stroke-width: 2;
+        }
+        
+        .react-flow__node {
+            cursor: pointer;
+        }
+        
+        .react-flow__node.selected {
+            filter: drop-shadow(0 0 8px rgba(66, 165, 245, 0.5));
+        }
+        
+        .controls-panel {
+            position: absolute;
+            top: 140px;
+            right: 20px;
+            background: rgba(30, 30, 46, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 10px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            z-index: 10;
+        }
+        
+        .controls-panel button {
+            display: block;
+            width: 100%;
+            padding: 8px 16px;
+            margin: 5px 0;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        
+        .controls-panel button:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        
+        .stats-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(30, 30, 46, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            z-index: 10;
+        }
+        
+        .stats-panel h3 {
+            margin: 0 0 10px;
+            font-size: 14px;
+            color: #fff;
+        }
+        
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 8px 0;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+        
+        .stat-value {
+            font-weight: 600;
+            color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const { useState, useCallback, useMemo } = React;
+        const { ReactFlow, MiniMap, Controls, Background, useNodesState, useEdgesState, Handle, Position } = window.ReactFlow;
+        
+        // 自定义模块节点组件
+        const ModuleNode = ({ data }) => {
+            return (
+                <div className={`module-group module-${data.type}`}>
+                    <div className="module-title">{data.label}</div>
+                    {data.items && data.items.map((item, index) => (
+                        <div key={index} className="module-item">
+                            {item}
+                        </div>
+                    ))}
+                    <Handle type="source" position={Position.Right} />
+                    <Handle type="target" position={Position.Left} />
+                </div>
+            );
+        };
+        
+        const nodeTypes = {
+            module: ModuleNode,
+        };
+        
+        // 核心功能模块节点
+        const coreModules = [
+            {
+                id: 'user',
+                type: 'module',
+                position: { x: 50, y: 100 },
+                data: {
+                    label: '用户管理模块',
+                    type: 'user',
+                    items: ['身份认证', '用户信息', '角色管理']
+                }
+            },
+            {
+                id: 'org',
+                type: 'module',
+                position: { x: 300, y: 100 },
+                data: {
+                    label: '组织管理模块',
+                    type: 'org',
+                    items: ['拼车组管理', '企业管理', '成员管理', '邀请管理']
+                }
+            },
+            {
+                id: 'resource',
+                type: 'module',
+                position: { x: 550, y: 100 },
+                data: {
+                    label: 'AI资源管理模块',
+                    type: 'resource',
+                    items: ['账号管理', '资源绑定', '账号池', '专属账号']
+                }
+            },
+            {
+                id: 'apikey',
+                type: 'module',
+                position: { x: 800, y: 100 },
+                data: {
+                    label: 'API Key管理模块',
+                    type: 'apikey',
+                    items: ['密钥生成', '密钥验证', '配额控制', '速率限制']
+                }
+            },
+            {
+                id: 'permission',
+                type: 'module',
+                position: { x: 175, y: 300 },
+                data: {
+                    label: '权限管理模块',
+                    type: 'permission',
+                    items: ['角色权限', '访问控制', '系统管理员', '所有者', '管理员', '成员']
+                }
+            },
+            {
+                id: 'router',
+                type: 'module',
+                position: { x: 425, y: 300 },
+                data: {
+                    label: '智能路由模块',
+                    type: 'router',
+                    items: ['路由算法', '健康检查', '负载均衡', '故障转移']
+                }
+            },
+            {
+                id: 'monitor',
+                type: 'module',
+                position: { x: 675, y: 300 },
+                data: {
+                    label: '统计监控模块',
+                    type: 'monitor',
+                    items: ['使用统计', '费用计算', '报表生成', '告警通知']
+                }
+            }
+        ];
+        
+        // 模块间关系
+        const coreEdges = [
+            { id: 'e1', source: 'user', target: 'org', animated: true },
+            { id: 'e2', source: 'org', target: 'resource', animated: true },
+            { id: 'e3', source: 'resource', target: 'router', animated: true },
+            { id: 'e4', source: 'apikey', target: 'router', animated: true },
+            { id: 'e5', source: 'router', target: 'monitor' },
+            { id: 'e6', source: 'permission', target: 'user', type: 'straight', style: { stroke: '#ef5350' } },
+            { id: 'e7', source: 'permission', target: 'org', type: 'straight', style: { stroke: '#ef5350' } },
+            { id: 'e8', source: 'permission', target: 'resource', type: 'straight', style: { stroke: '#ef5350' } },
+            { id: 'e9', source: 'permission', target: 'apikey', type: 'straight', style: { stroke: '#ef5350' } },
+            { id: 'e10', source: 'permission', target: 'router', type: 'straight', style: { stroke: '#ef5350' } },
+            { id: 'e11', source: 'permission', target: 'monitor', type: 'straight', style: { stroke: '#ef5350' } },
+        ];
+        
+        // 权限体系节点
+        const permissionNodes = [
+            {
+                id: 'sys-admin',
+                type: 'module',
+                position: { x: 400, y: 50 },
+                data: {
+                    label: '系统管理员',
+                    type: 'permission',
+                    items: ['system.admin', '所有权限']
+                }
+            },
+            {
+                id: 'enterprise-owner',
+                type: 'module',
+                position: { x: 200, y: 200 },
+                data: {
+                    label: '企业所有者',
+                    type: 'org',
+                    items: ['enterprise.manage', 'group.create', 'ai.manage']
+                }
+            },
+            {
+                id: 'enterprise-admin',
+                type: 'module',
+                position: { x: 600, y: 200 },
+                data: {
+                    label: '企业管理员',
+                    type: 'org',
+                    items: ['enterprise.view', 'group.manage', 'user.invite']
+                }
+            },
+            {
+                id: 'group-owner',
+                type: 'module',
+                position: { x: 200, y: 350 },
+                data: {
+                    label: '拼车组长',
+                    type: 'user',
+                    items: ['group.manage', 'ai.use', 'user.invite', '管理所有成员API Key']
+                }
+            },
+            {
+                id: 'group-member',
+                type: 'module',
+                position: { x: 600, y: 350 },
+                data: {
+                    label: '拼车组成员',
+                    type: 'user',
+                    items: ['group.view', 'ai.use', '管理自己的API Key']
+                }
+            }
+        ];
+        
+        const permissionEdges = [
+            { id: 'p1', source: 'sys-admin', target: 'enterprise-owner', label: '包含', animated: true },
+            { id: 'p2', source: 'sys-admin', target: 'enterprise-admin', label: '包含', animated: true },
+            { id: 'p3', source: 'enterprise-owner', target: 'group-owner', animated: true },
+            { id: 'p4', source: 'enterprise-admin', target: 'group-owner', animated: true },
+            { id: 'p5', source: 'group-owner', target: 'group-member', animated: true },
+        ];
+        
+        // 双模式架构节点
+        const dualModeNodes = [
+            {
+                id: 'carpool-mode',
+                type: 'module',
+                position: { x: 100, y: 150 },
+                data: {
+                    label: '🚗 拼车组模式',
+                    type: 'org',
+                    items: [
+                        '1:1专属绑定AI账号',
+                        '成员管理（组长/成员）',
+                        '简单统计（使用量）',
+                        '费用分摊（平均分摊）'
+                    ]
+                }
+            },
+            {
+                id: 'enterprise-mode',
+                type: 'module',
+                position: { x: 500, y: 150 },
+                data: {
+                    label: '🏢 企业模式',
+                    type: 'resource',
+                    items: [
+                        '1:N账号池管理',
+                        '部门管理（多个拼车组）',
+                        '预算控制（配额管理）',
+                        '智能分配（负载均衡）'
+                    ]
+                }
+            }
+        ];
+        
+        const dualModeEdges = [
+            { 
+                id: 'd1', 
+                source: 'carpool-mode', 
+                target: 'enterprise-mode', 
+                label: '升级路径',
+                type: 'step',
+                animated: true,
+                style: { stroke: '#66bb6a', strokeWidth: 3 }
+            }
+        ];
+        
+        function ModulesFlow() {
+            const [activeView, setActiveView] = useState('core');
+            const [nodes, setNodes, onNodesChange] = useNodesState(coreModules);
+            const [edges, setEdges, onEdgesChange] = useEdgesState(coreEdges);
+            
+            const switchView = useCallback((view) => {
+                setActiveView(view);
+                switch(view) {
+                    case 'core':
+                        setNodes(coreModules);
+                        setEdges(coreEdges);
+                        break;
+                    case 'permission':
+                        setNodes(permissionNodes);
+                        setEdges(permissionEdges);
+                        break;
+                    case 'dual':
+                        setNodes(dualModeNodes);
+                        setEdges(dualModeEdges);
+                        break;
+                }
+            }, [setNodes, setEdges]);
+            
+            const autoArrange = useCallback(() => {
+                const arrangedNodes = nodes.map((node, index) => {
+                    const row = Math.floor(index / 3);
+                    const col = index % 3;
+                    return {
+                        ...node,
+                        position: {
+                            x: 150 + col * 300,
+                            y: 100 + row * 200
+                        }
+                    };
+                });
+                setNodes(arrangedNodes);
+            }, [nodes, setNodes]);
+            
+            const stats = useMemo(() => {
+                return {
+                    nodeCount: nodes.length,
+                    edgeCount: edges.length,
+                    moduleTypes: [...new Set(nodes.map(n => n.data.type))].length
+                };
+            }, [nodes, edges]);
+            
+            return (
+                <div className="modules-container">
+                    <div className="header">
+                        <h1>🔧 AiCarpool 核心功能模块关系图</h1>
+                        <p>模块化架构设计 | 清晰的依赖关系 | 高内聚低耦合</p>
+                    </div>
+                    
+                    <div className="tabs">
+                        <button 
+                            className={activeView === 'core' ? 'active' : ''} 
+                            onClick={() => switchView('core')}
+                        >
+                            核心模块
+                        </button>
+                        <button 
+                            className={activeView === 'permission' ? 'active' : ''} 
+                            onClick={() => switchView('permission')}
+                        >
+                            权限体系
+                        </button>
+                        <button 
+                            className={activeView === 'dual' ? 'active' : ''} 
+                            onClick={() => switchView('dual')}
+                        >
+                            双模式架构
+                        </button>
+                    </div>
+                    
+                    <div className="controls-panel">
+                        <button onClick={autoArrange}>自动排列</button>
+                        <button onClick={() => window.location.reload()}>重置视图</button>
+                    </div>
+                    
+                    <div className="stats-panel">
+                        <h3>📊 统计信息</h3>
+                        <div className="stat-item">
+                            <span>模块数量:</span>
+                            <span className="stat-value">{stats.nodeCount}</span>
+                        </div>
+                        <div className="stat-item">
+                            <span>连接关系:</span>
+                            <span className="stat-value">{stats.edgeCount}</span>
+                        </div>
+                        <div className="stat-item">
+                            <span>模块类型:</span>
+                            <span className="stat-value">{stats.moduleTypes}</span>
+                        </div>
+                    </div>
+                    
+                    <ReactFlow
+                        nodes={nodes}
+                        edges={edges}
+                        onNodesChange={onNodesChange}
+                        onEdgesChange={onEdgesChange}
+                        nodeTypes={nodeTypes}
+                        fitView
+                        attributionPosition="bottom-right"
+                    >
+                        <MiniMap 
+                            nodeColor={(node) => {
+                                const colors = {
+                                    user: '#42a5f5',
+                                    org: '#66bb6a',
+                                    resource: '#ab47bc',
+                                    apikey: '#ff7043',
+                                    permission: '#ef5350',
+                                    router: '#5c6bc0',
+                                    monitor: '#26a69a'
+                                };
+                                return colors[node.data.type] || '#999';
+                            }}
+                            nodeStrokeWidth={3}
+                            zoomable
+                            pannable
+                        />
+                        <Controls />
+                        <Background variant="dots" gap={20} size={1} color="rgba(255,255,255,0.03)" />
+                    </ReactFlow>
+                </div>
+            );
+        }
+        
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<ModulesFlow />);
+    </script>
+</body>
+</html>

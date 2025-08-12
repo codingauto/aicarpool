@@ -202,7 +202,7 @@ function generateOptimizationForExport() {
   ];
 }
 
-function getServiceDisplayName(serviceType: string): string {
+function getServiceDisplayName(platform: string): string {
   const displayNames: Record<string, string> = {
     'claude': 'Claude (Anthropic)',
     'gemini': 'Gemini (Google)',

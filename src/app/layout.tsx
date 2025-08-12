@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { UserProvider } from "@/contexts/UserContext";
+import { ToastProvider, ToastListener } from "@/components/ui/toast";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -21,6 +22,14 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "AiCarpool - AI拼车服务平台",
   description: "智能AI拼车共享平台，高效安全的AI资源共享服务",
+  icons: {
+    icon: [
+      { url: '/favicon.ico' },
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+    ],
+    shortcut: '/favicon.ico',
+    apple: '/favicon.svg',
+  },
 };
 
 export default function RootLayout({
@@ -34,9 +43,12 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <UserProvider>
-          <AppLayout>
-            {children}
-          </AppLayout>
+          <ToastProvider>
+            <ToastListener />
+            <AppLayout>
+              {children}
+            </AppLayout>
+          </ToastProvider>
         </UserProvider>
       </body>
     </html>

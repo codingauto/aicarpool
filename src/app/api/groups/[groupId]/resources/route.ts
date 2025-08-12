@@ -27,7 +27,7 @@ interface GroupResourceInfo {
     account: {
       id: string;
       name: string;
-      serviceType: string;
+      platform: string;
       status: string;
       isEnabled: boolean;
       lastUsedAt?: string;
@@ -39,7 +39,7 @@ interface GroupResourceInfo {
   availableAccounts: {
     id: string;
     name: string;
-    serviceType: string;
+    platform: string;
     status: string;
     isEnabled: boolean;
     currentBindings: number; // v2.4新增：当前绑定数
@@ -118,7 +118,7 @@ export async function GET(
           select: {
             id: true,
             name: true,
-            serviceType: true,
+            platform: true,
             status: true,
             isEnabled: true,
             lastUsedAt: true
@@ -143,7 +143,7 @@ export async function GET(
         select: {
           id: true,
           name: true,
-          serviceType: true,
+          platform: true,
           status: true,
           isEnabled: true,
           maxConcurrentGroups: true,
@@ -157,7 +157,7 @@ export async function GET(
       availableAccounts = enterpriseAccounts.map(account => ({
         id: account.id,
         name: account.name,
-        serviceType: account.serviceType,
+        platform: account.platform,
         status: account.status,
         isEnabled: account.isEnabled,
         currentBindings: account.groupBindings.length,
@@ -202,7 +202,7 @@ export async function GET(
         account: {
           id: binding.account.id,
           name: binding.account.name,
-          serviceType: binding.account.serviceType,
+          platform: binding.account.platform,
           status: binding.account.status,
           isEnabled: binding.account.isEnabled,
           lastUsedAt: binding.account.lastUsedAt?.toISOString()

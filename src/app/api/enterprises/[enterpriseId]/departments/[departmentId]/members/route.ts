@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { createApiResponse } from '@/lib/middleware';
@@ -39,17 +39,20 @@ export async function GET(
       return createApiResponse(false, null, '部门不存在', 404);
     }
 
-    // 获取部门成员（这里需要根据实际的用户-部门关联表来查询）
-    // 假设我们有一个 DepartmentMember 表来管理用户和部门的关系
-    const members = await prisma.departmentMember.findMany({
-      where: { departmentId },
+    // 获取部门成员
+    const members = await prisma.userDepartment.findMany({
+      where: { 
+        departmentId,
+        isActive: true 
+      },
       include: {
         user: {
           select: {
             id: true,
             name: true,
             email: true,
-            avatar: true
+            avatar: true,
+            status: true
           }
         }
       },
@@ -114,10 +117,11 @@ export async function POST(
     }
 
     // 检查用户是否已经是部门成员
-    const existingMember = await prisma.departmentMember.findFirst({
+    const existingMember = await prisma.userDepartment.findFirst({
       where: {
         departmentId,
-        userId: validatedData.userId
+        userId: validatedData.userId,
+        isActive: true
       }
     });
 
@@ -126,12 +130,12 @@ export async function POST(
     }
 
     // 添加部门成员
-    const member = await prisma.departmentMember.create({
+    const member = await prisma.userDepartment.create({
       data: {
         departmentId,
         userId: validatedData.userId,
         role: validatedData.role,
-        status: 'active'
+        isActive: true
       },
       include: {
         user: {
@@ -139,7 +143,8 @@ export async function POST(
             id: true,
             name: true,
             email: true,
-            avatar: true
+            avatar: true,
+            status: true
           }
         }
       }

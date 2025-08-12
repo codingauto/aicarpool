@@ -52,7 +52,7 @@ export async function GET(
     // 获取查询参数
     const { searchParams } = new URL(request.url);
     const period = searchParams.get('period') || '7d'; // 7d, 30d, 90d
-    const serviceType = searchParams.get('serviceType'); // 可选筛选
+    const serviceType = searchParams.get('platform'); // 可选筛选
 
     // 计算时间范围
     const now = new Date();
@@ -85,13 +85,13 @@ export async function GET(
             name: true,
             aiAccounts: {
               where: {
-                serviceType: serviceType ? serviceType : undefined,
+                platform: serviceType ? serviceType : undefined,
                 isEnabled: true
               },
               select: {
                 id: true,
                 name: true,
-                serviceType: true,
+                platform: true,
                 accountType: true,
                 totalRequests: true,
                 totalTokens: true,
@@ -107,7 +107,7 @@ export async function GET(
               select: {
                 id: true,
                 name: true,
-                serviceType: true,
+                platform: true,
                 accountType: true
               }
             }
@@ -253,7 +253,7 @@ export async function GET(
       return {
         id: account.id,
         name: account.name,
-        serviceType: account.serviceType,
+        platform: account.platform,
         accountType: account.accountType,
         isInUse,
         totalRequests: Number(account.totalRequests),
@@ -387,7 +387,7 @@ export async function POST(
         format: 'json',
         data: usageStats.map(stat => ({
           timestamp: stat.requestTime.toISOString(),
-          serviceType: stat.serviceType,
+          platform: stat.serviceType,
           model: stat.model,
           tokens: Number(stat.totalTokens),
           cost: Number(stat.cost),
@@ -408,7 +408,7 @@ export async function POST(
 }
 
 // 辅助函数
-function getServiceDisplayName(serviceType: string): string {
+function getServiceDisplayName(platform: string): string {
   const displayNames: Record<string, string> = {
     'claude': 'Claude',
     'gemini': 'Gemini',

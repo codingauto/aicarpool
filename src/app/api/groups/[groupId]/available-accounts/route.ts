@@ -39,7 +39,7 @@ export async function GET(
       {
         id: 'claude-001',
         name: 'Claude Pro Account 1',
-        serviceType: 'claude',
+        platform: 'claude',
         accountType: 'premium',
         dailyLimit: 100000,
         healthStatus: 'healthy',
@@ -49,7 +49,7 @@ export async function GET(
       {
         id: 'gemini-001',
         name: 'Gemini Pro Account 1',
-        serviceType: 'gemini',
+        platform: 'gemini',
         accountType: 'premium',
         dailyLimit: 150000,
         healthStatus: 'healthy',
@@ -59,7 +59,7 @@ export async function GET(
       {
         id: 'openai-001',
         name: 'OpenAI GPT-4 Account 1',
-        serviceType: 'openai',
+        platform: 'openai',
         accountType: 'premium',
         dailyLimit: 80000,
         healthStatus: 'warning',
@@ -69,7 +69,7 @@ export async function GET(
       {
         id: 'qwen-001',
         name: '通义千问 Account 1',
-        serviceType: 'qwen',
+        platform: 'qwen',
         accountType: 'basic',
         dailyLimit: 50000,
         healthStatus: 'error',
@@ -92,7 +92,7 @@ export async function GET(
 
     // 按服务类型分组
     const accountsByService = accountsWithStats.reduce((groups, account) => {
-      const serviceType = account.serviceType;
+      const serviceType = account.platform;
       if (!groups[serviceType]) {
         groups[serviceType] = [];
       }

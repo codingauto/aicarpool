@@ -6,8 +6,7 @@ import { Button } from '@/components/ui/button';
 import { 
   LayoutDashboard,
   Users, 
-  Activity, 
-  Server,
+  Activity,
   Network,
   LogOut,
   BookOpen,
@@ -38,7 +37,6 @@ const navigationItems: NavigationItem[] = [
   { label: '企业管理', path: '/enterprise', icon: Building2 },
   { label: '权限管理', path: '/permissions', icon: Shield },
   { label: '监控中心', path: '/monitoring', icon: Activity },
-  { label: '边缘节点', path: '/edge-nodes', icon: Server },
   { label: '使用教程', path: '/tutorial', icon: BookOpen },
 ];
 

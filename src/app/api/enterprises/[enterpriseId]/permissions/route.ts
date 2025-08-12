@@ -7,53 +7,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createPermissionManager } from '@/lib/permission/simple-permission-manager';
 import { prisma } from '@/lib/prisma';
-
-// 获取当前用户的函数（支持开发模式和真实认证）
-async function getCurrentUser(request: NextRequest) {
-  const authHeader = request.headers.get('authorization');
-  const url = new URL(request.url);
-  const testUser = url.searchParams.get('test_user');
-  
-  // 开发模式：支持通过查询参数切换用户
-  if (process.env.NODE_ENV === 'development') {
-    if (testUser === 'admin') {
-      // 返回系统管理员
-      const adminUser = await prisma.user.findUnique({
-        where: { email: 'admin@aicarpool.com' }
-      });
-      if (adminUser) {
-        console.log('🔐 开发模式：使用系统管理员账号');
-        return {
-          id: adminUser.id,
-          name: adminUser.name,
-          email: adminUser.email
-        };
-      }
-    }
-    
-    console.log('🔐 开发模式：使用默认测试用户');
-  }
-
-  // 生产环境：从JWT token获取用户信息
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    try {
-      // TODO: 实现JWT token解析
-      // const token = authHeader.substring(7);
-      // const decoded = jwt.verify(token, process.env.JWT_SECRET!);
-      // return decoded.user;
-    } catch (error) {
-      console.error('JWT token验证失败:', error);
-      return null;
-    }
-  }
-
-  // 返回测试用户数据（开发模式）
-  return {
-    id: 'user_test_001',
-    name: '测试用户',
-    email: 'test@example.com'
-  };
-}
+import { 
+  getCurrentUser, 
+  createUnauthorizedResponse, 
+  createForbiddenResponse,
+  isUserInEnterprise 
+} from '@/lib/auth/auth-utils';
 
 export async function GET(
   request: NextRequest,
@@ -61,72 +20,52 @@ export async function GET(
 ) {
   try {
     const { enterpriseId } = await params;
-    const user = await getCurrentUser(request);
+    
+    // 开发模式下的 mock 用户
+    let user = await getCurrentUser(request);
+    
+    // 如果没有用户且是开发环境，使用 mock 用户
+    if (!user && process.env.NODE_ENV === 'development') {
+      // 查找管理员用户作为 mock
+      const adminUser = await prisma.user.findFirst({
+        where: { 
+          email: 'admin@aicarpool.com'
+        }
+      });
+      
+      if (adminUser) {
+        user = {
+          id: adminUser.id,
+          email: adminUser.email,
+          name: adminUser.name || '系统管理员',
+          role: 'admin'
+        };
+      }
+    }
     
     if (!user) {
-      return NextResponse.json(
-        { success: false, message: '未登录' }, 
-        { status: 401 }
-      );
+      return createUnauthorizedResponse('请先登录');
     }
 
     const permissionManager = createPermissionManager();
 
     // 检查企业访问权限
     const context = { userId: user.id, enterpriseId };
-    let hasAccess = false;
-
-    // 首先检查是否有企业查看权限
-    hasAccess = await permissionManager.hasPermission(context, 'enterprise.view');
     
-    // 如果没有企业权限，检查是否有企业管理权限
-    if (!hasAccess) {
-      hasAccess = await permissionManager.hasPermission(context, 'enterprise.manage');
-    }
+    // 检查权限层级：企业查看 -> 企业管理 -> 系统管理员
+    const hasViewPermission = await permissionManager.hasPermission(context, 'enterprise.view');
+    const hasManagePermission = await permissionManager.hasPermission(context, 'enterprise.manage');
+    const hasSystemAdmin = await permissionManager.hasPermission({ userId: user.id }, 'system.admin');
     
-    // 如果还没有权限，检查是否有全局系统管理员权限
-    if (!hasAccess) {
-      hasAccess = await permissionManager.hasPermission({ userId: user.id }, 'system.admin');
-    }
+    // 检查用户是否是企业成员
+    const isMember = await isUserInEnterprise(user.id, enterpriseId);
     
-    // 开发模式：如果用户是管理员邮箱，直接允许访问
-    if (!hasAccess && process.env.NODE_ENV === 'development') {
-      if (user.email === 'admin@aicarpool.com') {
-        console.log('🔐 开发模式：管理员邮箱，允许访问');
-        hasAccess = true;
-      }
-    }
-
-    // 如果仍然没有权限，检查用户是否是企业成员
-    if (!hasAccess) {
-      const userEnterprise = await prisma.userEnterprise.findFirst({
-        where: {
-          userId: user.id,
-          enterpriseId,
-          isActive: true
-        }
-      });
-      
-      if (userEnterprise) {
-        console.log('🔐 用户是企业成员，允许查看权限');
-        hasAccess = true;
-      }
-    }
-
-    // 开发模式：为测试用户强制允许访问
-    if (!hasAccess && process.env.NODE_ENV === 'development') {
-      if (user.id === 'user_test_001' || user.email === 'test@example.com') {
-        console.log('🔐 开发模式：测试用户强制允许访问');
-        hasAccess = true;
-      }
-    }
-
+    // 综合判断是否有访问权限
+    const hasAccess = hasViewPermission || hasManagePermission || hasSystemAdmin || isMember;
+    
     if (!hasAccess) {
       console.log('🔐 用户无权限访问企业:', enterpriseId, '用户ID:', user.id);
-      return NextResponse.json(
-        { success: false, message: '无访问权限' }, 
-        { status: 403 }
-      );
+      return createForbiddenResponse('您没有权限访问此企业');
     }
 
     // 获取企业信息和用户列表
@@ -206,13 +145,31 @@ export async function POST(
 ) {
   try {
     const { enterpriseId } = await params;
-    const user = await getCurrentUser(request);
+    
+    // 开发模式下的 mock 用户
+    let user = await getCurrentUser(request);
+    
+    // 如果没有用户且是开发环境，使用 mock 用户
+    if (!user && process.env.NODE_ENV === 'development') {
+      // 查找管理员用户作为 mock
+      const adminUser = await prisma.user.findFirst({
+        where: { 
+          email: 'admin@aicarpool.com'
+        }
+      });
+      
+      if (adminUser) {
+        user = {
+          id: adminUser.id,
+          email: adminUser.email,
+          name: adminUser.name || '系统管理员',
+          role: 'admin'
+        };
+      }
+    }
     
     if (!user) {
-      return NextResponse.json(
-        { success: false, message: '未登录' }, 
-        { status: 401 }
-      );
+      return createUnauthorizedResponse('请先登录');
     }
 
     const body = await request.json();
@@ -224,10 +181,7 @@ export async function POST(
     // 检查操作权限
     const canManage = await permissionManager.hasPermission(context, 'user.manage');
     if (!canManage) {
-      return NextResponse.json(
-        { success: false, message: '权限不足' }, 
-        { status: 403 }
-      );
+      return createForbiddenResponse('您没有权限管理用户');
     }
 
     switch (action) {

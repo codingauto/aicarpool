@@ -13,11 +13,14 @@
 import React, { useState, useEffect, use } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/components/ui/toast';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { 
@@ -25,6 +28,7 @@ import {
   Users,
   UserCheck,
   UserX,
+  UserPlus,
   Crown,
   Key,
   Eye,
@@ -40,10 +44,34 @@ import {
   Building2
 } from 'lucide-react';
 import { UserDetailsDialog } from '@/components/user-details-dialog';
-import { RoleManagementDialog } from '@/components/role-management-dialog';
+import { RoleViewDialog } from '@/components/role-view-dialog';
+import { RoleCreateDialog } from '@/components/role-create-dialog';
+import { RoleEditDialog } from '@/components/role-edit-dialog';
 import { BatchUserManagementDialog } from '@/components/batch-user-management-dialog';
+import { DepartmentManagementDialog } from '@/components/department-management-dialog';
+import { PermissionAssignmentDialog } from '@/components/permission-assignment-dialog';
+import { PermissionUsersDialog } from '@/components/permission-users-dialog';
+import { PermissionAssignUserDialog } from '@/components/permission-assign-user-dialog';
 import { useRouter } from 'next/navigation';
 import { useEnterpriseContext } from '@/contexts/enterprise-context';
+
+interface Department {
+  id: string;
+  name: string;
+  description?: string;
+  parentId?: string | null;
+  parent?: Department;
+  children?: Department[];
+  leaderId?: string;
+  leader?: User;
+  memberCount?: number;
+  enterpriseId: string;
+  _count?: {
+    children: number;
+    groups: number;
+  };
+  groups?: any[];
+}
 
 interface User {
   id: string;
@@ -93,40 +121,138 @@ interface PermissionsData {
   availablePermissions: string[];
 }
 
+// 权限详细信息映射
+const PERMISSION_DETAILS: Record<string, { name: string; description: string; category: string; level: string }> = {
+  'system.admin': {
+    name: '系统管理员',
+    description: '拥有系统的完全控制权，可以管理所有企业和用户',
+    category: '系统级',
+    level: 'admin'
+  },
+  'enterprise.manage': {
+    name: '企业管理',
+    description: '管理企业设置、配置和基本信息',
+    category: '企业级',
+    level: 'manage'
+  },
+  'enterprise.view': {
+    name: '企业查看',
+    description: '查看企业信息和统计数据',
+    category: '企业级',
+    level: 'view'
+  },
+  'group.create': {
+    name: '创建拼车组',
+    description: '创建新的拼车组并设置规则',
+    category: '拼车组',
+    level: 'create'
+  },
+  'group.manage': {
+    name: '管理拼车组',
+    description: '管理拼车组成员、规则和设置',
+    category: '拼车组',
+    level: 'manage'
+  },
+  'group.view': {
+    name: '查看拼车组',
+    description: '查看拼车组信息和成员列表',
+    category: '拼车组',
+    level: 'view'
+  },
+  'ai.use': {
+    name: '使用AI服务',
+    description: '使用AI功能进行路线规划和优化',
+    category: 'AI服务',
+    level: 'use'
+  },
+  'ai.manage': {
+    name: '管理AI服务',
+    description: '配置AI服务账号和参数',
+    category: 'AI服务',
+    level: 'manage'
+  },
+  'user.invite': {
+    name: '邀请用户',
+    description: '邀请新用户加入企业或拼车组',
+    category: '用户管理',
+    level: 'create'
+  },
+  'user.manage': {
+    name: '管理用户',
+    description: '管理用户账号、权限和状态',
+    category: '用户管理',
+    level: 'manage'
+  }
+};
+
 export default function EnterprisePermissionsPage({ params }: { params: Promise<{ enterpriseId: string }> }) {
   const { enterpriseId } = use(params);
   const router = useRouter();
   const { currentEnterprise, hasRole } = useEnterpriseContext();
+  const { addToast } = useToast();
+  
+  // Toast 辅助函数
+  const toast = {
+    success: (title: string, description?: string) => {
+      addToast({ type: 'success', title, description });
+    },
+    error: (title: string, description?: string) => {
+      addToast({ type: 'error', title, description });
+    },
+    warning: (title: string, description?: string) => {
+      addToast({ type: 'warning', title, description });
+    },
+    info: (title: string, description?: string) => {
+      addToast({ type: 'info', title, description });
+    }
+  };
+  
   const [permissionsData, setPermissionsData] = useState<PermissionsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [showRoleDialog, setShowRoleDialog] = useState(false);
-  const [showRoleManagementDialog, setShowRoleManagementDialog] = useState(false);
   const [showBatchManagementDialog, setShowBatchManagementDialog] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [showUserDetailsDialog, setShowUserDetailsDialog] = useState(false);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [loadingDepartments, setLoadingDepartments] = useState(false);
+  const [showDepartmentDialog, setShowDepartmentDialog] = useState(false);
+  const [selectedDepartment, setSelectedDepartment] = useState<Department | null>(null);
+  const [showPermissionDialog, setShowPermissionDialog] = useState(false);
+  const [selectedPermissionUser, setSelectedPermissionUser] = useState<User | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [departmentToDelete, setDepartmentToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showPermissionUsersDialog, setShowPermissionUsersDialog] = useState(false);
+  const [selectedPermissionForView, setSelectedPermissionForView] = useState<{ key: string; name: string } | null>(null);
+  const [selectedPermissionForAssign, setSelectedPermissionForAssign] = useState<{ key: string; name: string } | null>(null);
+  const [showPermissionAssignUserDialog, setShowPermissionAssignUserDialog] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<any>(null);
+  const [showRoleViewDialog, setShowRoleViewDialog] = useState(false);
+  const [showRoleCreateDialog, setShowRoleCreateDialog] = useState(false);
+  const [showRoleEditDialog, setShowRoleEditDialog] = useState(false);
+  const [selectedRoleForView, setSelectedRoleForView] = useState<any>(null);
+  const [selectedRoleForEdit, setSelectedRoleForEdit] = useState<any>(null);
 
   useEffect(() => {
-    // 开发模式下直接加载数据，生产环境下检查角色
-    if (process.env.NODE_ENV === 'development' || hasRole('owner') || hasRole('admin')) {
-      fetchPermissionsData();
-    }
-  }, [enterpriseId, hasRole]);
+    // 直接尝试加载数据（API会处理权限验证）
+    fetchPermissionsData();
+  }, [enterpriseId]);
 
-  // 权限检查（开发模式下跳过）
-  if (process.env.NODE_ENV !== 'development' && !hasRole('owner') && !hasRole('admin')) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center py-12">
-          <Shield className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">访问受限</h3>
-          <p className="text-gray-600">您没有权限访问权限管理页面</p>
-        </div>
-      </div>
-    );
-  }
+  // 权限检查 - 暂时禁用，让API处理权限
+  // if (!hasRole('owner') && !hasRole('admin')) {
+  //   return (
+  //     <div className="container mx-auto px-4 py-8">
+  //       <div className="text-center py-12">
+  //         <Shield className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+  //         <h3 className="text-lg font-medium text-gray-900 mb-2">访问受限</h3>
+  //         <p className="text-gray-600">您没有权限访问权限管理页面</p>
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   const fetchPermissionsData = async () => {
     try {
@@ -134,12 +260,10 @@ export default function EnterprisePermissionsPage({ params }: { params: Promise<
         'Content-Type': 'application/json'
       };
 
-      // 生产环境下添加认证头
-      if (process.env.NODE_ENV !== 'development') {
-        const token = localStorage.getItem('token');
-        if (token) {
-          headers.Authorization = `Bearer ${token}`;
-        }
+      // 尝试添加认证头（如果有token的话）
+      const token = localStorage.getItem('token');
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
       }
 
       const response = await fetch(`/api/enterprises/${enterpriseId}/permissions`, {
@@ -164,6 +288,36 @@ export default function EnterprisePermissionsPage({ params }: { params: Promise<
     }
   };
 
+  const fetchDepartments = async () => {
+    setLoadingDepartments(true);
+    try {
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json'
+      };
+
+      // 尝试添加认证头（如果有token的话）
+      const token = localStorage.getItem('token');
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+
+      const response = await fetch(`/api/enterprises/${enterpriseId}/departments`, {
+        headers
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setDepartments(data.data.departments || []);
+        }
+      }
+    } catch (error) {
+      console.error('获取部门数据失败:', error);
+    } finally {
+      setLoadingDepartments(false);
+    }
+  };
+
   const getRoleColor = (role: string) => {
     switch (role) {
       case 'owner':
@@ -174,6 +328,42 @@ export default function EnterprisePermissionsPage({ params }: { params: Promise<
         return 'bg-green-100 text-green-800 border-green-200';
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  // 新的角色图标映射（支持新格式）
+  const getRoleIconByKey = (roleKey: string) => {
+    switch (roleKey) {
+      case 'system_admin':
+        return <Shield className="w-5 h-5 text-red-500" />;
+      case 'enterprise_owner':
+        return <Crown className="w-5 h-5 text-purple-500" />;
+      case 'enterprise_admin':
+        return <Shield className="w-5 h-5 text-blue-500" />;
+      case 'group_owner':
+        return <UserCheck className="w-5 h-5 text-green-500" />;
+      case 'group_member':
+        return <Users className="w-5 h-5 text-gray-500" />;
+      default:
+        return <Key className="w-5 h-5 text-indigo-500" />;
+    }
+  };
+
+  // 新的角色颜色映射（支持新格式）
+  const getRoleColorByKey = (roleKey: string) => {
+    switch (roleKey) {
+      case 'system_admin':
+        return 'bg-red-100 text-red-800 border-red-200';
+      case 'enterprise_owner':
+        return 'bg-purple-100 text-purple-800 border-purple-200';
+      case 'enterprise_admin':
+        return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'group_owner':
+        return 'bg-green-100 text-green-800 border-green-200';
+      case 'group_member':
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+      default:
+        return 'bg-indigo-100 text-indigo-800 border-indigo-200';
     }
   };
 
@@ -210,6 +400,249 @@ export default function EnterprisePermissionsPage({ params }: { params: Promise<
     return matchesSearch && matchesRole;
   }) || [];
 
+  const handleCreateDepartment = () => {
+    setSelectedDepartment(null);
+    setShowDepartmentDialog(true);
+  };
+
+  const handleEditDepartment = (dept: Department) => {
+    setSelectedDepartment(dept);
+    setShowDepartmentDialog(true);
+  };
+
+  const handleSaveDepartment = async (departmentData: Partial<Department>) => {
+    try {
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json'
+      };
+      
+      if (process.env.NODE_ENV !== 'development') {
+        const token = localStorage.getItem('token');
+        if (token) {
+          headers.Authorization = `Bearer ${token}`;
+        }
+      }
+
+      const method = departmentData.id ? 'PUT' : 'POST';
+      const url = departmentData.id 
+        ? `/api/enterprises/${enterpriseId}/departments?departmentId=${departmentData.id}`
+        : `/api/enterprises/${enterpriseId}/departments`;
+
+      const response = await fetch(url, {
+        method,
+        headers,
+        body: JSON.stringify({
+          name: departmentData.name,
+          description: departmentData.description,
+          parentId: departmentData.parentId,
+          leaderId: departmentData.leaderId,
+        })
+      });
+
+      if (response.ok) {
+        await fetchDepartments();
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('保存部门失败:', error);
+      return false;
+    }
+  };
+
+  const handleAssignPermissionToUsers = async (permission: string, userIds: string[]) => {
+    try {
+      toast.info('正在分配权限...', '请稍候');
+      
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json'
+      };
+      
+      const token = localStorage.getItem('token');
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+
+      // 批量为用户分配权限
+      const promises = userIds.map(userId => {
+        const user = permissionsData?.users.find(u => u.id === userId);
+        if (!user) return Promise.resolve(false);
+        
+        const newPermissions = [...user.permissions, permission];
+        
+        return fetch(`/api/enterprises/${enterpriseId}/permissions`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            action: 'update_user',
+            targetUserId: userId,
+            permissions: newPermissions,
+            scope: 'enterprise'
+          })
+        }).then(res => res.ok);
+      });
+
+      const results = await Promise.all(promises);
+      const successCount = results.filter(r => r).length;
+      
+      if (successCount > 0) {
+        await fetchPermissionsData();
+        toast.success(
+          '权限分配成功',
+          `已为 ${successCount} 个用户分配权限`
+        );
+        return true;
+      }
+      
+      toast.error('权限分配失败', '请检查设置并重试');
+      return false;
+    } catch (error) {
+      console.error('分配权限失败:', error);
+      toast.error('权限分配失败', '网络错误，请稍后重试');
+      return false;
+    }
+  };
+
+  const handlePermissionAssignment = async (permissions: string[]) => {
+    if (!selectedPermissionUser) return false;
+    
+    try {
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json'
+      };
+      
+      const token = localStorage.getItem('token');
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+
+      const response = await fetch(`/api/enterprises/${enterpriseId}/permissions`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          action: 'update_user',
+          targetUserId: selectedPermissionUser.id,
+          permissions,
+          scope: 'enterprise'
+        })
+      });
+
+      if (response.ok) {
+        await fetchPermissionsData();
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('分配权限失败:', error);
+      return false;
+    }
+  };
+
+  const handleDeleteDepartment = async (departmentId: string) => {
+    setIsDeleting(true);
+    try {
+      toast.info('正在删除部门...', '请稍候');
+      
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json'
+      };
+      
+      if (process.env.NODE_ENV !== 'development') {
+        const token = localStorage.getItem('token');
+        if (token) {
+          headers.Authorization = `Bearer ${token}`;
+        }
+      }
+
+      const response = await fetch(
+        `/api/enterprises/${enterpriseId}/departments?departmentId=${departmentId}`,
+        {
+          method: 'DELETE',
+          headers
+        }
+      );
+
+      if (response.ok) {
+        await fetchDepartments();
+        toast.success('部门删除成功');
+        setShowDeleteConfirm(false);
+        setDepartmentToDelete(null);
+        return true;
+      }
+      toast.error('删除部门失败', '该部门可能存在子部门或成员');
+      return false;
+    } catch (error) {
+      console.error('删除部门失败:', error);
+      toast.error('删除部门失败', '网络错误，请稍后重试');
+      return false;
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const renderDepartmentTree = (depts: Department[], level: number = 0): JSX.Element[] => {
+    return depts.map((dept) => (
+      <div key={dept.id} style={{ marginLeft: `${level * 20}px` }}>
+        <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
+          <div className="flex items-center space-x-3">
+            <Building2 className="w-5 h-5 text-blue-500" />
+            <div>
+              <h4 className="font-medium text-gray-900">{dept.name}</h4>
+              {dept.description && (
+                <p className="text-sm text-gray-600">{dept.description}</p>
+              )}
+              <div className="flex items-center gap-4 mt-1">
+                {dept._count && (
+                  <>
+                    <span className="text-xs text-gray-500">
+                      {dept._count.children || 0} 个子部门
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      {dept._count.groups || 0} 个拼车组
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={() => handleEditDepartment(dept)}
+            >
+              <Edit className="w-4 h-4" />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={() => {
+                const newDept: Department = {
+                  id: '',
+                  name: '',
+                  parentId: dept.id,
+                  enterpriseId
+                };
+                setSelectedDepartment(null);
+                setFormData({ ...newDept, parentId: dept.id });
+                setShowDepartmentDialog(true);
+              }}
+            >
+              <Plus className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+        {dept.children && dept.children.length > 0 && (
+          <div className="mt-2">
+            {renderDepartmentTree(dept.children, level + 1)}
+          </div>
+        )}
+      </div>
+    ));
+  };
+
+  const [formData, setFormData] = useState<Partial<Department>>({});
+
   const handleUserUpdate = async (userId: string, updates: {
     role?: string;
     permissions?: string[];
@@ -220,12 +653,10 @@ export default function EnterprisePermissionsPage({ params }: { params: Promise<
         'Content-Type': 'application/json'
       };
 
-      // 生产环境下添加认证头
-      if (process.env.NODE_ENV !== 'development') {
-        const token = localStorage.getItem('token');
-        if (token) {
-          headers.Authorization = `Bearer ${token}`;
-        }
+      // 尝试添加认证头（如果有token的话）
+      const token = localStorage.getItem('token');
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
       }
 
       const response = await fetch(`/api/enterprises/${enterpriseId}/permissions`, {
@@ -332,7 +763,7 @@ export default function EnterprisePermissionsPage({ params }: { params: Promise<
             </Button>
             <Button 
               variant="outline"
-              onClick={() => setShowRoleManagementDialog(true)}
+              onClick={() => setShowRoleCreateDialog(true)}
             >
               <Key className="w-4 h-4 mr-2" />
               管理角色
@@ -463,6 +894,16 @@ export default function EnterprisePermissionsPage({ params }: { params: Promise<
                         >
                           <Eye className="w-4 h-4" />
                         </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => {
+                            setSelectedPermissionUser(user);
+                            setShowPermissionDialog(true);
+                          }}
+                        >
+                          <Key className="w-4 h-4" />
+                        </Button>
                       </div>
                     </div>
                   ))}
@@ -474,30 +915,98 @@ export default function EnterprisePermissionsPage({ params }: { params: Promise<
           <TabsContent value="roles">
             <Card>
               <CardHeader>
-                <CardTitle>角色管理</CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle>角色管理</CardTitle>
+                  <Button 
+                    size="sm"
+                    onClick={() => setShowRoleCreateDialog(true)}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    创建角色
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {permissionsData.availableRoles?.map((role) => (
-                    <div key={role.key} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center space-x-3">
-                        <Key className="w-5 h-5 text-blue-500" />
-                        <div>
-                          <h4 className="font-medium text-gray-900">{role.name}</h4>
-                          <p className="text-sm text-gray-600">{role.key}</p>
+                  {permissionsData.availableRoles?.map((role) => {
+                    const isSystemRole = ['system_admin', 'enterprise_owner', 'enterprise_admin', 'group_owner', 'group_member'].includes(role.key);
+                    const roleIcon = getRoleIconByKey(role.key);
+                    const roleColor = getRoleColorByKey(role.key);
+                    
+                    return (
+                      <div key={role.key} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors">
+                        <div className="flex items-center space-x-3">
+                          {roleIcon}
+                          <div>
+                            <h4 className="font-medium text-gray-900">{role.name}</h4>
+                            <p className="text-sm text-gray-600">{role.key}</p>
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {role.permissions.slice(0, 3).map(perm => (
+                                <Badge key={perm} variant="outline" className="text-xs">
+                                  {perm}
+                                </Badge>
+                              ))}
+                              {role.permissions.length > 3 && (
+                                <Badge variant="outline" className="text-xs">
+                                  +{role.permissions.length - 3} 更多
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <Badge 
+                            variant={isSystemRole ? "secondary" : "default"}
+                            className={roleColor}
+                          >
+                            {isSystemRole ? '系统角色' : '自定义角色'}
+                          </Badge>
+                          <div className="text-right text-sm text-gray-500">
+                            <p>{role.permissions.length} 个权限</p>
+                          </div>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => {
+                              if (isSystemRole) {
+                                setSelectedRoleForView({
+                                  key: role.key,
+                                  name: role.name,
+                                  permissions: role.permissions,
+                                  description: role.key === 'system_admin' ? '系统管理员，拥有系统的完全控制权' :
+                                              role.key === 'enterprise_owner' ? '企业拥有者，拥有企业的最高权限' :
+                                              role.key === 'enterprise_admin' ? '企业管理员，可以管理企业的日常事务' :
+                                              role.key === 'group_owner' ? '拼车组创建者，拥有拼车组的管理权' :
+                                              role.key === 'group_member' ? '拼车组成员，可以参与拼车活动' : '系统角色',
+                                  isSystem: true,
+                                  userCount: permissionsData?.users.filter(u => u.role === role.key).length || 0
+                                });
+                                setShowRoleViewDialog(true);
+                              } else {
+                                setSelectedRoleForEdit({
+                                  key: role.key,
+                                  name: role.name,
+                                  permissions: role.permissions,
+                                  description: '自定义角色',
+                                  isSystem: false
+                                });
+                                setShowRoleEditDialog(true);
+                              }
+                            }}
+                            title={isSystemRole ? "查看角色详情" : "编辑角色"}
+                          >
+                            {isSystemRole ? <Eye className="w-4 h-4" /> : <Edit className="w-4 h-4" />}
+                          </Button>
                         </div>
                       </div>
-                      <div className="flex items-center space-x-3">
-                        <Badge variant="secondary">系统角色</Badge>
-                        <div className="text-right text-sm text-gray-500">
-                          <p>{role.permissions.length} 个权限</p>
-                        </div>
-                        <Button variant="ghost" size="sm">
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                      </div>
+                    );
+                  })}
+                  {(!permissionsData.availableRoles || permissionsData.availableRoles.length === 0) && (
+                    <div className="text-center py-8 text-gray-500">
+                      <Key className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                      <p>暂无角色数据</p>
                     </div>
-                  ))}
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -506,36 +1015,96 @@ export default function EnterprisePermissionsPage({ params }: { params: Promise<
           <TabsContent value="permissions">
             <Card>
               <CardHeader>
-                <CardTitle>权限列表</CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle>权限列表</CardTitle>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      // 打开一个通用的权限管理对话框
+                      setSelectedPermissionUser({
+                        id: 'batch-assign',
+                        name: '批量分配',
+                        email: '',
+                        role: 'member',
+                        permissions: [],
+                        status: 'active'
+                      });
+                      setShowPermissionDialog(true);
+                    }}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    分配权限
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {permissionsData.availablePermissions?.map((permission) => (
-                    <div key={permission} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center space-x-3">
-                        <Shield className="w-5 h-5 text-purple-500" />
-                        <div>
-                          <h4 className="font-medium text-gray-900">{permission}</h4>
-                          <p className="text-sm text-gray-600">
-                            {permission.includes('system') ? '系统级权限' :
-                             permission.includes('enterprise') ? '企业级权限' :
-                             permission.includes('group') ? '拼车组权限' :
-                             permission.includes('ai') ? 'AI服务权限' :
-                             permission.includes('user') ? '用户管理权限' : '其他权限'}
-                          </p>
+                <div className="space-y-4 overflow-x-auto">
+                  {permissionsData.availablePermissions?.map((permission) => {
+                    const details = PERMISSION_DETAILS[permission] || {
+                      name: permission,
+                      description: '系统权限',
+                      category: '其他',
+                      level: 'view'
+                    };
+                    
+                    return (
+                      <div key={permission} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors">
+                        <div className="flex items-start space-x-3 flex-grow min-w-0">
+                          <Shield className="w-5 h-5 text-purple-500 mt-1 flex-shrink-0" />
+                          <div className="flex-grow min-w-0">
+                            <h4 className="font-medium text-gray-900">{details.name}</h4>
+                            <p className="text-sm text-gray-600 mb-1">{details.description}</p>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <code className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">{permission}</code>
+                              <Badge variant="outline" className="text-xs">
+                                {details.category}
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 mt-3 sm:mt-0 ml-8 sm:ml-4 flex-shrink-0">
+                          <Badge 
+                            variant={details.level === 'admin' ? 'destructive' : 
+                                    details.level === 'manage' ? 'default' : 
+                                    details.level === 'create' ? 'default' : 
+                                    details.level === 'use' ? 'outline' : 'secondary'}
+                            className={`min-w-[60px] justify-center whitespace-nowrap ${
+                              details.level === 'admin' ? 'bg-red-100 text-red-800 border-red-200' :
+                              details.level === 'manage' ? 'bg-orange-100 text-orange-800 border-orange-200' :
+                              details.level === 'create' ? 'bg-blue-100 text-blue-800 border-blue-200' :
+                              details.level === 'use' ? 'bg-green-100 text-green-800 border-green-200' :
+                              'bg-gray-100 text-gray-800 border-gray-200'
+                            }`}
+                          >
+                            {details.level === 'admin' ? '系统级' :
+                             details.level === 'manage' ? '管理' :
+                             details.level === 'create' ? '创建' : 
+                             details.level === 'use' ? '使用' : '查看'}
+                          </Badge>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedPermissionForView({ key: permission, name: details.name });
+                              setShowPermissionUsersDialog(true);
+                            }}
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedPermissionForAssign({ key: permission, name: details.name });
+                              setShowPermissionAssignUserDialog(true);
+                            }}
+                          >
+                            <UserPlus className="w-4 h-4" />
+                          </Button>
                         </div>
                       </div>
-                      <div className="flex items-center space-x-3">
-                        <Badge 
-                          variant={permission.includes('admin') || permission.includes('manage') ? 'destructive' : 
-                                  permission.includes('create') || permission.includes('invite') ? 'default' : 'secondary'}
-                        >
-                          {permission.includes('admin') || permission.includes('manage') ? '管理' :
-                           permission.includes('create') || permission.includes('invite') ? '创建' : '查看'}
-                        </Badge>
-                      </div>
-                    </div>
-                  )) || (
+                    );
+                  }) || (
                     <div className="text-center py-8 text-gray-500">
                       <Shield className="w-12 h-12 mx-auto mb-4 text-gray-300" />
                       <p>暂无权限数据</p>
@@ -549,14 +1118,46 @@ export default function EnterprisePermissionsPage({ params }: { params: Promise<
           <TabsContent value="departments">
             <Card>
               <CardHeader>
-                <CardTitle>部门权限</CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle>部门权限</CardTitle>
+                  <Button 
+                    size="sm" 
+                    onClick={() => {
+                      if (departments.length === 0) {
+                        fetchDepartments();
+                      }
+                      handleCreateDepartment();
+                    }}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    新建部门
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
-                <div className="text-center py-8 text-gray-500">
-                  <Users className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                  <p>暂无部门数据</p>
-                  <p className="text-sm mt-2">部门权限管理功能正在开发中</p>
-                </div>
+                {loadingDepartments ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                    <p className="mt-2 text-gray-500">加载部门数据...</p>
+                  </div>
+                ) : departments.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <Building2 className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                    <p>暂无部门数据</p>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="mt-4"
+                      onClick={fetchDepartments}
+                    >
+                      加载部门数据
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {renderDepartmentTree(departments)}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -572,114 +1173,6 @@ export default function EnterprisePermissionsPage({ params }: { params: Promise<
           onUpdateUser={handleUserUpdate}
         />
 
-        
-        {/* 角色管理对话框 */}
-        <RoleManagementDialog
-          open={showRoleManagementDialog}
-          onOpenChange={setShowRoleManagementDialog}
-          availableRoles={permissionsData?.availableRoles || []}
-          users={permissionsData?.users || []}
-          availablePermissions={permissionsData?.availablePermissions || []}
-          onCreateRole={async (role) => {
-            try {
-              const headers: HeadersInit = {
-                'Content-Type': 'application/json'
-              };
-              
-              if (process.env.NODE_ENV !== 'development') {
-                const token = localStorage.getItem('token');
-                if (token) {
-                  headers.Authorization = `Bearer ${token}`;
-                }
-              }
-              
-              const response = await fetch(`/api/enterprises/${enterpriseId}/roles`, {
-                method: 'POST',
-                headers,
-                body: JSON.stringify({
-                  action: 'create',
-                  roleKey: role.key,
-                  roleName: role.name,
-                  permissions: role.permissions
-                })
-              });
-              
-              if (response.ok) {
-                await fetchPermissionsData();
-                return true;
-              }
-              return false;
-            } catch (error) {
-              console.error('创建角色失败:', error);
-              return false;
-            }
-          }}
-          onUpdateRole={async (roleKey, updates) => {
-            try {
-              const headers: HeadersInit = {
-                'Content-Type': 'application/json'
-              };
-              
-              if (process.env.NODE_ENV !== 'development') {
-                const token = localStorage.getItem('token');
-                if (token) {
-                  headers.Authorization = `Bearer ${token}`;
-                }
-              }
-              
-              const response = await fetch(`/api/enterprises/${enterpriseId}/roles`, {
-                method: 'POST',
-                headers,
-                body: JSON.stringify({
-                  action: 'update',
-                  roleKey,
-                  permissions: updates.permissions
-                })
-              });
-              
-              if (response.ok) {
-                await fetchPermissionsData();
-                return true;
-              }
-              return false;
-            } catch (error) {
-              console.error('更新角色失败:', error);
-              return false;
-            }
-          }}
-          onDeleteRole={async (roleKey) => {
-            try {
-              const headers: HeadersInit = {
-                'Content-Type': 'application/json'
-              };
-              
-              if (process.env.NODE_ENV !== 'development') {
-                const token = localStorage.getItem('token');
-                if (token) {
-                  headers.Authorization = `Bearer ${token}`;
-                }
-              }
-              
-              const response = await fetch(`/api/enterprises/${enterpriseId}/roles`, {
-                method: 'POST',
-                headers,
-                body: JSON.stringify({
-                  action: 'delete',
-                  roleKey
-                })
-              });
-              
-              if (response.ok) {
-                await fetchPermissionsData();
-                return true;
-              }
-              return false;
-            } catch (error) {
-              console.error('删除角色失败:', error);
-              return false;
-            }
-          }}
-        />
         
         {/* 批量用户管理对话框 */}
         <BatchUserManagementDialog
@@ -754,6 +1247,190 @@ export default function EnterprisePermissionsPage({ params }: { params: Promise<
               return false;
             } catch (error) {
               console.error('批量删除用户失败:', error);
+              return false;
+            }
+          }}
+        />
+
+        {/* 部门管理对话框 */}
+        <DepartmentManagementDialog
+          open={showDepartmentDialog}
+          onOpenChange={setShowDepartmentDialog}
+          department={selectedDepartment}
+          departments={departments}
+          users={permissionsData?.users || []}
+          enterpriseId={enterpriseId}
+          onSave={handleSaveDepartment}
+          onDelete={handleDeleteDepartment}
+        />
+
+        {/* 权限分配对话框 */}
+        {selectedPermissionUser && (
+          <PermissionAssignmentDialog
+            open={showPermissionDialog}
+            onOpenChange={setShowPermissionDialog}
+            userId={selectedPermissionUser.id}
+            userName={selectedPermissionUser.name}
+            currentPermissions={selectedPermissionUser.permissions}
+            availablePermissions={permissionsData?.availablePermissions || []}
+            onSave={handlePermissionAssignment}
+          />
+        )}
+
+        {/* 权限用户查看对话框 */}
+        {selectedPermissionForView && (
+          <PermissionUsersDialog
+            open={showPermissionUsersDialog}
+            onOpenChange={setShowPermissionUsersDialog}
+            permission={selectedPermissionForView.key}
+            permissionName={selectedPermissionForView.name}
+            users={permissionsData?.users || []}
+            onManageUser={(user) => {
+              setSelectedUser(user);
+              setShowUserDetailsDialog(true);
+              setShowPermissionUsersDialog(false);
+            }}
+          />
+        )}
+
+        {/* 权限分配给用户对话框 */}
+        {selectedPermissionForAssign && (
+          <PermissionAssignUserDialog
+            open={showPermissionAssignUserDialog}
+            onOpenChange={setShowPermissionAssignUserDialog}
+            permission={selectedPermissionForAssign.key}
+            permissionName={selectedPermissionForAssign.name}
+            users={permissionsData?.users || []}
+            onAssign={(userIds) => handleAssignPermissionToUsers(selectedPermissionForAssign.key, userIds)}
+          />
+        )}
+
+        {/* 删除部门确认对话框 */}
+        <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>确认删除部门</AlertDialogTitle>
+              <AlertDialogDescription>
+                您确定要删除这个部门吗？此操作无法撤销。
+                如果部门下有子部门或成员，删除将会失败。
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isDeleting}>取消</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  if (departmentToDelete) {
+                    handleDeleteDepartment(departmentToDelete);
+                  }
+                }}
+                disabled={isDeleting}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                {isDeleting ? (
+                  <span className="flex items-center gap-2">
+                    <LoadingSpinner size="sm" />
+                    删除中...
+                  </span>
+                ) : (
+                  '确认删除'
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* 角色查看对话框 */}
+        <RoleViewDialog
+          open={showRoleViewDialog}
+          onOpenChange={setShowRoleViewDialog}
+          role={selectedRoleForView}
+          users={selectedRoleForView ? permissionsData?.users.filter(u => u.role === selectedRoleForView.key) || [] : []}
+          permissionDetails={PERMISSION_DETAILS}
+        />
+
+        {/* 角色创建对话框 */}
+        <RoleCreateDialog
+          open={showRoleCreateDialog}
+          onOpenChange={setShowRoleCreateDialog}
+          availablePermissions={Object.entries(PERMISSION_DETAILS).map(([key, detail]) => ({
+            key,
+            name: detail.name,
+            description: detail.description,
+            category: detail.category
+          }))}
+          onCreateRole={async (role) => {
+            try {
+              const headers: HeadersInit = {
+                'Content-Type': 'application/json'
+              };
+              
+              const token = localStorage.getItem('token');
+              if (token) {
+                headers.Authorization = `Bearer ${token}`;
+              }
+              
+              const response = await fetch(`/api/enterprises/${enterpriseId}/roles`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({
+                  action: 'create',
+                  roleKey: role.key,
+                  roleName: role.name,
+                  permissions: role.permissions
+                })
+              });
+              
+              if (response.ok) {
+                await fetchPermissionsData();
+                return true;
+              }
+              return false;
+            } catch (error) {
+              console.error('创建角色失败:', error);
+              return false;
+            }
+          }}
+        />
+
+        {/* 角色编辑对话框 */}
+        <RoleEditDialog
+          open={showRoleEditDialog}
+          onOpenChange={setShowRoleEditDialog}
+          role={selectedRoleForEdit}
+          availablePermissions={Object.entries(PERMISSION_DETAILS).map(([key, detail]) => ({
+            key,
+            name: detail.name,
+            description: detail.description,
+            category: detail.category
+          }))}
+          onUpdateRole={async (role) => {
+            try {
+              const headers: HeadersInit = {
+                'Content-Type': 'application/json'
+              };
+              
+              const token = localStorage.getItem('token');
+              if (token) {
+                headers.Authorization = `Bearer ${token}`;
+              }
+              
+              const response = await fetch(`/api/enterprises/${enterpriseId}/roles`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({
+                  action: 'update',
+                  roleKey: role.key,
+                  permissions: role.permissions
+                })
+              });
+              
+              if (response.ok) {
+                await fetchPermissionsData();
+                return true;
+              }
+              return false;
+            } catch (error) {
+              console.error('更新角色失败:', error);
               return false;
             }
           }}

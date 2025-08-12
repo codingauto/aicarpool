@@ -75,7 +75,7 @@ interface GroupMember {
 
 interface UsageStat {
   id: string;
-  serviceType: string;
+  platform: string;
   totalTokens: number;
   cost: number;
   requestTime: string;
@@ -91,13 +91,11 @@ interface AiServiceAccount {
   id: string;
   name: string;
   description?: string;
-  serviceType: string;
+  platform: string;  // 改为platform
   accountType: string;
   isEnabled: boolean;
   status: string;
   currentLoad?: number;
-  supportedModels?: string[];
-  currentModel?: string;
   createdAt?: string;
   lastUsedAt?: string;
   // 绑定状态
@@ -482,9 +480,11 @@ export default function EnterpriseGroupDetailPage({ params }: PageProps) {
     return <Badge className={config.className}>{config.label}</Badge>;
   };
 
-  const getServiceTypeIcon = (serviceType: string) => {
-    switch (serviceType.toLowerCase()) {
+  const getServiceTypeIcon = (platform: string) => {
+    const platformLower = (platform || '').toLowerCase();
+    switch (platformLower) {
       case 'claude':
+      case 'claude_console':
         return '🤖';
       case 'openai':
       case 'gpt':
@@ -762,7 +762,7 @@ export default function EnterpriseGroupDetailPage({ params }: PageProps) {
                       <div className="flex items-start justify-between">
                         <div className="flex items-center gap-3">
                           <div className="text-2xl">
-                            {getServiceTypeIcon(getBoundAccount()!.serviceType)}
+                            {getServiceTypeIcon(getBoundAccount()!.platform)}
                           </div>
                           <div>
                             <h4 className="font-medium text-lg">{getBoundAccount()!.name}</h4>
@@ -772,13 +772,8 @@ export default function EnterpriseGroupDetailPage({ params }: PageProps) {
                             <div className="flex items-center gap-2 mt-2">
                               {getAccountStatusBadge(getBoundAccount()!.status, getBoundAccount()!.isEnabled)}
                               <Badge variant="outline">
-                                {getBoundAccount()!.serviceType.toUpperCase()}
+                                {getBoundAccount()!.platform.toUpperCase()}
                               </Badge>
-                              {getBoundAccount()!.currentModel && (
-                                <Badge variant="secondary">
-                                  {getBoundAccount()!.currentModel}
-                                </Badge>
-                              )}
                             </div>
                           </div>
                         </div>
@@ -1151,11 +1146,11 @@ export default function EnterpriseGroupDetailPage({ params }: PageProps) {
             {getBoundAccount() && (
               <div className="my-4 p-3 bg-gray-50 rounded-lg">
                 <div className="flex items-center gap-3">
-                  <span className="text-lg">{getServiceTypeIcon(getBoundAccount()!.serviceType)}</span>
+                  <span className="text-lg">{getServiceTypeIcon(getBoundAccount()!.platform)}</span>
                   <div>
                     <p className="font-medium">{getBoundAccount()!.name}</p>
                     <p className="text-sm text-gray-600">
-                      {getBoundAccount()!.serviceType.toUpperCase()}
+                      {getBoundAccount()!.platform.toUpperCase()}
                     </p>
                   </div>
                 </div>

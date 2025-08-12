@@ -45,11 +45,11 @@ export function AppLayout({ children, title, actions }: AppLayoutProps) {
       '/dashboard': '仪表盘',
       '/groups': '拼车组',
       '/monitoring': '监控中心',
-      '/edge-nodes': '边缘节点',
       '/tutorial': '使用教程',
       '/claude-code': 'Claude Code',
       '/debug': '调试页面',
       '/status': '系统状态',
+      '/permissions': '权限管理',
     };
 
     // 处理动态路由
@@ -70,9 +70,10 @@ export function AppLayout({ children, title, actions }: AppLayoutProps) {
   const isAuthPage = pathname.startsWith('/auth/') || pathname === '/landing';
   const isEnterpriseSelectionPage = pathname === '/'; // 企业选择页面
   const isEnterprisePage = pathname.startsWith('/enterprise/'); // 企业内部页面
+  const isJoinPage = pathname.startsWith('/join/'); // 邀请链接页面
 
-  // 认证页面和企业页面跳过全局布局
-  if (isAuthPage || isEnterprisePage) {
+  // 认证页面、企业页面和邀请链接页面跳过全局布局
+  if (isAuthPage || isEnterprisePage || isJoinPage) {
     return <>{children}</>;
   }
 
@@ -93,25 +94,7 @@ export function AppLayout({ children, title, actions }: AppLayoutProps) {
     <div className="min-h-screen bg-gray-50">
       <TopNavigation showNavigationMenu={true} />
       
-      {/* 页面标题栏 */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-12">
-            <h1 className="text-lg font-semibold text-gray-900">
-              {getPageTitle()}
-            </h1>
-            
-            {/* Actions */}
-            {actions && (
-              <div className="flex items-center gap-2">
-                {actions}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Page Content */}
+      {/* Page Content - 直接渲染内容，不需要额外的标题栏 */}
       <main className="flex-1">
         {children}
       </main>

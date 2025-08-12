@@ -64,7 +64,7 @@ export async function POST(
         select: {
           id: true,
           name: true,
-          serviceType: true,
+          platform: true,
           status: true,
           apiEndpoint: true,
           apiKey: true,
@@ -79,7 +79,7 @@ export async function POST(
           const testResult = await testAiAccount(account);
           testResults[account.id] = {
             accountName: account.name,
-            serviceType: account.serviceType,
+            platform: account.platform,
             success: testResult.success,
             responseTime: testResult.responseTime,
             message: testResult.message,
@@ -88,7 +88,7 @@ export async function POST(
         } catch (error) {
           testResults[account.id] = {
             accountName: account.name,
-            serviceType: account.serviceType,
+            platform: account.platform,
             success: false,
             responseTime: 0,
             message: '测试失败',
@@ -136,7 +136,7 @@ async function testAiAccount(account: any): Promise<{
 
   try {
     // 根据服务类型执行不同的测试
-    switch (account.serviceType) {
+    switch (account.platform) {
       case 'openai':
         return await testOpenAIAccount(account);
       case 'claude':
@@ -152,7 +152,7 @@ async function testAiAccount(account: any): Promise<{
           success: false,
           responseTime: Date.now() - startTime,
           message: '不支持的服务类型',
-          details: { serviceType: account.serviceType }
+          details: { platform: account.platform }
         };
     }
   } catch (error) {
@@ -179,7 +179,7 @@ async function testOpenAIAccount(account: any): Promise<{
   try {
     // 模拟测试OpenAI账号
     // 在实际实现中，这里应该调用OpenAI API进行测试
-    const mockResponse = await simulateApiCall(account.serviceType, 1000);
+    const mockResponse = await simulateApiCall(account.platform, 1000);
     
     return {
       success: mockResponse.success,
@@ -214,7 +214,7 @@ async function testClaudeAccount(account: any): Promise<{
   const startTime = Date.now();
 
   try {
-    const mockResponse = await simulateApiCall(account.serviceType, 800);
+    const mockResponse = await simulateApiCall(account.platform, 800);
     
     return {
       success: mockResponse.success,
@@ -249,7 +249,7 @@ async function testGeminiAccount(account: any): Promise<{
   const startTime = Date.now();
 
   try {
-    const mockResponse = await simulateApiCall(account.serviceType, 1200);
+    const mockResponse = await simulateApiCall(account.platform, 1200);
     
     return {
       success: mockResponse.success,
@@ -284,7 +284,7 @@ async function testQianfanAccount(account: any): Promise<{
   const startTime = Date.now();
 
   try {
-    const mockResponse = await simulateApiCall(account.serviceType, 900);
+    const mockResponse = await simulateApiCall(account.platform, 900);
     
     return {
       success: mockResponse.success,
@@ -319,7 +319,7 @@ async function testTongyiAccount(account: any): Promise<{
   const startTime = Date.now();
 
   try {
-    const mockResponse = await simulateApiCall(account.serviceType, 1100);
+    const mockResponse = await simulateApiCall(account.platform, 1100);
     
     return {
       success: mockResponse.success,
@@ -417,7 +417,7 @@ async function testSharedPool(groupId: string): Promise<{
 /**
  * 模拟API调用
  */
-async function simulateApiCall(serviceType: string, delay: number): Promise<{
+async function simulateApiCall(platform: string, delay: number): Promise<{
   success: boolean;
   data?: any;
 }> {

@@ -61,7 +61,7 @@ export async function GET(
         {
           id: 'mock-claude-1',
           name: 'Claude Sonnet 主账号',
-          serviceType: 'claude',
+          platform: 'claude',
           status: 'active',
           dailyQuota: 50000,
           monthlyBudget: 500,
@@ -86,7 +86,7 @@ export async function GET(
         {
           id: 'mock-gpt-1',
           name: 'GPT-4 企业账号',
-          serviceType: 'openai',
+          platform: 'openai',
           status: 'active',
           dailyQuota: 100000,
           monthlyBudget: 800,
@@ -111,7 +111,7 @@ export async function GET(
         {
           id: 'mock-gemini-1',
           name: 'Gemini Pro 账号',
-          serviceType: 'gemini',
+          platform: 'gemini',
           status: 'active',
           dailyQuota: 30000,
           monthlyBudget: 300,
@@ -148,7 +148,7 @@ export async function GET(
           status: 'active'
         },
         orderBy: [
-          { serviceType: 'asc' },
+          { platform: 'asc' },
           { name: 'asc' }
         ]
       });
@@ -162,7 +162,7 @@ export async function GET(
       const accountsWithStats = aiServiceAccounts.map(account => ({
         id: account.id,
         name: account.name,
-        serviceType: account.serviceType,
+        platform: account.platform,
         status: account.status,
         dailyQuota: account.dailyQuota || 50000,
         monthlyBudget: account.monthlyBudget || 500,
@@ -201,7 +201,7 @@ export async function GET(
         {
           id: 'fallback-claude-1',
           name: 'Claude 账号',
-          serviceType: 'claude',
+          platform: 'claude',
           status: 'active',
           dailyQuota: 50000,
           monthlyBudget: 500,

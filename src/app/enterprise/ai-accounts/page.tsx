@@ -61,7 +61,7 @@ interface AiAccount {
   id: string;
   name: string;
   description?: string;
-  serviceType: string;
+  platform: string;
   accountType: string;
   isEnabled: boolean;
   status: string;
@@ -179,7 +179,7 @@ export default function AiAccountsPage() {
   const filteredAccounts = accounts.filter(account => {
     const matchesSearch = account.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          account.description?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesServiceType = serviceTypeFilter === 'all' || account.serviceType === serviceTypeFilter;
+    const matchesServiceType = serviceTypeFilter === 'all' || account.platform === serviceTypeFilter;
     const matchesStatus = statusFilter === 'all' || account.status === statusFilter;
     
     return matchesSearch && matchesServiceType && matchesStatus;
@@ -246,7 +246,7 @@ export default function AiAccountsPage() {
     }
   };
 
-  const getServiceTypeDisplayName = (serviceType: string) => {
+  const getServiceTypeDisplayName = (platform: string) => {
     const displayNames: Record<string, string> = {
       'claude': 'Claude',
       'gemini': 'Gemini',
@@ -408,7 +408,7 @@ export default function AiAccountsPage() {
                         {getHealthIcon(account)}
                         {getStatusBadge(account)}
                         <Badge variant="outline">
-                          {getServiceTypeDisplayName(account.serviceType)}
+                          {getServiceTypeDisplayName(account.platform)}
                         </Badge>
                         <Badge variant={account.accountType === 'dedicated' ? 'default' : 'secondary'}>
                           {account.accountType === 'dedicated' ? '专属' : '共享'}

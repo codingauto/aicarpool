@@ -40,7 +40,18 @@ export default function PermissionsPage() {
   const fetchPermissions = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/permissions');
+      
+      // 获取token并添加到请求头
+      const token = localStorage.getItem('token');
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json'
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
+      const response = await fetch('/api/permissions', { headers });
       const result = await response.json();
       
       if (result.success) {

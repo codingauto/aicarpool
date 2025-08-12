@@ -49,6 +49,19 @@ interface DashboardStats {
     month: number;
     efficiency: number;
   };
+  systemStatus?: {
+    aiAvailability: number;
+    responseTime: number;
+    currentModel: string;
+    loadBalance: string;
+  };
+  resourceUsage?: {
+    poolUtilization: number;
+    apiCallsPerDay: number;
+    monthCost: number;
+    storage: number;
+  };
+  userRole?: string;
 }
 
 function DashboardContent() {
@@ -69,70 +82,53 @@ function DashboardContent() {
   const fetchDashboardData = async () => {
     try {
       const token = localStorage.getItem('token');
-      if (!token) {
+      
+      // 开发模式下可以不需要token
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json'
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      } else if (process.env.NODE_ENV === 'production') {
         router.push('/');
         return;
       }
 
-      // 获取企业基本信息
-      const enterpriseResponse = await fetch(`/api/enterprises/${enterpriseId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+      // 获取仪表板统计数据
+      const dashboardResponse = await fetch(`/api/enterprises/${enterpriseId}/dashboard`, {
+        headers
       });
 
-      if (!enterpriseResponse.ok) {
-        if (enterpriseResponse.status === 401) {
+      if (!dashboardResponse.ok) {
+        if (dashboardResponse.status === 401) {
           router.push('/');
           return;
         }
-        if (enterpriseResponse.status === 403) {
+        if (dashboardResponse.status === 403) {
           setError('您没有权限访问此企业');
           return;
         }
-        throw new Error('获取企业信息失败');
+        if (dashboardResponse.status === 404) {
+          setError('企业不存在');
+          return;
+        }
+        throw new Error('获取仪表板数据失败');
       }
 
-      const enterpriseData = await enterpriseResponse.json();
+      const dashboardData = await dashboardResponse.json();
       
-      if (enterpriseData.success) {
-        const enterprise = enterpriseData.data;
+      if (dashboardData.success) {
+        setStats(dashboardData.data);
         
-        // 模拟统计数据（后续替换为真实API）
-        const mockStats: DashboardStats = {
-          enterprise: {
-            id: enterprise.id,
-            name: enterprise.name,
-            planType: enterprise.planType || 'basic'
-          },
-          members: {
-            total: 12,
-            active: 8
-          },
-          groups: {
-            total: 4,
-            active: 3
-          },
-          aiResources: {
-            accounts: 15,
-            pools: 3,
-            usage: 78
-          },
-          costs: {
-            today: 45.67,
-            month: 1234.56,
-            efficiency: 92
-          }
-        };
-
-        setStats(mockStats);
-        setLocalUserRole('admin'); // 模拟用户角色
+        // 获取用户角色（从企业用户关系中）
+        const userRole = dashboardData.data.userRole || 'member';
+        setLocalUserRole(userRole);
       } else {
-        setError('获取企业信息失败');
+        setError(dashboardData.message || '获取仪表板数据失败');
       }
     } catch (error) {
-      console.error('获取企业数据失败:', error);
+      console.error('获取仪表板数据失败:', error);
       setError('加载失败，请重试');
     } finally {
       setLoading(false);
@@ -257,19 +253,19 @@ function DashboardContent() {
             <CardContent className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm">AI服务可用性</span>
-                <Badge variant="default">99.9%</Badge>
+                <Badge variant="default">{stats?.systemStatus?.aiAvailability || 99.9}%</Badge>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm">平均响应时间</span>
-                <Badge variant="secondary">1.2s</Badge>
+                <Badge variant="secondary">{stats?.systemStatus?.responseTime?.toFixed(1) || 1.2}s</Badge>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm">当前活跃模型</span>
-                <Badge variant="outline">claude-4-sonnet</Badge>
+                <Badge variant="outline">{stats?.systemStatus?.currentModel || 'claude-4-sonnet'}</Badge>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm">负载均衡状态</span>
-                <Badge variant="default">正常</Badge>
+                <Badge variant="default">{stats?.systemStatus?.loadBalance || '正常'}</Badge>
               </div>
             </CardContent>
           </Card>
@@ -284,19 +280,19 @@ function DashboardContent() {
             <CardContent className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm">账号池利用率</span>
-                <Badge variant="secondary">{stats?.aiResources.usage}%</Badge>
+                <Badge variant="secondary">{stats?.resourceUsage?.poolUtilization || stats?.aiResources?.usage || 0}%</Badge>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm">API调用量</span>
-                <Badge variant="outline">12.5K/天</Badge>
+                <Badge variant="outline">{stats?.resourceUsage?.apiCallsPerDay ? `${(stats.resourceUsage.apiCallsPerDay / 1000).toFixed(1)}K` : '0'}/天</Badge>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm">月度成本</span>
-                <Badge variant="default">${stats?.costs.month}</Badge>
+                <Badge variant="default">${stats?.resourceUsage?.monthCost || stats?.costs?.month || 0}</Badge>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm">存储使用</span>
-                <Badge variant="secondary">2.1GB</Badge>
+                <Badge variant="secondary">{stats?.resourceUsage?.storage || 2.1}GB</Badge>
               </div>
             </CardContent>
           </Card>

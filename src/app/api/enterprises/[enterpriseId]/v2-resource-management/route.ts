@@ -47,7 +47,7 @@ interface EnterpriseResourceSummary {
 
 interface AccountAllocationRequest {
   groupId: string;
-  serviceType: string;
+  platform: string;
   bindingType: 'exclusive' | 'shared';
   preferredAccountId?: string;
 }
@@ -58,7 +58,7 @@ interface AccountAllocationResponse {
     allocatedAccount: {
       id: string;
       name: string;
-      serviceType: string;
+      platform: string;
     };
     bindingType: string;
     message: string;
@@ -116,7 +116,7 @@ export async function GET(
       select: {
         id: true,
         name: true,
-        serviceType: true,
+        platform: true,
         isEnabled: true,
         status: true,
         groupBindings: {
@@ -142,8 +142,8 @@ export async function GET(
 
     accounts.forEach(account => {
       // 按服务类型统计
-      accountStats.byServiceType[account.serviceType] = 
-        (accountStats.byServiceType[account.serviceType] || 0) + 1;
+      accountStats.byServiceType[account.platform] = 
+        (accountStats.byServiceType[account.platform] || 0) + 1;
 
       // 按状态统计
       if (account.isEnabled && account.status === 'active') {
@@ -380,7 +380,7 @@ export async function POST(
         allocatedAccount: {
           id: targetAccount.id,
           name: targetAccount.name,
-          serviceType: targetAccount.serviceType
+          platform: targetAccount.serviceType
         },
         bindingType,
         message: `成功为拼车组分配${serviceType}账号，绑定模式：${bindingType === 'exclusive' ? '专属' : '共享'}`

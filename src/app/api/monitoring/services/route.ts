@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
       select: {
         id: true,
         name: true,
-        serviceType: true,
+        platform: true,
         accountType: true,
         healthStatus: true,
         lastHealthCheck: true,
@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
         'gemini': 900,
         'openai': 1800,
         'qwen': 2500
-      }[account.serviceType] || 1500;
+      }[account.platform] || 1500;
 
       const isHealthy = Math.random() > 0.1; // 90%概率健康
       const responseTime = isHealthy ? 
@@ -96,8 +96,8 @@ export async function GET(request: NextRequest) {
       }
 
       return {
-        serviceType: account.serviceType,
-        serviceName: getServiceDisplayName(account.serviceType),
+        platform: account.platform,
+        serviceName: getServiceDisplayName(account.platform),
         accountId: account.id,
         accountName: account.name,
         status,
@@ -142,7 +142,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-function getServiceDisplayName(serviceType: string): string {
+function getServiceDisplayName(platform: string): string {
   const displayNames: Record<string, string> = {
     'claude': 'Claude (Anthropic)',
     'gemini': 'Gemini (Google)',

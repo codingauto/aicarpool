@@ -24,7 +24,7 @@ interface AiResourceDashboard {
   dailyCost: number;
   averageResponseTime: number;
   accountsByService: {
-    serviceType: string;
+    platform: string;
     count: number;
     healthyCount: number;
     avgLoad: number;
@@ -157,7 +157,7 @@ export async function GET(
     const serviceStats = new Map<string, { count: number; healthyCount: number; loadSum: number }>();
     
     accounts.forEach(account => {
-      const serviceType = account.serviceType;
+      const serviceType = account.platform;
       if (!serviceStats.has(serviceType)) {
         serviceStats.set(serviceType, { count: 0, healthyCount: 0, loadSum: 0 });
       }
@@ -282,10 +282,10 @@ export async function GET(
       dailyCost: 25.50,
       averageResponseTime: 850,
       accountsByService: [
-        { serviceType: 'claude', count: 1, healthyCount: 1, avgLoad: 45 },
-        { serviceType: 'openai', count: 1, healthyCount: 1, avgLoad: 32 },
-        { serviceType: 'gemini', count: 1, healthyCount: 1, avgLoad: 67 },
-        { serviceType: 'qwen', count: 1, healthyCount: 0, avgLoad: 0 }
+        { platform: 'claude', count: 1, healthyCount: 1, avgLoad: 45 },
+        { platform: 'openai', count: 1, healthyCount: 1, avgLoad: 32 },
+        { platform: 'gemini', count: 1, healthyCount: 1, avgLoad: 67 },
+        { platform: 'qwen', count: 1, healthyCount: 0, avgLoad: 0 }
       ],
       topGroupsByUsage: [
         { groupId: 'grp_001', groupName: '前端开发组', dailyRequests: 60, dailyCost: 12.30 },

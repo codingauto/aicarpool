@@ -10,12 +10,12 @@ import {
   DollarSign,
   Shield,
   Activity,
-  Server,
   BookOpen,
   ChevronDown,
   LogOut,
   Menu,
-  X
+  X,
+  Settings
 } from 'lucide-react';
 
 interface NavigationItem {
@@ -28,7 +28,6 @@ const navigationItems: NavigationItem[] = [
   { label: '仪表盘', path: '/dashboard', icon: LayoutDashboard },
   { label: '权限管理', path: '/permissions', icon: Shield },
   { label: '监控中心', path: '/monitoring', icon: Activity },
-  { label: '边缘节点', path: '/edge-nodes', icon: Server },
   { label: '使用教程', path: '/tutorial', icon: BookOpen },
 ];
 
@@ -160,6 +159,18 @@ export function TopNavigation({ showNavigationMenu = false }: TopNavigationProps
                       <div className="text-xs text-gray-500">{user.email}</div>
                     </div>
                     <div className="p-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          router.push('/settings');
+                          setShowUserMenu(false);
+                        }}
+                        className="w-full justify-start gap-2 text-left"
+                      >
+                        <Settings className="w-4 h-4" />
+                        账号设置
+                      </Button>
                       <Button
                         variant="ghost"
                         size="sm"

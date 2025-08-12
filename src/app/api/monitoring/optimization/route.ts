@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
       select: {
         id: true,
         name: true,
-        serviceType: true,
+        platform: true,
         accountType: true,
         dailyUsageStats: true,
         healthStatus: true,
