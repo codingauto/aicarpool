@@ -45,7 +45,6 @@ export function AppLayout({ children, title, actions }: AppLayoutProps) {
       '/dashboard': '仪表盘',
       '/groups': '拼车组',
       '/monitoring': '监控中心',
-      '/edge-nodes': '边缘节点',
       '/tutorial': '使用教程',
       '/claude-code': 'Claude Code',
       '/debug': '调试页面',

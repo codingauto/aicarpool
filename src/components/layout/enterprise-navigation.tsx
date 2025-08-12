@@ -29,7 +29,6 @@ import {
   Home,
   ChevronDown,
   Globe,
-  Server,
   BookOpen
 } from 'lucide-react';
 
@@ -552,18 +551,6 @@ function EnterpriseTopBar({ enterpriseId, onMobileMenuToggle }: EnterpriseTopBar
                   >
                     <Activity className="w-4 h-4" />
                     监控中心
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      router.push('/edge-nodes');
-                      setShowGlobalMenu(false);
-                    }}
-                    className="w-full justify-start gap-2 text-left"
-                  >
-                    <Server className="w-4 h-4" />
-                    边缘节点
                   </Button>
                   <Button
                     variant="ghost"
