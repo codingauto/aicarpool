@@ -18,6 +18,7 @@ import {
   ChevronLeft
 } from 'lucide-react';
 import { toast } from '@/components/ui/toast';
+import { api } from '@/lib/api/api-client';
 
 interface UserInfo {
   id: string;
@@ -47,29 +48,18 @@ export default function SettingsPage() {
 
   const fetchUserInfo = async () => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        router.push('/auth/login');
-        return;
-      }
+      const response = await api.get('/api/user/profile');
 
-      const response = await fetch('/api/user/profile', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          setUser(data.data);
-          setProfileData({
-            name: data.data.name || '',
-            email: data.data.email || ''
-          });
-        }
-      } else if (response.status === 401) {
-        router.push('/auth/login');
+      if (response.success && response.data) {
+        setUser(response.data);
+        setProfileData({
+          name: response.data.name || '',
+          email: response.data.email || ''
+        });
+      } else if (response.code === 'AUTH_EXPIRED') {
+        // API客户端已经处理了跳转，这里不需要额外操作
+      } else {
+        toast.error('获取用户信息失败', response.error || '请稍后重试');
       }
     } catch (error) {
       console.error('获取用户信息失败:', error);
@@ -81,21 +71,11 @@ export default function SettingsPage() {
 
   const handleSaveProfile = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/user/profile', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          name: profileData.name
-        })
+      const response = await api.put('/api/user/profile', {
+        name: profileData.name
       });
 
-      const data = await response.json();
-
-      if (data.success) {
+      if (response.success) {
         toast.success('保存成功', '个人信息已更新');
         setUser(prev => prev ? { ...prev, name: profileData.name } : null);
         setEditingProfile(false);
@@ -108,7 +88,7 @@ export default function SettingsPage() {
           localStorage.setItem('user', JSON.stringify(userObj));
         }
       } else {
-        toast.error('保存失败', data.message || '请稍后重试');
+        toast.error('保存失败', response.error || '请稍后重试');
       }
     } catch (error) {
       console.error('保存个人信息失败:', error);

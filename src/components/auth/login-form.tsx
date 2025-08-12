@@ -31,10 +31,16 @@ export function LoginForm() {
       const data = await response.json();
 
       if (data.success) {
-        // 保存token到localStorage
-        localStorage.setItem('token', data.data.tokens.accessToken);
-        localStorage.setItem('refreshToken', data.data.tokens.refreshToken);
-        localStorage.setItem('user', JSON.stringify(data.data.user));
+        // 使用authService保存token和用户信息
+        const { authService } = await import('@/lib/api/auth-service');
+        authService.handleLoginResponse(
+          {
+            accessToken: data.data.tokens.accessToken,
+            refreshToken: data.data.tokens.refreshToken,
+            expiresIn: data.data.tokens.expiresIn || 900
+          },
+          data.data.user
+        );
         
         // 重定向到企业选择页面（v2.2 企业优先架构）
         router.push('/');

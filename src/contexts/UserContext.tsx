@@ -1,6 +1,8 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { authService } from '@/lib/api/auth-service';
+import { api } from '@/lib/api/api-client';
 
 export interface User {
   id: string;
@@ -20,7 +22,7 @@ export interface User {
 interface UserContextType {
   user: User | null;
   isLoading: boolean;
-  login: (token: string, userData: User) => void;
+  login: (token: string, refreshToken: string, userData: User) => void;
   logout: () => void;
   updateUser: (userData: Partial<User>) => void;
   refreshUser: () => Promise<void>;
@@ -38,32 +40,59 @@ export function UserProvider({ children }: UserProviderProps) {
 
   // 从localStorage恢复用户状态
   useEffect(() => {
-    const initializeUser = () => {
+    const initializeUser = async () => {
       try {
-        const token = localStorage.getItem('token');
+        const token = authService.getAccessToken();
         const storedUser = localStorage.getItem('user');
         
         if (token && storedUser) {
           const userData = JSON.parse(storedUser);
           setUser(userData);
+          
+          // 检查token是否即将过期，如果是则尝试刷新
+          if (authService.isTokenExpiringSoon(300)) { // 5分钟内过期
+            console.log('🔄 Token即将过期，尝试刷新...');
+            await authService.refreshAccessToken();
+          }
         }
       } catch (error) {
         console.error('初始化用户状态失败:', error);
         // 清理无效的存储数据
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+        authService.clearTokens();
       } finally {
         setIsLoading(false);
       }
     };
 
     initializeUser();
+    
+    // 监听认证事件
+    const handleLogout = () => {
+      setUser(null);
+      window.location.href = '/auth/login';
+    };
+    
+    const handleTokenRefreshFailed = () => {
+      console.error('Token自动刷新失败，需要重新登录');
+      setUser(null);
+      window.location.href = '/auth/login';
+    };
+    
+    window.addEventListener('auth:logout', handleLogout);
+    window.addEventListener('auth:token-refresh-failed', handleTokenRefreshFailed);
+    
+    return () => {
+      window.removeEventListener('auth:logout', handleLogout);
+      window.removeEventListener('auth:token-refresh-failed', handleTokenRefreshFailed);
+    };
   }, []);
 
-  const login = (token: string, userData: User) => {
+  const login = (token: string, refreshToken: string, userData: User) => {
     try {
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(userData));
+      authService.handleLoginResponse(
+        { accessToken: token, refreshToken, expiresIn: 900 },
+        userData
+      );
       setUser(userData);
     } catch (error) {
       console.error('登录状态保存失败:', error);
@@ -72,8 +101,7 @@ export function UserProvider({ children }: UserProviderProps) {
 
   const logout = () => {
     try {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+      authService.logout();
       setUser(null);
     } catch (error) {
       console.error('登出清理失败:', error);
@@ -93,24 +121,13 @@ export function UserProvider({ children }: UserProviderProps) {
   };
 
   const refreshUser = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
+    if (!authService.isAuthenticated()) return;
 
     try {
-      const response = await fetch('/api/auth/me', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      const response = await api.get('/api/auth/me');
 
-      if (response.ok) {
-        const userData = await response.json();
-        if (userData.success && userData.data) {
-          updateUser(userData.data);
-        }
-      } else if (response.status === 401) {
-        // Token无效，清理登录状态
-        logout();
+      if (response.success && response.data) {
+        updateUser(response.data);
       }
     } catch (error) {
       console.error('刷新用户信息失败:', error);

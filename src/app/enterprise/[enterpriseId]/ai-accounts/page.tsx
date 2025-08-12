@@ -35,6 +35,7 @@ import {
 import { useRouter } from 'next/navigation';
 import { useEnterpriseContext } from '@/contexts/enterprise-context';
 import { toast } from 'sonner';
+import { api, apiClient } from '@/lib/api/api-client';
 
 interface AiAccount {
   id: string;
@@ -107,32 +108,23 @@ export default function EnterpriseAiAccountsPage({ params }: { params: Promise<{
   const fetchAccounts = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
-      const params = new URLSearchParams({
-        page: currentPage.toString(),
-        pageSize: '20',
+      const params = {
+        page: currentPage,
+        pageSize: 20,
         ...(selectedService && { platform: selectedService }), // 改为platform
         ...(selectedStatus && { status: selectedStatus })
-      });
+      };
 
-      const response = await fetch(`/api/enterprises/${enterpriseId}/ai-accounts?${params}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      const queryString = apiClient.buildQueryString(params);
 
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success) {
-          setAccounts(result.data.accounts);
-          setTotalCount(result.data.totalCount);
-          setError('');
-        } else {
-          setError(result.message || '获取AI账号列表失败');
-        }
+      const response = await api.get(`/api/enterprises/${enterpriseId}/ai-accounts?${queryString}`);
+
+      if (response.success && response.data) {
+        setAccounts(response.data.accounts);
+        setTotalCount(response.data.totalCount);
+        setError('');
       } else {
-        setError('获取AI账号列表失败');
+        setError(response.error || response.message || '获取AI账号列表失败');
       }
     } catch (error) {
       console.error('获取AI账号列表失败:', error);

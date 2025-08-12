@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AlertCircle, Eye, EyeOff, Check } from 'lucide-react';
 import { toast } from '@/components/ui/toast';
+import { api } from '@/lib/api/api-client';
 
 interface ChangePasswordModalProps {
   open: boolean;
@@ -57,22 +58,12 @@ export function ChangePasswordModal({ open, onClose }: ChangePasswordModalProps)
 
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/user/change-password', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          currentPassword: formData.currentPassword,
-          newPassword: formData.newPassword
-        })
+      const response = await api.post('/api/user/change-password', {
+        currentPassword: formData.currentPassword,
+        newPassword: formData.newPassword
       });
 
-      const data = await response.json();
-
-      if (data.success) {
+      if (response.success) {
         toast.success('密码修改成功', '您的密码已成功更新');
         onClose();
         // 重置表单
@@ -83,8 +74,8 @@ export function ChangePasswordModal({ open, onClose }: ChangePasswordModalProps)
         });
         setErrors({});
       } else {
-        setErrors({ submit: data.message || '修改密码失败' });
-        if (data.message === '当前密码错误') {
+        setErrors({ submit: response.error || response.message || '修改密码失败' });
+        if (response.message === '当前密码错误' || response.error?.includes('当前密码')) {
           setErrors({ currentPassword: '当前密码错误' });
         }
       }
