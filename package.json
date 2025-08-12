@@ -1,6 +1,6 @@
 {
   "name": "aicarpool-拼车",
-  "version": "0.24.2",
+  "version": "0.24.3",
   "private": true,
   "scripts": {
     "dev": "next dev --port 4000",

@@ -32,13 +32,14 @@ export function LoginForm() {
 
       if (data.success) {
         // 保存token到localStorage
-        localStorage.setItem('token', data.data.token);
+        localStorage.setItem('token', data.data.tokens.accessToken);
+        localStorage.setItem('refreshToken', data.data.tokens.refreshToken);
         localStorage.setItem('user', JSON.stringify(data.data.user));
         
         // 重定向到企业选择页面（v2.2 企业优先架构）
         router.push('/');
       } else {
-        setError(data.error || '登录失败');
+        setError(data.error || data.message || '登录失败');
       }
     } catch (error) {
       setError('网络错误，请稍后重试');
