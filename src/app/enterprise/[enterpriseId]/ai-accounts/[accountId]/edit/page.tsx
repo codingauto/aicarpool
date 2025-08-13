@@ -4,11 +4,12 @@
  * 企业AI账号编辑页面 - 优化版本
  * 
  * 功能：
- * - 支持多平台AI服务账号编辑 (Claude, Gemini, Claude Console)
+ * - 支持多平台AI服务账号编辑 (Claude, Gemini, Claude Console, 通义千问, Cursor Agent, OpenAI Codex, AmpCode)
  * - 统一的组件化架构与新增页面保持一致
  * - 账户类型管理 (共享/专属)
  * - 代理配置支持
  * - OAuth和手动Token配置编辑
+ * - 新平台API Key配置支持
  */
 
 import React, { useState, useEffect, use } from 'react';
@@ -25,6 +26,7 @@ import { BasicInfoForm } from '@/components/ai-accounts/BasicInfoForm';
 import { ClaudeConsoleConfig } from '@/components/ai-accounts/ClaudeConsoleConfig';
 import { ManualTokenInput } from '@/components/ai-accounts/ManualTokenInput';
 import { ProxyConfigComponent } from '@/components/ai-accounts/ProxyConfigComponent';
+import { ApiKeyConfig } from '@/components/ai-accounts/ApiKeyConfig';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 
 // hooks 导入
@@ -104,9 +106,10 @@ export default function EditAiAccountPage({
           setOriginalData(account);
           
           // 根据不同平台设置表单数据
-          let platform: 'claude' | 'gemini' | 'claude-console' = 'claude';
+          let platform: 'claude' | 'gemini' | 'claude-console' | 'qwen' | 'cursor-agent' | 'codex' | 'ampcode' = 'claude';
           let addType: 'oauth' | 'manual' = 'oauth';
           
+          // 平台检测逻辑
           if (account.claudeAiOauth) {
             platform = 'claude';
             addType = 'oauth';
@@ -114,7 +117,21 @@ export default function EditAiAccountPage({
             platform = 'gemini';
             addType = 'oauth';
           } else if (account.apiUrl && account.apiKey) {
-            platform = 'claude-console';
+            // 根据数据库中的平台字段来判断具体平台
+            if (account.platform === 'claude_console') {
+              platform = 'claude-console';
+            } else if (account.platform === 'qwen') {
+              platform = 'qwen';
+            } else if (account.platform === 'cursor-agent') {
+              platform = 'cursor-agent';
+            } else if (account.platform === 'codex') {
+              platform = 'codex';
+            } else if (account.platform === 'ampcode') {
+              platform = 'ampcode';
+            } else {
+              // 默认为claude-console以保持向后兼容
+              platform = 'claude-console';
+            }
             addType = 'manual';
           }
 
@@ -165,7 +182,7 @@ export default function EditAiAccountPage({
       newErrors.name = '请填写账户名称';
     }
 
-    if (form.platform === 'claude-console') {
+    if (['claude-console', 'qwen', 'cursor-agent', 'codex', 'ampcode'].includes(form.platform)) {
       if (!form.apiUrl?.trim()) {
         newErrors.apiUrl = '请填写 API URL';
       }
@@ -228,7 +245,8 @@ export default function EditAiAccountPage({
         if (form.projectId) {
           data.projectId = form.projectId;
         }
-      } else if (form.platform === 'claude-console') {
+      } else if (['claude-console', 'qwen', 'cursor-agent', 'codex', 'ampcode'].includes(form.platform)) {
+        // 新平台统一处理
         // 只有当API Key发生变化时才更新
         if (form.apiKey && form.apiKey !== '••••••••') {
           data.apiKey = form.apiKey;
@@ -347,13 +365,29 @@ export default function EditAiAccountPage({
               />
             )}
 
+            {/* 新平台API配置 */}
+            {['qwen', 'cursor-agent', 'codex', 'ampcode'].includes(form.platform) && (
+              <ApiKeyConfig
+                form={form}
+                errors={errors}
+                onFormChange={updateForm}
+                platform={form.platform}
+                platformName={
+                  form.platform === 'qwen' ? '通义千问' :
+                  form.platform === 'cursor-agent' ? 'Cursor Agent' :
+                  form.platform === 'codex' ? 'OpenAI Codex' :
+                  form.platform === 'ampcode' ? 'AmpCode' : ''
+                }
+              />
+            )}
+
             {/* 手动输入 Token */}
             <ManualTokenInput
               platform={form.platform as 'claude' | 'gemini'}
               form={form}
               errors={errors}
               onFormChange={updateForm}
-              show={form.addType === 'manual' && form.platform !== 'claude-console'}
+              show={form.addType === 'manual' && !['claude-console', 'qwen', 'cursor-agent', 'codex', 'ampcode'].includes(form.platform)}
             />
 
             {/* 代理设置 */}

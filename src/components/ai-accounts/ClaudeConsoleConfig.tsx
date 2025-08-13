@@ -24,13 +24,13 @@ interface ClaudeConsoleConfigProps {
 export function ClaudeConsoleConfig({ form, errors, onFormChange }: ClaudeConsoleConfigProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [apiMode, setApiMode] = useState<'native' | 'proxy'>('proxy');
-  const [selectedProxy, setSelectedProxy] = useState('tongyi-qianwen-3');
+  const [selectedProxy, setSelectedProxy] = useState('kimi-k2');
 
   // 初始化默认值
   React.useEffect(() => {
     if (!form.apiUrl) {
       onFormChange({
-        apiUrl: 'https://qwen-api.aliyun.com/v1'
+        apiUrl: 'https://kimi-api.example.com/v1'
       });
     }
   }, []);
@@ -57,7 +57,6 @@ export function ClaudeConsoleConfig({ form, errors, onFormChange }: ClaudeConsol
     setSelectedProxy(proxyService);
     const proxyUrls = {
       'kimi-k2': 'https://kimi-api.example.com/v1',
-      'tongyi-qianwen-3': 'https://qwen-api.aliyun.com/v1',
       'zhipu-glm-4.5': 'https://zhipu-api.example.com/v1',
       'custom': ''
     };
@@ -105,8 +104,7 @@ export function ClaudeConsoleConfig({ form, errors, onFormChange }: ClaudeConsol
                 <div className="mt-3 space-y-2">
                   <div className="flex flex-wrap gap-2">
                     {[
-                      { value: 'kimi-k2', label: 'Kimi k2', icon: '○' },
-                      { value: 'tongyi-qianwen-3', label: '通义千问 3', icon: '●' },
+                      { value: 'kimi-k2', label: 'Kimi k2', icon: '●' },
                       { value: 'zhipu-glm-4.5', label: '智谱GLM 4.5', icon: '○' },
                       { value: 'custom', label: '自定义中转', icon: '○' }
                     ].map((service) => (
@@ -224,7 +222,6 @@ export function ClaudeConsoleConfig({ form, errors, onFormChange }: ClaudeConsol
             <div>
               <p className="text-sm font-medium text-blue-900">中转服务模型说明</p>
               <p className="text-xs text-blue-700 mt-1">
-                {selectedProxy === 'tongyi-qianwen-3' && '通义千问3中转服务支持主流Claude模型，具体支持列表由中转服务商决定'}
                 {selectedProxy === 'kimi-k2' && 'Kimi k2中转服务支持的模型列表由服务商决定'}
                 {selectedProxy === 'zhipu-glm-4.5' && '智谱GLM中转服务支持的模型列表由服务商决定'}
                 {selectedProxy === 'custom' && '自定义中转服务的模型支持情况请咨询服务商'}
