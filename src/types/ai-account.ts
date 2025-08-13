@@ -22,7 +22,7 @@ export interface ClaudeConsoleConfig {
 }
 
 export interface AccountForm {
-  platform: 'claude' | 'gemini' | 'claude-console';
+  platform: 'claude' | 'gemini' | 'claude-console' | 'qwen' | 'cursor-agent' | 'codex' | 'ampcode';
   addType: 'oauth' | 'manual';
   name: string;
   description: string;

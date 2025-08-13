@@ -15,7 +15,7 @@ interface BasicInfoFormProps {
     priority: number;
   };
   errors: FormErrors;
-  platform: 'claude' | 'gemini' | 'claude-console';
+  platform: 'claude' | 'gemini' | 'claude-console' | 'qwen' | 'cursor-agent' | 'codex' | 'ampcode';
   onFormChange: (updates: any) => void;
 }
 
@@ -98,7 +98,7 @@ export function BasicInfoForm({ form, errors, platform, onFormChange }: BasicInf
       )}
 
       {/* 调度优先级 */}
-      {(platform === 'claude' || platform === 'claude-console') && (
+      {!['gemini'].includes(platform) && (
         <div>
           <Label htmlFor="priority" className="text-sm font-semibold">调度优先级 (1-100)</Label>
           <Input

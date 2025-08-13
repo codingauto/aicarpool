@@ -27,6 +27,7 @@ import { ClaudeConsoleConfig } from '@/components/ai-accounts/ClaudeConsoleConfi
 import { ManualTokenInput } from '@/components/ai-accounts/ManualTokenInput';
 import { ProxyConfigComponent } from '@/components/ai-accounts/ProxyConfigComponent';
 import { OAuthFlow } from '@/components/ai-accounts/OAuthFlow';
+import { ApiKeyConfig } from '@/components/ai-accounts/ApiKeyConfig';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 
 // hooks 导入
@@ -84,8 +85,28 @@ export default function CreateAiAccountPage({ params }: { params: Promise<{ ente
   useEffect(() => {
     if (form.platform === 'claude-console' && !form.name) {
       updateForm({ 
-        name: 'Claude通义千问中转账号',
-        apiUrl: 'https://qwen-api.aliyun.com/v1'
+        name: 'Claude Console账号',
+        apiUrl: 'https://kimi-api.example.com/v1'
+      });
+    } else if (form.platform === 'qwen' && !form.name) {
+      updateForm({ 
+        name: '通义千问账号',
+        apiUrl: 'https://dashscope.aliyuncs.com/api/v1'
+      });
+    } else if (form.platform === 'cursor-agent' && !form.name) {
+      updateForm({ 
+        name: 'Cursor Agent账号',
+        apiUrl: 'https://api.cursor.sh/v1'
+      });
+    } else if (form.platform === 'codex' && !form.name) {
+      updateForm({ 
+        name: 'OpenAI Codex账号',
+        apiUrl: 'https://api.openai.com/v1'
+      });
+    } else if (form.platform === 'ampcode' && !form.name) {
+      updateForm({ 
+        name: 'AmpCode账号',
+        apiUrl: 'https://api.ampcode.ai/v1'
       });
     }
   }, [form.platform]);
@@ -98,7 +119,7 @@ export default function CreateAiAccountPage({ params }: { params: Promise<{ ente
       newErrors.name = '请填写账户名称';
     }
 
-    if (form.platform === 'claude-console') {
+    if (['claude-console', 'qwen', 'cursor-agent', 'codex', 'ampcode'].includes(form.platform)) {
       if (!form.apiUrl?.trim()) {
         newErrors.apiUrl = '请填写 API URL';
       }
@@ -170,7 +191,17 @@ export default function CreateAiAccountPage({ params }: { params: Promise<{ ente
         
         // 添加Claude Console的新配置字段
         data.claudeConsoleApiMode = 'proxy'; // 默认使用中转服务模式
-        data.claudeConsoleProxyService = 'tongyi-qianwen-3'; // 默认使用通义千问3
+        data.claudeConsoleProxyService = 'kimi-k2'; // 默认使用Kimi k2
+      } else if (['qwen', 'cursor-agent', 'codex', 'ampcode'].includes(form.platform)) {
+        // 新平台统一处理
+        data.apiUrl = form.apiUrl;
+        data.apiKey = form.apiKey;
+        data.priority = form.priority;
+        data.supportedModels = form.supportedModels
+          ? form.supportedModels.split('\n').filter(m => m.trim())
+          : [];
+        data.userAgent = form.userAgent || null;
+        data.rateLimitDuration = form.rateLimitDuration;
       }
 
       const response = await fetch(`/api/enterprises/${enterpriseId}/ai-accounts`, {
@@ -304,7 +335,7 @@ export default function CreateAiAccountPage({ params }: { params: Promise<{ ente
                 <AddTypeSelector 
                   addType={form.addType}
                   onAddTypeChange={(addType) => updateForm({ addType })}
-                  showSelector={form.platform !== 'claude-console'}
+                  showSelector={!['claude-console', 'qwen', 'cursor-agent', 'codex', 'ampcode'].includes(form.platform)}
                 />
 
                 {/* 基本信息表单 */}
@@ -324,13 +355,29 @@ export default function CreateAiAccountPage({ params }: { params: Promise<{ ente
                   />
                 )}
 
+                {/* 新平台API配置 */}
+                {['qwen', 'cursor-agent', 'codex', 'ampcode'].includes(form.platform) && (
+                  <ApiKeyConfig
+                    form={form}
+                    errors={errors}
+                    onFormChange={updateForm}
+                    platform={form.platform}
+                    platformName={
+                      form.platform === 'qwen' ? '通义千问' :
+                      form.platform === 'cursor-agent' ? 'Cursor Agent' :
+                      form.platform === 'codex' ? 'OpenAI Codex' :
+                      form.platform === 'ampcode' ? 'AmpCode' : ''
+                    }
+                  />
+                )}
+
                 {/* 手动输入 Token */}
                 <ManualTokenInput
                   platform={form.platform as 'claude' | 'gemini'}
                   form={form}
                   errors={errors}
                   onFormChange={updateForm}
-                  show={form.addType === 'manual' && form.platform !== 'claude-console'}
+                  show={form.addType === 'manual' && !['claude-console', 'qwen', 'cursor-agent', 'codex', 'ampcode'].includes(form.platform)}
                 />
 
                 {/* 代理设置 */}
@@ -348,7 +395,7 @@ export default function CreateAiAccountPage({ params }: { params: Promise<{ ente
                   >
                     取消
                   </Button>
-                  {form.addType === 'oauth' && form.platform !== 'claude-console' ? (
+                  {form.addType === 'oauth' && !['claude-console', 'qwen', 'cursor-agent', 'codex', 'ampcode'].includes(form.platform) ? (
                     <Button 
                       onClick={nextStep} 
                       disabled={loading}

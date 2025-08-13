@@ -17,7 +17,12 @@ export enum ServiceType {
   MINIMAX = 'minimax',     // MiniMax
   BAICHUAN = 'baichuan',   // 百川AI
   SENSETIME = 'sensetime', // 商汤
-  DOUBAO = 'doubao'        // 豆包
+  DOUBAO = 'doubao',       // 豆包
+  
+  // 新增平台
+  CURSOR_AGENT = 'cursor-agent',  // Cursor AI Agent
+  CODEX = 'codex',                // OpenAI Codex (或使用GPT-4替代)
+  AMPCODE = 'ampcode'             // AmpCode AI
 }
 
 export enum AuthType {
@@ -430,7 +435,7 @@ export const PLATFORM_CONFIGS: Record<ServiceType, PlatformConfig> = {
     supportedAuthTypes: [AuthType.API_KEY],
     defaultAuthType: AuthType.API_KEY,
     apiEndpoint: 'https://ark.cn-beijing.volces.com',
-    documenturationUrl: 'https://www.volcengine.com/docs/82379',
+    documentationUrl: 'https://www.volcengine.com/docs/82379',
     requiredFields: ['apiKey', 'endpoint'],
     optionalFields: [],
     supportedModels: [
@@ -445,6 +450,89 @@ export const PLATFORM_CONFIGS: Record<ServiceType, PlatformConfig> = {
     rateLimits: {
       requestsPerMinute: 200,
       tokensPerMinute: 300000
+    }
+  },
+
+  // 新增平台配置
+  [ServiceType.CURSOR_AGENT]: {
+    id: ServiceType.CURSOR_AGENT,
+    name: 'cursor-agent',
+    displayName: 'Cursor Agent',
+    description: 'Cursor AI 编程助手',
+    icon: '🎯',
+    category: 'international',
+    supportedAuthTypes: [AuthType.API_KEY, AuthType.OAUTH],
+    defaultAuthType: AuthType.API_KEY,
+    apiEndpoint: 'https://api.cursor.sh',
+    documentationUrl: 'https://cursor.sh/docs',
+    requiredFields: ['apiKey'],
+    optionalFields: ['organization'],
+    supportedModels: [
+      'cursor-agent-v1',
+      'cursor-agent-fast'
+    ],
+    defaultModel: 'cursor-agent-v1',
+    supportsStreaming: true,
+    supportsOAuth: true,
+    supportsProxy: true,
+    rateLimits: {
+      requestsPerMinute: 100,
+      tokensPerMinute: 200000
+    }
+  },
+
+  [ServiceType.CODEX]: {
+    id: ServiceType.CODEX,
+    name: 'codex',
+    displayName: 'OpenAI Codex',
+    description: 'OpenAI 代码生成模型（建议使用GPT-4替代）',
+    icon: '💻',
+    category: 'international',
+    supportedAuthTypes: [AuthType.API_KEY],
+    defaultAuthType: AuthType.API_KEY,
+    apiEndpoint: 'https://api.openai.com',
+    documentationUrl: 'https://platform.openai.com/docs/',
+    requiredFields: ['apiKey'],
+    optionalFields: ['organization'],
+    supportedModels: [
+      'gpt-4-turbo',
+      'gpt-4',
+      'gpt-3.5-turbo-instruct'
+    ],
+    defaultModel: 'gpt-4-turbo',
+    supportsStreaming: true,
+    supportsOAuth: false,
+    supportsProxy: true,
+    rateLimits: {
+      requestsPerMinute: 60,
+      tokensPerMinute: 150000
+    }
+  },
+
+  [ServiceType.AMPCODE]: {
+    id: ServiceType.AMPCODE,
+    name: 'ampcode',
+    displayName: 'AmpCode',
+    description: 'AmpCode AI 编程助手',
+    icon: '⚡',
+    category: 'international',
+    supportedAuthTypes: [AuthType.API_KEY, AuthType.OAUTH],
+    defaultAuthType: AuthType.API_KEY,
+    apiEndpoint: 'https://api.ampcode.ai',
+    documentationUrl: 'https://ampcode.ai/docs',
+    requiredFields: ['apiKey'],
+    optionalFields: ['userId'],
+    supportedModels: [
+      'ampcode-claude-4-sonnet',
+      'ampcode-claude-3.5-sonnet'
+    ],
+    defaultModel: 'ampcode-claude-4-sonnet',
+    supportsStreaming: true,
+    supportsOAuth: true,
+    supportsProxy: true,
+    rateLimits: {
+      requestsPerMinute: 80,
+      tokensPerMinute: 180000
     }
   }
 };
