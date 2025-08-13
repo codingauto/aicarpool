@@ -174,7 +174,7 @@ export async function GET(
     });
 
     const accountsByService = Array.from(serviceStats.entries()).map(([serviceType, stats]) => ({
-      serviceType,
+      platform: serviceType,
       count: stats.count,
       healthyCount: stats.healthyCount,
       avgLoad: stats.count > 0 ? Math.round(stats.loadSum / stats.count) : 0
@@ -273,38 +273,7 @@ export async function GET(
       dashboardData
     }, null, 2));
 
-    // 暂时返回简化的测试数据
-    const testData = {
-      totalAccounts: 4,
-      activeAccounts: 3,
-      totalGroups: 4,
-      dailyRequests: 150,
-      dailyCost: 25.50,
-      averageResponseTime: 850,
-      accountsByService: [
-        { platform: 'claude', count: 1, healthyCount: 1, avgLoad: 45 },
-        { platform: 'openai', count: 1, healthyCount: 1, avgLoad: 32 },
-        { platform: 'gemini', count: 1, healthyCount: 1, avgLoad: 67 },
-        { platform: 'qwen', count: 1, healthyCount: 0, avgLoad: 0 }
-      ],
-      topGroupsByUsage: [
-        { groupId: 'grp_001', groupName: '前端开发组', dailyRequests: 60, dailyCost: 12.30 },
-        { groupId: 'grp_002', groupName: '后端开发组', dailyRequests: 50, dailyCost: 8.20 },
-        { groupId: 'grp_003', groupName: '产品设计组', dailyRequests: 25, dailyCost: 3.50 },
-        { groupId: 'grp_004', groupName: '全栈开发组', dailyRequests: 15, dailyCost: 1.50 }
-      ],
-      recentAlerts: [
-        {
-          id: 'alert-1',
-          type: 'warning' as const,
-          message: 'AI账号 通义千问 测试账号 已被禁用',
-          timestamp: new Date().toISOString(),
-          accountId: 'acc-1'
-        }
-      ]
-    };
-
-    return createApiResponse(true, testData, 'success', 200);
+    return createApiResponse(true, dashboardData, 'success', 200);
 
   } catch (error) {
     console.error('获取企业AI资源仪表板失败:', error);
