@@ -257,13 +257,26 @@ npm run db:init
 
 ---
 
+## 🧪 测试
+
+本项目采用本地测试策略（节省GitHub Actions额度）：
+
+```bash
+# 快速运行本地测试
+./scripts/local-test.sh
+
+# 或手动运行
+npm test              # 运行所有测试
+npm run test:coverage # 生成覆盖率报告
+```
+
 ## 🤝 贡献
 
 欢迎提交 Pull Request 或 Issue！
 
 请确保：
 - 遵循现有代码风格
-- 添加必要的测试
+- 在本地运行测试通过
 - 更新相关文档
 
 ---
