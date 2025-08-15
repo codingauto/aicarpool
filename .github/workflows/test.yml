@@ -1,0 +1,171 @@
+name: 测试流水线
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: 运行测试
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+    
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: aicarpool_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+      
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+    - name: 📥 检出代码
+      uses: actions/checkout@v4
+      
+    - name: 🔧 设置 Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+    
+    - name: 📦 安装依赖
+      run: npm ci
+    
+    - name: 🔍 验证测试环境
+      run: node scripts/verify-test-env.js
+    
+    - name: 🗄️ 运行数据库迁移
+      env:
+        DATABASE_URL: mysql://root:root@localhost:3306/aicarpool_test
+      run: |
+        npx prisma migrate deploy
+        npx prisma db seed
+      continue-on-error: true
+    
+    - name: 🧪 运行单元测试
+      env:
+        NODE_ENV: test
+        DATABASE_URL: mysql://root:root@localhost:3306/aicarpool_test
+        REDIS_URL: redis://localhost:6379/1
+        JWT_SECRET: test-jwt-secret-key
+        JWT_REFRESH_SECRET: test-jwt-refresh-secret
+      run: npm run test -- --ci --coverage --maxWorkers=2
+    
+    - name: 📊 生成覆盖率报告
+      if: matrix.node-version == '20.x'
+      uses: codecov/codecov-action@v4
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        files: ./coverage/lcov.info
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+    
+    - name: 📈 上传覆盖率到 Coveralls
+      if: matrix.node-version == '20.x'
+      uses: coverallsapp/github-action@v2
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        path-to-lcov: ./coverage/lcov.info
+      continue-on-error: true
+    
+    - name: 💾 上传测试结果
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results-${{ matrix.node-version }}
+        path: |
+          coverage/
+          test-results/
+        retention-days: 7
+    
+    - name: 📝 测试报告总结
+      if: always()
+      run: |
+        echo "## 测试结果总结 📊" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "- Node版本: ${{ matrix.node-version }}" >> $GITHUB_STEP_SUMMARY
+        echo "- 测试状态: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        if [ -f coverage/coverage-summary.json ]; then
+          echo "### 覆盖率统计" >> $GITHUB_STEP_SUMMARY
+          echo '```json' >> $GITHUB_STEP_SUMMARY
+          cat coverage/coverage-summary.json | jq '.total' >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+        fi
+
+  lint:
+    name: 代码检查
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 检出代码
+      uses: actions/checkout@v4
+      
+    - name: 🔧 设置 Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+    
+    - name: 📦 安装依赖
+      run: npm ci
+    
+    - name: 🎨 运行 ESLint
+      run: npm run lint
+      continue-on-error: true
+    
+    - name: 📏 运行 Prettier 检查
+      run: npx prettier --check "src/**/*.{ts,tsx,js,jsx,json,css,md}"
+      continue-on-error: true
+    
+    - name: 🔍 TypeScript 类型检查
+      run: npm run typecheck
+      continue-on-error: true
+
+  test-summary:
+    name: 测试总结
+    needs: [test, lint]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+    - name: 📊 生成测试总结
+      run: |
+        echo "# AiCarpool 测试流水线总结 🎯" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## 执行状态" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "| 任务 | 状态 |" >> $GITHUB_STEP_SUMMARY
+        echo "|------|------|" >> $GITHUB_STEP_SUMMARY
+        echo "| 单元测试 | ${{ needs.test.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| 代码检查 | ${{ needs.lint.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "---" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "提交: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+        echo "分支: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+        echo "触发者: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+        echo "时间: $(date +'%Y-%m-%d %H:%M:%S')" >> $GITHUB_STEP_SUMMARY

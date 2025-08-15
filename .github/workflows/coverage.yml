@@ -1,0 +1,70 @@
+name: 覆盖率徽章
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  coverage:
+    name: 生成覆盖率徽章
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 检出代码
+      uses: actions/checkout@v4
+      
+    - name: 🔧 设置 Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+    
+    - name: 📦 安装依赖
+      run: npm ci
+    
+    - name: 🧪 运行测试并生成覆盖率
+      env:
+        NODE_ENV: test
+        JWT_SECRET: test-jwt-secret-key
+        JWT_REFRESH_SECRET: test-jwt-refresh-secret
+      run: npm run test:coverage -- --ci
+      continue-on-error: true
+    
+    - name: 📊 解析覆盖率数据
+      id: coverage
+      run: |
+        if [ -f coverage/coverage-summary.json ]; then
+          COVERAGE=$(cat coverage/coverage-summary.json | jq '.total.lines.pct' | cut -d. -f1)
+          echo "lines=$COVERAGE" >> $GITHUB_OUTPUT
+          
+          # 根据覆盖率设置颜色
+          if [ $COVERAGE -ge 80 ]; then
+            COLOR="green"
+          elif [ $COVERAGE -ge 60 ]; then
+            COLOR="yellow"
+          elif [ $COVERAGE -ge 40 ]; then
+            COLOR="orange"
+          else
+            COLOR="red"
+          fi
+          echo "color=$COLOR" >> $GITHUB_OUTPUT
+        else
+          echo "lines=0" >> $GITHUB_OUTPUT
+          echo "color=red" >> $GITHUB_OUTPUT
+        fi
+    
+    - name: 🏷️ 创建覆盖率徽章
+      uses: schneegans/dynamic-badges-action@v1.7.0
+      with:
+        auth: ${{ secrets.GIST_TOKEN }}
+        gistID: your-gist-id-here  # 需要替换为实际的Gist ID
+        filename: aicarpool-coverage.json
+        label: Coverage
+        message: ${{ steps.coverage.outputs.lines }}%
+        color: ${{ steps.coverage.outputs.color }}
+    
+    - name: 📝 更新README徽章
+      run: |
+        echo "覆盖率: ${{ steps.coverage.outputs.lines }}%"
+        echo "颜色: ${{ steps.coverage.outputs.color }}"

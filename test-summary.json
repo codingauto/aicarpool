@@ -1,0 +1,17 @@
+{
+  "timestamp": "2025-08-13T11:45:32.196Z",
+  "stats": {
+    "total": 0,
+    "passed": 0,
+    "failed": 0,
+    "skipped": 0
+  },
+  "coverage": {
+    "lines": 0,
+    "branches": 0,
+    "functions": 0,
+    "statements": 0
+  },
+  "duration": 0,
+  "testSuites": []
+}

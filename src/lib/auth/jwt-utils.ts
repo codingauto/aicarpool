@@ -136,7 +136,7 @@ export function verifyRefreshToken(token: string): { userId: string } | null {
  * 从请求头中提取token
  */
 export function extractTokenFromHeader(authHeader: string | null): string | null {
-  if (!authHeader) {
+  if (!authHeader || authHeader === '') {
     return null;
   }
   
